@@ -1,0 +1,1 @@
+{"name":"@roadbook/monitor","version":"0.0.1","private":true,"main":"index.ts","types":"index.ts","exports":{"./server":"./src/server/index.ts","./client":"./src/client/index.ts"},"dependencies":{"winston":"3.19.0","nest-winston":"1.10.2"},"devDependencies":{"typescript":"5.9.3","@roadbook/config":"workspace:*"}}
