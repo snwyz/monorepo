@@ -33,19 +33,19 @@ export default function IndexPage() {
         style={{ width: "100%", height: "85vh" }}
         latitude={center.lat}
         longitude={center.lng}
-      markers={routes.map((r, i) => ({
-        id: i,
-        iconPath: "",
+        markers={routes.map((r, i) => ({
+          id: i,
+          iconPath: "",
           latitude: r.start_lat,
           longitude: r.start_lng,
           title: r.title,
         }))}
-      onMarkerTap={(e) => {
+        onMarkerTap={(e) => {
           const r = routes[Number(e.detail.markerId)];
           if (r)
             Taro.navigateTo({ url: `/pages/route-detail/index?id=${r.id}` });
-      }}
-      onError={() => Taro.showToast({ title: "地图加载失败", icon: "none" })}
+        }}
+        onError={() => Taro.showToast({ title: "地图加载失败", icon: "none" })}
       />
       <Text>搜索半径：{radius} km</Text>
       <Slider
