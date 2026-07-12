@@ -8,6 +8,6 @@
     "postcss": true,
     "minified": true
   },
-  "appid": "your-wx-appid-here",
+  "appid": "wx321c8785d2517f76",
   "compileType": "miniprogram"
 }

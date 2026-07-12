@@ -30,6 +30,9 @@ services:
     ports:
       - "3000:3000"
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://roadbook:password@postgres:5432/roadbook
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
