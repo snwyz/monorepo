@@ -8,6 +8,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { RoutesModule } from "./modules/routes/routes.module";
 import { ArticlesModule } from "./modules/articles/articles.module";
 import { PoisModule } from "./modules/pois/pois.module";
+import { StorageModule } from "./modules/storage/storage.module";
 import { HealthController } from "./modules/health/health.controller";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
@@ -23,6 +24,7 @@ import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
     RoutesModule,
     ArticlesModule,
     PoisModule,
+    StorageModule,
   ],
   controllers: [HealthController],
   providers: [
