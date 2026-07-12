@@ -1,0 +1,119 @@
+// AI [2026-07-13]: 定义路书业务数据的 PostgreSQL 持久化模型
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+  extreme
+}
+
+enum RouteStatus {
+  draft
+  published
+}
+
+enum PoiType {
+  rv_camp
+  ev_charge
+}
+
+enum ArticleStatus {
+  draft
+  published
+}
+
+model User {
+  id         String   @id @default(uuid())
+  openid     String   @unique
+  nickname   String   @default("路书用户")
+  avatar_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  routes      Route[]
+  articles    Article[]
+  collections RouteCollection[]
+}
+
+model Route {
+  id               String      @id @default(uuid())
+  title            String
+  description      String      @default("")
+  difficulty       Difficulty
+  distance_km      Decimal     @db.Decimal(8, 2)
+  duration_hours   Decimal?    @db.Decimal(6, 2)
+  elevation_gain_m Int?
+  start_lat        Decimal     @db.Decimal(9, 6)
+  start_lng        Decimal     @db.Decimal(9, 6)
+  end_lat          Decimal     @db.Decimal(9, 6)
+  end_lng          Decimal     @db.Decimal(9, 6)
+  bounds_min_lat   Decimal     @db.Decimal(9, 6)
+  bounds_max_lat   Decimal     @db.Decimal(9, 6)
+  bounds_min_lng   Decimal     @db.Decimal(9, 6)
+  bounds_max_lng   Decimal     @db.Decimal(9, 6)
+  waypoints        Json        @default("[]")
+  polyline         Json        @default("[]")
+  cover_image_url  String?
+  region           String?
+  tags             Json        @default("[]")
+  status           RouteStatus @default(draft)
+  author_id        String
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  published_at     DateTime?
+
+  author      User              @relation(fields: [author_id], references: [id])
+  collections RouteCollection[]
+
+  @@index([status, bounds_min_lat, bounds_max_lat, bounds_min_lng, bounds_max_lng])
+  @@index([author_id])
+}
+
+model POI {
+  id          String    @id @default(uuid())
+  name        String
+  type        PoiType
+  lat         Decimal   @db.Decimal(9, 6)
+  lng         Decimal   @db.Decimal(9, 6)
+  description String?
+  images      Json      @default("[]")
+  source      String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@index([type, lat, lng])
+}
+
+model Article {
+  id              String        @id @default(uuid())
+  title           String
+  content         String
+  cover_image_url String?
+  author_id       String
+  status          ArticleStatus @default(draft)
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  published_at    DateTime?
+
+  author User @relation(fields: [author_id], references: [id])
+
+  @@index([status, published_at])
+}
+
+model RouteCollection {
+  user_id    String
+  route_id   String
+  created_at DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [id])
+  route Route @relation(fields: [route_id], references: [id])
+
+  @@id([user_id, route_id])
+}
