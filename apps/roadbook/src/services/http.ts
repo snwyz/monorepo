@@ -1,6 +1,5 @@
 // AI [2026-07-13]: 封装带登录令牌与错误日志的小程序 API 请求
 import Taro from "@tarojs/taro";
-import { logger } from "@roadbook/monitor/client";
 const baseUrl =
   process.env.TARO_APP_API_BASE_URL ?? "http://localhost:3000/api/v1";
 export async function request<T>(
@@ -19,7 +18,7 @@ export async function request<T>(
     },
   });
   if (res.statusCode >= 400) {
-    logger.error("[http]", method, path, res.statusCode, res.data);
+    console.error("[http]", method, path, res.statusCode, res.data);
     throw new Error(
       (res.data as { message?: string })?.message ?? "Request failed",
     );
