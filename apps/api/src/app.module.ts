@@ -4,6 +4,7 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { DbModule } from "./modules/db/db.module";
 import { RedisModule } from "./modules/redis/redis.module";
+import { AuthModule } from "./modules/auth/auth.module";
 import { HealthController } from "./modules/health/health.controller";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
@@ -15,6 +16,7 @@ import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
     }),
     DbModule,
     RedisModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [
