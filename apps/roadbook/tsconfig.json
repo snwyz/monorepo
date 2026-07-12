@@ -1,0 +1,5 @@
+{
+  "extends": "@roadbook/config/tsconfig.taro.json",
+  "compilerOptions": { "baseUrl": "." },
+  "include": ["src"]
+}

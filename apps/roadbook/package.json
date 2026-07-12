@@ -1,0 +1,28 @@
+{
+  "name": "roadbook",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev:weapp": "taro build --type weapp --watch",
+    "build:weapp": "taro build --type weapp",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@roadbook/monitor": "workspace:*",
+    "@roadbook/types": "workspace:*",
+    "@tarojs/components": "4.2.0",
+    "@tarojs/plugin-framework-react": "4.2.0",
+    "@tarojs/runtime": "4.2.0",
+    "@tarojs/taro": "4.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@roadbook/config": "workspace:*",
+    "@tarojs/cli": "4.2.0",
+    "@tarojs/webpack5-runner": "4.2.0",
+    "@types/react": "18.3.23",
+    "typescript": "5.9.3"
+  }
+}
