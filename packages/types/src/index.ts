@@ -1,8 +1,8 @@
 // AI [2026-07-13]: 定义路书前后端共用的数据模型与接口
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'extreme';
-export type RouteStatus = 'draft' | 'published';
-export type PoiType = 'rv_camp' | 'ev_charge';
-export type ArticleStatus = 'draft' | 'published';
+export type Difficulty = "easy" | "medium" | "hard" | "extreme";
+export type RouteStatus = "draft" | "published";
+export type PoiType = "rv_camp" | "ev_charge";
+export type ArticleStatus = "draft" | "published";
 
 export interface Coordinate {
   lat: number;

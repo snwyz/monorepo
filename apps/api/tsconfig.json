@@ -1,0 +1,9 @@
+{
+  "extends": "@roadbook/config/tsconfig.nestjs.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@roadbook/*": ["../../packages/*/src"] }
+  },
+  "include": ["src", "test"],
+  "exclude": ["node_modules", "dist"]
+}

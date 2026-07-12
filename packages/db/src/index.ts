@@ -1,6 +1,6 @@
 // AI [2026-07-13]: 对外导出数据库客户端与 Prisma 业务类型
-export { prisma } from './client';
-export { Prisma, PrismaClient } from '@prisma/client';
+export { createPrismaAdapter, getPrisma } from "./client";
+export { Prisma, PrismaClient } from "@prisma/client";
 export type {
   User,
   Route,
@@ -11,4 +11,4 @@ export type {
   RouteStatus,
   PoiType,
   ArticleStatus,
-} from '@prisma/client';
+} from "@prisma/client";

@@ -9,6 +9,10 @@
     "db:studio": "pnpm --filter @roadbook/db studio",
     "db:seed": "pnpm --filter @roadbook/db seed",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,yaml,yml}\""
+  },
+  "devDependencies": {
+    "prettier": "3.9.5"
   }
 }

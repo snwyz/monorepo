@@ -2,5 +2,10 @@
   "name": "@roadbook/config",
   "version": "0.0.1",
   "private": true,
-  "files": ["tsconfig.base.json", "tsconfig.nestjs.json", "tsconfig.taro.json", "prettier.config.js"]
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.nestjs.json",
+    "tsconfig.taro.json",
+    "prettier.config.js"
+  ]
 }
