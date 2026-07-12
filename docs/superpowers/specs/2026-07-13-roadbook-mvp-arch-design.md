@@ -29,6 +29,16 @@ metadata:
 |---|---|
 | Node.js | `22.x` LTS（Docker: `node:22-alpine`） |
 | pnpm | `11.12.0` |
+| Turborepo | `2.8.11` |
+
+### Monorepo 构建策略
+
+使用 Turborepo 统一编排工作区任务和本地/CI 缓存。Turborepo 只负责依赖图、并发和缓存，不替代各应用的编译器：
+
+- `packages/db`、`types`、`utils`、`monitor` 各自通过 `tsc` 输出 `dist/` JavaScript 与声明文件；所有包的 `main`、`types`、`exports` 指向构建产物，运行时不加载 `.ts` 源码。
+- `apps/api` 使用 `tsc` 编译为 `apps/api/dist/`，依赖 Turbo 保证共享包先构建；不使用 webpack/Vite 打包 NestJS，以保持 Prisma、Node 运行时依赖和调试栈清晰。
+- `apps/roadbook` 继续使用 Taro 的 webpack runner 构建小程序；Turborepo 只调度其 `build:weapp` 和开发任务。
+- 根目录 `turbo.json` 定义 `build`、`typecheck`、`test`、`lint` 任务，`build` 依赖上游 `^build`；环境变量只作为任务输入，不写入远程缓存。
 
 ### 前端
 
@@ -101,6 +111,7 @@ roadbook-monorepo/
     # taro-shared/     # 预留：未来多个小程序之间共享的组件/hooks
 
   docker-compose.yml   # postgres + redis 本地环境
+  turbo.json           # Turborepo 任务依赖与缓存规则
   pnpm-workspace.yaml
   package.json
 ```

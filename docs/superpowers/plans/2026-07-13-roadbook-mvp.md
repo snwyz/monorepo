@@ -4,9 +4,9 @@
 
 **Goal:** 从零搭建路书微信小程序 MVP，包含地图找路线、路线详情、POI 展示、收藏和文章浏览。
 
-**Architecture:** pnpm monorepo，NestJS 后端 + Taro 微信小程序前端，PostgreSQL 持久化，Redis 存 token，腾讯 COS 存图片，packages/ 共享 db/types/utils/config/monitor。
+**Architecture:** pnpm + Turborepo monorepo，NestJS 后端 + Taro 微信小程序前端，PostgreSQL 持久化，Redis 存 token，腾讯 COS 存图片，packages/ 共享 db/types/utils/config/monitor。
 
-**Tech Stack:** Taro 4.2.0 · React 18.3.1 · NestJS 11.1.28 · Prisma 7.8.0 · PostgreSQL 17 · Redis 7.4 · TypeScript 5.9.3 · pnpm 11.12.0
+**Tech Stack:** Taro 4.2.0 · React 18.3.1 · NestJS 11.1.28 · Prisma 7.8.0 · PostgreSQL 17 · Redis 7.4 · TypeScript 5.9.3 · pnpm 11.12.0 · Turborepo 2.8.11
 
 ## Global Constraints
 
@@ -46,6 +46,7 @@
 - Create: `.npmrc`
 - Create: `.gitignore`
 - Create: `.env.example`
+- Create: `turbo.json`
 
 **Produces:** 可运行的 pnpm workspace，所有固定版本确认可用
 
@@ -90,11 +91,32 @@ packages:
     "db:migrate": "pnpm --filter @roadbook/db migrate:dev",
     "db:studio": "pnpm --filter @roadbook/db studio",
     "db:seed": "pnpm --filter @roadbook/db seed",
-    "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "2.8.11"
   }
 }
 ```
+
+- [ ] **Step 4a: 创建 `turbo.json`**
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "typecheck": { "dependsOn": ["^build"], "outputs": [] },
+    "test": { "dependsOn": ["^build"], "outputs": [] },
+    "lint": { "outputs": [] }
+  }
+}
+```
+
+共享包必须提供 `build`、`typecheck` 脚本并将 package entry 指向 `dist/`。`apps/api` 使用 `tsc` 输出 `dist/`，不使用 webpack/Vite；`apps/roadbook` 保持 Taro 自身构建器，由 Turbo 调度。
 
 - [ ] **Step 5: 创建 `.gitignore`**
 

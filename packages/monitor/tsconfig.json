@@ -1,0 +1,5 @@
+{
+  "extends": "@roadbook/config/tsconfig.nestjs.json",
+  "compilerOptions": { "rootDir": ".", "outDir": "dist" },
+  "include": ["index.ts", "src"]
+}

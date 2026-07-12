@@ -2,14 +2,16 @@
   "name": "@roadbook/db",
   "version": "0.0.1",
   "private": true,
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
     "studio": "prisma studio --schema prisma/schema.prisma",
     "seed": "tsx prisma/seed.ts",
-    "generate": "prisma generate --schema prisma/schema.prisma"
+    "generate": "prisma generate --schema prisma/schema.prisma",
+    "build": "pnpm generate && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.8.0",

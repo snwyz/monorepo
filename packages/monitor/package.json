@@ -2,11 +2,15 @@
   "name": "@roadbook/monitor",
   "version": "0.0.1",
   "private": true,
-  "main": "index.ts",
-  "types": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
-    "./server": "./src/server/index.ts",
-    "./client": "./src/client/index.ts"
+    "./server": "./dist/src/server/index.js",
+    "./client": "./dist/src/client/index.js"
   },
   "dependencies": {
     "winston": "3.19.0",

@@ -2,9 +2,9 @@
   "extends": "@roadbook/config/tsconfig.nestjs.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "outDir": "dist",
     "declaration": false,
-    "declarationMap": false,
-    "paths": { "@roadbook/*": ["../../packages/*/src"] }
+    "declarationMap": false
   },
   "include": ["src", "test"],
   "exclude": ["node_modules", "dist"]

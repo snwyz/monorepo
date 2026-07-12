@@ -4,5 +4,6 @@ dist/
 .env.local
 *.local
 .pnpm-store
+.turbo/
 .DS_Store
 prisma/migrations/*.sql.bak

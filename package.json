@@ -8,11 +8,14 @@
     "db:migrate": "pnpm --filter @roadbook/db migrate:dev",
     "db:studio": "pnpm --filter @roadbook/db studio",
     "db:seed": "pnpm --filter @roadbook/db seed",
-    "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,yaml,yml}\""
   },
   "devDependencies": {
-    "prettier": "3.9.5"
+    "prettier": "3.9.5",
+    "turbo": "2.8.11"
   }
 }
