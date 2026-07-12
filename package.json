@@ -1,0 +1,14 @@
+{
+  "name": "roadbook-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.12.0",
+  "scripts": {
+    "dev:api": "pnpm --filter api dev",
+    "dev:roadbook": "pnpm --filter roadbook dev:weapp",
+    "db:migrate": "pnpm --filter @roadbook/db migrate:dev",
+    "db:studio": "pnpm --filter @roadbook/db studio",
+    "db:seed": "pnpm --filter @roadbook/db seed",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
