@@ -2,6 +2,10 @@
 import { defineConfig } from "@tarojs/cli";
 import { resolve } from "node:path";
 
+// 仅在 Node 构建阶段读取环境变量，避免把 process 引入小程序运行时。
+const apiBaseUrl =
+  process.env.TARO_APP_API_BASE_URL ?? "http://localhost:3000/api/v1";
+
 export default defineConfig({
   projectName: "roadbook",
   date: "2026-07-13",
@@ -12,6 +16,9 @@ export default defineConfig({
   framework: "react",
   compiler: "vite",
   plugins: [],
+  defineConstants: {
+    "process.env.TARO_APP_API_BASE_URL": JSON.stringify(apiBaseUrl),
+  },
   vite: {
     resolve: {
       alias: {
