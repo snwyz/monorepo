@@ -91,6 +91,24 @@ model POI {
   @@index([type, lat, lng])
 }
 
+// 腾讯位置服务返回的行政区划中心点；坐标系固定为 gcj02。
+model AdministrativeDivision {
+  code              String   @id
+  province_code     String
+  name              String
+  full_name         String
+  level             Int
+  parent_code       String?
+  lat               Decimal  @db.Decimal(9, 6)
+  lng               Decimal  @db.Decimal(9, 6)
+  coordinate_system String   @default("gcj02")
+  source            String   @default("tencent-map")
+  synced_at         DateTime @updatedAt
+
+  @@index([province_code, level])
+  @@index([parent_code, level])
+}
+
 model Article {
   id              String        @id @default(uuid())
   title           String

@@ -1,0 +1,10 @@
+{
+  "extends": "@roadbook/config/tsconfig.taro.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src", "lib"]
+}

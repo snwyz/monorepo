@@ -1,11 +1,15 @@
 // AI [2026-07-13]: 配置 Taro 微信小程序的编译入口与输出目录
 import { defineConfig } from "@tarojs/cli";
 import { resolve } from "node:path";
+import { loadEnv } from "vite";
 import { UnifiedViteWeappTailwindcssPlugin } from "weapp-tailwindcss/vite";
 
 // 仅在 Node 构建阶段读取环境变量，避免把 process 引入小程序运行时。
+const env = loadEnv(process.env.NODE_ENV ?? "development", resolve(__dirname, "../../.."), "");
 const apiBaseUrl =
-  process.env.TARO_APP_API_BASE_URL ?? "http://localhost:3000/api/v1";
+  env.TARO_APP_API_BASE_URL ?? "http://localhost:3000/api/v1";
+const tencentMapKey =
+  env.TARO_APP_TENCENT_MAP_KEY ?? env.TENCENT_MAP_KEY ?? "";
 
 export default defineConfig({
   projectName: "roadbook",
@@ -30,8 +34,13 @@ export default defineConfig({
   plugins: [],
   defineConstants: {
     "process.env.TARO_APP_API_BASE_URL": JSON.stringify(apiBaseUrl),
+    "process.env.TARO_APP_TENCENT_MAP_KEY": JSON.stringify(tencentMapKey),
   },
   vite: {
+    define: {
+      "process.env.TARO_APP_API_BASE_URL": JSON.stringify(apiBaseUrl),
+      "process.env.TARO_APP_TENCENT_MAP_KEY": JSON.stringify(tencentMapKey),
+    },
     resolve: {
       alias: {
         "@roadbook/monitor/client": resolve(__dirname, "../../../packages/monitor/src/client/index.ts"),

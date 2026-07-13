@@ -7,6 +7,7 @@ export type {
   POI,
   Article,
   RouteCollection,
+  AdministrativeDivision,
   Difficulty,
   RouteStatus,
   PoiType,
