@@ -17,5 +17,3 @@ export async function syncProvinceDistricts(provinceCode: string) {
     { province_code: provinceCode },
   );
 }
-
-export const syncSichuanDistricts = () => syncProvinceDistricts("510000");

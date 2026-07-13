@@ -4,7 +4,7 @@ import { Button, Map, Slider, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import type { RouteMarker } from '@roadbook/types';
 import { http } from '../../services/http';
-import { syncSichuanDistricts } from '../../services/map';
+import { syncProvinceDistricts } from '../../services/map';
 export default function IndexPage() {
   const [center, setCenter] = useState({ lat: 30.5728, lng: 104.0668 }),
     [radius, setRadius] = useState(100),
@@ -32,7 +32,7 @@ export default function IndexPage() {
   const syncDistricts = async () => {
     setSyncing(true);
     try {
-      const result = await syncSichuanDistricts();
+      const result = await syncProvinceDistricts('510000');
       Taro.showToast({
         title: `已同步 ${result.data.created_or_updated} 条`,
         icon: 'success',

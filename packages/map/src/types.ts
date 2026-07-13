@@ -19,11 +19,6 @@ export interface ProvinceDistrictSnapshot {
   districts: ProvinceDistrict[];
 }
 
-/** @deprecated 使用 ProvinceDistrict。 */
-export type SichuanDistrict = ProvinceDistrict;
-/** @deprecated 使用 ProvinceDistrictSnapshot。 */
-export type SichuanDistrictSnapshot = ProvinceDistrictSnapshot;
-
 export interface QQMapSdk {
   getCityList(options: QQMapCallbackOptions<QQCityListResponse>): void;
   getDistrictByCityId(

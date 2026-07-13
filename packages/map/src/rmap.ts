@@ -73,11 +73,6 @@ export class RMap {
     return { coordinateSystem: "gcj02", province, cities, districts };
   }
 
-  /** 保持已有四川调用兼容；新代码应使用 getProvinceDistrictSnapshot("510000")。 */
-  async getSichuanDistrictSnapshot(): Promise<ProvinceDistrictSnapshot> {
-    return this.getProvinceDistrictSnapshot("510000");
-  }
-
   private static createTencentSdk(key: string): QQMapSdk {
     return new QQMapWX({ key });
   }

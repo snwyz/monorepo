@@ -4,6 +4,4 @@ export type {
   ProvinceDistrict,
   ProvinceDistrictSnapshot,
   QQMapSdk,
-  SichuanDistrict,
-  SichuanDistrictSnapshot,
 } from "./types";
