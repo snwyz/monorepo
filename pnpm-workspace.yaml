@@ -11,3 +11,4 @@ allowBuilds:
   core-js-pure: true
   esbuild: true
   prisma: true
+  weapp-tailwindcss: false

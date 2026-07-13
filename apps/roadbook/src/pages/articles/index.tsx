@@ -12,16 +12,19 @@ export default function ArticlesPage() {
       .then((r) => setArticles(r.data));
   }, []);
   return (
-    <ScrollView scrollY>
-      <Text>户外知识</Text>
+    <ScrollView className="h-screen bg-slate-50 px-4 py-5" scrollY>
+      <Text className="mb-4 block text-2xl font-bold text-slate-900">
+        户外知识
+      </Text>
       {articles.map((a) => (
         <View
           key={a.id}
+          className="mb-3 rounded-xl bg-white p-4 shadow-sm"
           onClick={() =>
             Taro.navigateTo({ url: `/pages/article-detail/index?id=${a.id}` })
           }
         >
-          <Text>{a.title}</Text>
+          <Text className="text-base font-medium text-slate-800">{a.title}</Text>
         </View>
       ))}
     </ScrollView>

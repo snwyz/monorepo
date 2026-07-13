@@ -13,10 +13,11 @@ export default function ProfilePage() {
     }
   };
   return (
-    <View>
-      <Text>我的</Text>
+    <View className="min-h-screen bg-slate-50 p-4">
+      <Text className="mb-6 block text-2xl font-bold text-slate-900">我的</Text>
       {loggedIn ? (
         <Button
+          className="rounded-lg"
           onClick={() => {
             logout();
             Taro.showToast({ title: "已退出", icon: "none" });
@@ -25,7 +26,7 @@ export default function ProfilePage() {
           退出登录
         </Button>
       ) : (
-        <Button type="primary" onClick={login}>
+        <Button className="rounded-lg" type="primary" onClick={login}>
           微信一键登录
         </Button>
       )}

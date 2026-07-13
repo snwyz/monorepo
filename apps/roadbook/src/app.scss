@@ -1,1 +1,8 @@
-page { background: #f8fafc; }
+// SCSS 只承载全局基础样式与无法由原子类清晰表达的特殊样式。
+$page-background: #f8fafc;
+$text-color: #0f172a;
+
+page {
+  background: $page-background;
+  color: $text-color;
+}

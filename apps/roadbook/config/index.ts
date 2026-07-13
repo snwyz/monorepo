@@ -1,6 +1,7 @@
 // AI [2026-07-13]: 配置 Taro 微信小程序的编译入口与输出目录
 import { defineConfig } from "@tarojs/cli";
 import { resolve } from "node:path";
+import { UnifiedViteWeappTailwindcssPlugin } from "weapp-tailwindcss/vite";
 
 // 仅在 Node 构建阶段读取环境变量，避免把 process 引入小程序运行时。
 const apiBaseUrl =
@@ -14,7 +15,18 @@ export default defineConfig({
   sourceRoot: "src",
   outputRoot: "dist",
   framework: "react",
-  compiler: "vite",
+  compiler: {
+    type: "vite",
+    vitePlugins: [
+      UnifiedViteWeappTailwindcssPlugin({
+        cssOptions: {
+          rem2rpx: true,
+          injectAdditionalCssVarScope: true,
+        },
+        tailwindcssBasedir: resolve(__dirname, ".."),
+      }),
+    ],
+  },
   plugins: [],
   defineConstants: {
     "process.env.TARO_APP_API_BASE_URL": JSON.stringify(apiBaseUrl),

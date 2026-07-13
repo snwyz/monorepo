@@ -1,9 +1,9 @@
 // AI [2026-07-13]: 显示地图搜索半径与附近路线标记
-import { useCallback, useEffect, useState } from "react";
-import { Map, Slider, Text, View } from "@tarojs/components";
-import Taro from "@tarojs/taro";
-import type { RouteMarker } from "@roadbook/types";
-import { http } from "../../services/http";
+import { useCallback, useEffect, useState } from 'react';
+import { Map, Slider, Text, View } from '@tarojs/components';
+import Taro from '@tarojs/taro';
+import type { RouteMarker } from '@roadbook/types';
+import { http } from '../../services/http';
 export default function IndexPage() {
   const [center, setCenter] = useState({ lat: 30.5728, lng: 104.0668 }),
     [radius, setRadius] = useState(100),
@@ -19,7 +19,7 @@ export default function IndexPage() {
           ).data,
         );
       } catch {
-        Taro.showToast({ title: "加载失败", icon: "none" });
+        Taro.showToast({ title: '加载失败', icon: 'none' });
       }
     },
     [center, radius],
@@ -28,14 +28,14 @@ export default function IndexPage() {
     load();
   }, []);
   return (
-    <View>
+    <View className='min-h-screen bg-slate-50'>
       <Map
-        style={{ width: "100%", height: "85vh" }}
+        className='h-[85vh] w-full'
         latitude={center.lat}
         longitude={center.lng}
         markers={routes.map((r, i) => ({
           id: i,
-          iconPath: "",
+          iconPath: '',
           latitude: r.start_lat,
           longitude: r.start_lng,
           title: r.title,
@@ -45,19 +45,23 @@ export default function IndexPage() {
           if (r)
             Taro.navigateTo({ url: `/pages/route-detail/index?id=${r.id}` });
         }}
-        onError={() => Taro.showToast({ title: "地图加载失败", icon: "none" })}
+        onError={() => Taro.showToast({ title: '地图加载失败', icon: 'none' })}
       />
-      <Text>搜索半径：{radius} km</Text>
-      <Slider
-        min={10}
-        max={500}
-        step={10}
-        value={radius}
-        onChange={(e) => {
-          setRadius(e.detail.value);
-          load(center, e.detail.value);
-        }}
-      />
+      <View className='bg-white px-4 py-3 shadow-sm'>
+        <Text className='mb-2 block text-sm font-medium text-slate-700 text-red-500'>
+          搜索半径：{radius} km
+        </Text>
+        <Slider
+          min={10}
+          max={500}
+          step={10}
+          value={radius}
+          onChange={(e) => {
+            setRadius(e.detail.value);
+            load(center, e.detail.value);
+          }}
+        />
+      </View>
     </View>
   );
 }
