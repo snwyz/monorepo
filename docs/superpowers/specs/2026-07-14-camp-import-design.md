@@ -2,7 +2,7 @@
 
 日期:2026-07-14
 状态:已批准
-上游文档:`docs/55camp-data-collection-plan.md`(本设计吸收其评审结论并修正矛盾项)
+上游文档:`docs/superpowers/specs/55camp-data-collection-plan.md`(本设计吸收其评审结论并修正矛盾项)
 
 ## 目标
 
