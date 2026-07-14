@@ -26,4 +26,6 @@ uv run camp-import --live probe --province-code 510000 \
 
 仅在业务授权、探针报告审核、`field_mapping.yaml` 补全后，才可运行 discover 或 fetch-detail。
 
+`discover --seed-centers` 接受 `lng,lat`，也可附加 `density_profile`（`dense` / `sparse` / `unknown`）和 `seed_scale`。示例见 [`config/510000-seeds.example.csv`](config/510000-seeds.example.csv)。密集种子可在上限/新增 ID 信号出现后细分；稀疏种子应先完成多 scale 的零结果确认。
+
 产物位于 `data/55camp/<province_code>/`：原始 JSONL、tile/详情状态 CSV、去重 CSV 和 enriched CSV。阶段一不做坐标转换、不写 PostgreSQL，也不导入 POI。

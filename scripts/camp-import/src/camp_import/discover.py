@@ -57,8 +57,10 @@ class DiscoverEngine:
         else:
             for rec in common.read_jsonl(self.raw): self.seen_ids.update(str(extract_path(i,self.m.list_external_id_path)) for i in extract_path(rec["response"],self.m.list_items_path))
     def seed(self,centers,province_code):
-        w,h=self.m.viewport_for_scale(self.m.seed_scale)
-        for lng,lat in centers:self.s.add(TileRow.from_tile(tile_from_center(lng,lat,w,h,self.m.seed_scale),province_code))
+        """Centers may be (lng, lat) or (lng, lat, scale), preserving CSV compatibility."""
+        for center in centers:
+            lng,lat=center[0],center[1]; scale=int(center[2]) if len(center)>2 and center[2] is not None else self.m.seed_scale
+            w,h=self.m.viewport_for_scale(scale); self.s.add(TileRow.from_tile(tile_from_center(lng,lat,w,h,scale),province_code))
         self.s.save()
     def run(self):
         self.s.reset_stale_running()

@@ -10,6 +10,7 @@ from camp_import.field_mapping import FieldMapping
 from camp_import.fetch_detail import DetailEngine, DetailStore
 from camp_import.normalize import dedup_camps, merge_details, raw_hash
 from camp_import import cli
+from camp_import.seed_strategy import SeedSpec
 from camp_import.probe import ProbeRequestProfile, analyze_probe_results, assess_qps_batch, build_probe_plan, infer_candidate_mapping, plan_viewport_boundary, plan_zero_result_confirmation, run_probe
 
 
@@ -275,3 +276,9 @@ def test_probe_infers_candidates_and_keeps_limits_per_scale():
 def test_calibration_planners_cover_directions_and_scales():
     assert len(plan_viewport_boundary(1, 2, 10, (.1, .2))) == 8
     assert len(plan_zero_result_confirmation(1, 2, [10, 11], (.1,))) == 10
+
+
+def test_seed_profile_validates_and_allows_scale_override():
+    assert SeedSpec(1, 2, "dense", 10).resolved_scale(11) == 10
+    assert SeedSpec(1, 2, "sparse").requires_empty_confirmation
+    with pytest.raises(ValueError): SeedSpec(1, 2, "invalid").resolved_scale(10)

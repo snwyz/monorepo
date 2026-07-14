@@ -4,6 +4,7 @@ from pathlib import Path
 from . import common,normalize,discover,fetch_detail,probe
 from .common import LiveTransport,RateLimitedTransport,RetryingTransport,TokenBucket
 from .field_mapping import ContractViolation,FieldMappingError,load_field_mapping
+from .seed_strategy import SeedSpec
 class LiveDisabledError(Exception):pass
 def build_transport(live,qps_limit,burst):
     if not live:raise LiveDisabledError("真实 HTTP 请求被禁用；获得授权后显式传 --live 才会构造 LiveTransport。")
@@ -32,7 +33,12 @@ def main(argv=None):
             store=discover.TileStore(province/"processed/query_tiles.csv")
             if args.retry_failed:store.requeue_failed()
             engine=discover.DiscoverEngine(mapping,transport,store,province/"raw/camps.jsonl",args.min_tile_area_m2,args.max_depth)
-            if not store.rows():engine.seed([(float(r["lng"]),float(r["lat"])) for r in common.read_csv_rows(Path(args.seed_centers))],args.province_code)
+            if not store.rows():
+                centers=[]
+                for row in common.read_csv_rows(Path(args.seed_centers)):
+                    spec=SeedSpec(float(row["lng"]),float(row["lat"]),row.get("density_profile") or "unknown",int(row["seed_scale"]) if row.get("seed_scale") else None)
+                    centers.append((spec.lng,spec.lat,spec.resolved_scale(mapping.seed_scale)))
+                engine.seed(centers,args.province_code)
             engine.run();return 0
         store=fetch_detail.DetailStore(province/"processed/detail_tasks.csv")
         if args.retry_failed:store.requeue_failed()
