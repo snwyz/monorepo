@@ -3,7 +3,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
-from .common import ApiRequest, ApiResponse, Transport
+from .common import ApiRequest, ApiResponse, Transport, append_jsonl
 from .field_mapping import ContractViolation, extract_path
 GET_CAMPS_URL="https://55camp.cn/api/index/getCamps"
 @dataclass(frozen=True)
@@ -11,7 +11,7 @@ class ProbeRequestProfile:
     items_path:str; external_id_path:str; lat_path:str; lng_path:str; list_lng_param:str; list_lat_param:str; list_old_lng_param:str; list_old_lat_param:str; list_scale_param:str; detail_id_param:str; detail_lng_param:str; detail_lat_param:str
 @dataclass
 class ProbeFindings:
-    item_counts_by_scale:dict=field(default_factory=dict); candidate_item_limit:int|None=None; duplicate_ratio_by_scale:dict=field(default_factory=dict); errors:list=field(default_factory=list); latencies_ms:list[float]=field(default_factory=list)
+    item_counts_by_scale:dict=field(default_factory=dict); candidate_item_limit:int|None=None; candidate_item_limit_by_scale:dict=field(default_factory=dict); duplicate_ratio_by_scale:dict=field(default_factory=dict); errors:list=field(default_factory=list); latencies_ms:list[float]=field(default_factory=list)
 
 @dataclass(frozen=True)
 class QpsBatchAssessment:
@@ -21,6 +21,40 @@ class QpsBatchAssessment:
     p95_ms: float | None
     should_stop: bool
     reason: str = ""
+
+@dataclass(frozen=True)
+class ProbePoint:
+    purpose: str
+    lng: float
+    lat: float
+    scale: int
+
+def plan_viewport_boundary(center_lng: float, center_lat: float, scale: int, offsets_deg=(.05,.1,.15,.2)) -> list[ProbePoint]:
+    """Directional ladder for later binary refinement around a known camp ID."""
+    points=[]
+    for offset in offsets_deg:
+        points += [ProbePoint("east", center_lng+offset, center_lat, scale), ProbePoint("west", center_lng-offset, center_lat, scale), ProbePoint("north", center_lng, center_lat+offset, scale), ProbePoint("south", center_lng, center_lat-offset, scale)]
+    return points
+
+def plan_zero_result_confirmation(center_lng: float, center_lat: float, scales: list[int], offsets_deg=(.1,.2)) -> list[ProbePoint]:
+    """Confirm that a zero-result center is sparse before classifying it as empty."""
+    points=[]
+    for scale in scales:
+        points.append(ProbePoint("center", center_lng, center_lat, scale))
+        for offset in offsets_deg:
+            points += [ProbePoint("east", center_lng+offset, center_lat, scale), ProbePoint("west", center_lng-offset, center_lat, scale), ProbePoint("north", center_lng, center_lat+offset, scale), ProbePoint("south", center_lng, center_lat-offset, scale)]
+    return points
+
+def infer_candidate_mapping(list_body: object, detail_body: object | None = None) -> dict:
+    """Suggest, never approve, paths from observed response shapes."""
+    result={}
+    if isinstance(list_body, dict) and isinstance(list_body.get("data"), list) and list_body["data"]:
+        item=list_body["data"][0]
+        if isinstance(item, dict):
+            result.update({"list_items_path":"data", "list_external_id_path":"id" if "id" in item else None, "list_lat_path":"lat" if "lat" in item else "latitude" if "latitude" in item else None, "list_lng_path":"lnt" if "lnt" in item else "lng" if "lng" in item else "longitude" if "longitude" in item else None})
+    if isinstance(detail_body, dict) and isinstance(detail_body.get("data"), dict) and isinstance(detail_body["data"].get("hotel"), dict):
+        hotel=detail_body["data"]["hotel"]; result.update({"detail_external_id_path":"data.hotel.id" if "id" in hotel else None, "detail_name_path":"data.hotel.title" if "title" in hotel else None, "detail_address_path":"data.hotel.address" if "address" in hotel else None})
+    return {key:value for key,value in result.items() if value is not None}
 
 def assess_qps_batch(qps: float, status_codes: list[int], latencies_ms: list[float], baseline_p95_ms: float | None = None) -> QpsBatchAssessment:
     """Pure safety gate for manually run 0.5→1→2→3→4 QPS probe batches."""
@@ -51,12 +85,16 @@ def analyze_probe_results(results, profile):
         except ContractViolation as exc: out.errors.append(f"scale={scale} contract: {exc}");continue
         out.item_counts_by_scale.setdefault(scale,[]).append(len(items));ids.setdefault((scale,request.params[profile.list_lng_param]),set()).update(found)
     counts=Counter(c for cs in out.item_counts_by_scale.values() for c in cs); stable=[c for c,n in counts.items() if c>0 and n>=3];out.candidate_item_limit=max(stable) if stable else None
+    for scale, values in out.item_counts_by_scale.items():
+        stable_scale=[count for count,seen in Counter(values).items() if count>0 and seen>=3]
+        if stable_scale: out.candidate_item_limit_by_scale[scale]=max(stable_scale)
     for scale in out.item_counts_by_scale:
         sets=[s for (key,s) in ids.items() if key[0]==scale]
         if len(sets)>1 and sets[0]|sets[1]:out.duplicate_ratio_by_scale[scale]=round(len(sets[0]&sets[1])/len(sets[0]|sets[1]),4)
     return out
 def render_probe_report(f):
     lines=["# 55camp 接口探针报告","",f"## 候选 response_item_limit: {f.candidate_item_limit}"]
+    if f.candidate_item_limit_by_scale: lines += ["", "## 各 scale 候选上限", *[f"- scale {scale}: {limit}" for scale,limit in sorted(f.candidate_item_limit_by_scale.items())]]
     if f.latencies_ms: lines += ["", f"## 本批次 P95 延迟(ms): {sorted(f.latencies_ms)[min(len(f.latencies_ms)-1, max(0, int(len(f.latencies_ms)*.95)-1))]:.2f}"]
     if f.errors: lines += ["", "## 异常", *[f"- {e}" for e in f.errors]]
     return "\n".join(lines)+"\n"
@@ -64,7 +102,8 @@ def run_probe(transport:Transport,plan,profile:ProbeRequestProfile,probe_dir:Pat
     import time
     timer=clock or time.perf_counter; results=[]; latencies=[]
     for request in plan:
-        started=timer(); response=transport.send(request); latencies.append((timer()-started)*1000); results.append((request,response))
+        started=timer(); response=transport.send(request); elapsed=(timer()-started)*1000; latencies.append(elapsed); results.append((request,response))
+        append_jsonl(probe_dir / "probe_responses.jsonl", {"params": request.params, "status_code": response.status_code, "latency_ms": elapsed, "response": response.body})
     findings=analyze_probe_results(results,profile); findings.latencies_ms=latencies;probe_dir.mkdir(parents=True,exist_ok=True);(probe_dir/"probe_report.md").write_text(render_probe_report(findings),encoding="utf-8")
     path=probe_dir/"field_mapping.yaml"
     if not path.exists(): path.write_text(yaml.safe_dump({"list_items_path":profile.items_path,"list_external_id_path":profile.external_id_path,"list_lat_path":profile.lat_path,"list_lng_path":profile.lng_path,"list_lng_param":profile.list_lng_param,"list_lat_param":profile.list_lat_param,"list_old_lng_param":profile.list_old_lng_param,"list_old_lat_param":profile.list_old_lat_param,"list_scale_param":profile.list_scale_param,"detail_id_param":profile.detail_id_param,"detail_lng_param":profile.detail_lng_param,"detail_lat_param":profile.detail_lat_param,"detail_external_id_path":"","response_item_limit":findings.candidate_item_limit,"coordinate_system":"","qps_limit":None,"seed_scale":None,"scale_viewport":{},"overlap_ratio_by_scale":{},"edge_margin_ratio":None,"edge_expansion_max_hops":None},allow_unicode=True,sort_keys=False),encoding="utf-8")

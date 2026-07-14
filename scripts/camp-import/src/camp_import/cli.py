@@ -10,7 +10,7 @@ def build_transport(live,qps_limit,burst):
     return RetryingTransport(RateLimitedTransport(LiveTransport(),TokenBucket(qps_limit,burst)))
 def parser():
     p=argparse.ArgumentParser(prog="camp-import");p.add_argument("--live",action="store_true");p.add_argument("--data-dir",default="data/55camp");sub=p.add_subparsers(dest="cmd",required=True)
-    probe_parser=sub.add_parser("probe");probe_parser.add_argument("--province-code",required=True);probe_parser.add_argument("--center-lng",type=float,required=True);probe_parser.add_argument("--center-lat",type=float,required=True);probe_parser.add_argument("--scales",default="10,11,12");probe_parser.add_argument("--qps",type=float,default=.5)
+    probe_parser=sub.add_parser("probe");probe_parser.add_argument("--province-code",required=True);probe_parser.add_argument("--center-lng",type=float,required=True);probe_parser.add_argument("--center-lat",type=float,required=True);probe_parser.add_argument("--scales",default="10,11,12");probe_parser.add_argument("--qps",type=float,default=.5);probe_parser.add_argument("--repeats",type=int,default=3)
     for option in ("items-path","external-id-path","lat-path","lng-path","list-lng-param","list-lat-param","list-old-lng-param","list-old-lat-param","list-scale-param","detail-id-param","detail-lng-param","detail-lat-param"): probe_parser.add_argument(f"--{option}",required=True)
     for name in ("discover","fetch-detail","normalize"):
         x=sub.add_parser(name);x.add_argument("--province-code",required=True)
@@ -23,7 +23,7 @@ def main(argv=None):
         if args.cmd == "probe":
             transport=build_transport(args.live,args.qps,1)
             profile=probe.ProbeRequestProfile(args.items_path,args.external_id_path,args.lat_path,args.lng_path,args.list_lng_param,args.list_lat_param,args.list_old_lng_param,args.list_old_lat_param,args.list_scale_param,args.detail_id_param,args.detail_lng_param,args.detail_lat_param)
-            probe.run_probe(transport,probe.build_probe_plan(args.center_lng,args.center_lat,[int(x) for x in args.scales.split(",")],profile),profile,province/"probe")
+            probe.run_probe(transport,probe.build_probe_plan(args.center_lng,args.center_lat,[int(x) for x in args.scales.split(",")],profile,repeats=args.repeats),profile,province/"probe")
             return 0
         mapping=load_field_mapping(province/"probe/field_mapping.yaml")
         if args.cmd=="normalize":normalize.run_normalize(province,mapping,args.province_code);return 0

@@ -50,7 +50,12 @@ def build_camps_request(row:TileRow,m:FieldMapping): return ApiRequest("GET",GET
 class DiscoverEngine:
     def __init__(self,mapping:FieldMapping,transport:Transport,store:TileStore,raw_camps_path:Path,min_tile_area_m2:float,max_depth:int,rng=None,clock=time.time):
         self.m,self.t,self.s,self.raw,self.area,self.depth,self.rng,self.clock=mapping,transport,store,raw_camps_path,min_tile_area_m2,max_depth,rng or random.Random(0),clock;self.seen_ids=set()
-        for rec in common.read_jsonl(self.raw): self.seen_ids.update(str(extract_path(i,self.m.list_external_id_path)) for i in extract_path(rec["response"],self.m.list_items_path))
+        self.manifest = raw_camps_path.parent.parent / "processed" / "seen_external_ids.csv"
+        manifest_rows = common.read_csv_rows(self.manifest)
+        if manifest_rows:
+            self.seen_ids = {row["external_id"] for row in manifest_rows if row.get("external_id")}
+        else:
+            for rec in common.read_jsonl(self.raw): self.seen_ids.update(str(extract_path(i,self.m.list_external_id_path)) for i in extract_path(rec["response"],self.m.list_items_path))
     def seed(self,centers,province_code):
         w,h=self.m.viewport_for_scale(self.m.seed_scale)
         for lng,lat in centers:self.s.add(TileRow.from_tile(tile_from_center(lng,lat,w,h,self.m.seed_scale),province_code))
@@ -67,13 +72,15 @@ class DiscoverEngine:
         try:res=self.t.send(req)
         except RetryExhausted as e:self.s.mark_failed(r,e.last_error);return
         common.append_jsonl(self.raw,{"tile_id":r.tile_id,"params":req.params,"fetched_at":self.clock(),"status_code":res.status_code,"response":res.body})
-        items=extract_path(res.body,self.m.list_items_path); ids=[str(extract_path(i,self.m.list_external_id_path)) for i in items]; unique=list(dict.fromkeys(ids));new=[i for i in unique if i not in self.seen_ids];self.seen_ids.update(new);r.discovered_count=len(ids);r.new_id_count=len(new)
+        items=extract_path(res.body,self.m.list_items_path); ids=[str(extract_path(i,self.m.list_external_id_path)) for i in items]; unique=list(dict.fromkeys(ids));new=[i for i in unique if i not in self.seen_ids];self.seen_ids.update(new); self._save_manifest(); r.discovered_count=len(ids);r.new_id_count=len(new)
         parent=self.s.get(r.parent_tile_id) if r.parent_tile_id else None; pruned=bool(parent and not parent.new_id_count and not r.new_id_count)
         truncated=bool(extract_path(res.body,self.m.truncation_signal_path)) if self.m.truncation_signal_path else False
-        if can_split(r.to_tile(),self.area,self.depth) and not pruned and (r.discovered_count>=self.m.response_item_limit*self.m.dense_ratio or truncated or (r.depth>0 and r.new_id_count)):
+        if can_split(r.to_tile(),self.area,self.depth) and not pruned and (r.discovered_count>=self.m.item_limit_for_scale(r.scale)*self.m.dense_ratio or truncated or (r.depth>0 and r.new_id_count)):
             for child in split_tile(r.to_tile()):self.s.add(TileRow.from_tile(child,r.province_code))
         self._expand_edges(r, items)
         self.s.mark_done(r)
+    def _save_manifest(self):
+        common.write_csv_atomic(self.manifest, ["external_id"], ({"external_id": value} for value in sorted(self.seen_ids)))
     def _edge_hops(self, row):
         hops,current=0,row
         while current.parent_tile_id:

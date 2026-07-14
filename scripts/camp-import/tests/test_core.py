@@ -10,7 +10,7 @@ from camp_import.field_mapping import FieldMapping
 from camp_import.fetch_detail import DetailEngine, DetailStore
 from camp_import.normalize import dedup_camps, merge_details, raw_hash
 from camp_import import cli
-from camp_import.probe import ProbeRequestProfile, analyze_probe_results, assess_qps_batch, build_probe_plan, run_probe
+from camp_import.probe import ProbeRequestProfile, analyze_probe_results, assess_qps_batch, build_probe_plan, infer_candidate_mapping, plan_viewport_boundary, plan_zero_result_confirmation, run_probe
 
 
 def test_atomic_csv_replaces_and_keeps_old_on_row_error(tmp_path):
@@ -94,7 +94,7 @@ def camps(ids, lng=104, lat=30.6):
 
 def test_discover_dedups_and_expands_edge(tmp_path):
     store = TileStore(tmp_path / "tiles.csv")
-    engine = DiscoverEngine(mapping(), FakeTransport([camps(["1", "1", "2"], 104.19), camps([], 104.55)]), store, tmp_path / "camps.jsonl", 1, 1)
+    engine = DiscoverEngine(mapping(), FakeTransport([camps(["1", "1", "2"], 104.19), camps([], 104.55)]), store, tmp_path / "raw/camps.jsonl", 1, 1)
     engine.seed([(104, 30.6)], "510000")
     engine.run()
     rows = store.rows()
@@ -247,6 +247,7 @@ def test_probe_never_overwrites_existing_mapping(tmp_path):
     (probe_dir / "field_mapping.yaml").write_text("reviewed: true\n", encoding="utf-8")
     run_probe(FakeTransport([ApiResponse(200, body={"data":{"list":[]}})] * 3), build_probe_plan(1, 2, [11], profile, repeats=1), profile, probe_dir)
     assert (probe_dir / "field_mapping.yaml").read_text(encoding="utf-8") == "reviewed: true\n"
+    assert (probe_dir / "probe_responses.jsonl").exists()
 
 
 def test_qps_assessment_stops_on_rate_limit_or_latency_regression():
@@ -258,3 +259,19 @@ def test_qps_assessment_stops_on_rate_limit_or_latency_regression():
 def test_qps_assessment_allows_healthy_batch():
     result = assess_qps_batch(.5, [200] * 5, [10, 12, 11, 9, 10])
     assert not result.should_stop and result.error_rate == 0
+
+
+def test_probe_infers_candidates_and_keeps_limits_per_scale():
+    inferred = infer_candidate_mapping({"data":[{"id":1,"lat":2,"lnt":3}]}, {"data":{"hotel":{"id":1,"title":"x","address":"y"}}})
+    assert inferred["list_items_path"] == "data"
+    assert inferred["detail_external_id_path"] == "data.hotel.id"
+    profile = ProbeRequestProfile("data", "id", "lat", "lnt", "x", "y", "ox", "oy", "z", "id", "lng", "lat")
+    plan = build_probe_plan(1, 2, [10, 11], profile, repeats=3)
+    responses = [ApiResponse(200, body={"data":[{"id":str(n)} for n in range(26)]})] * 5 + [ApiResponse(200, body={"data":[{"id":str(n)} for n in range(6)]})] * 5
+    found = analyze_probe_results(list(zip(plan, responses)), profile)
+    assert found.candidate_item_limit_by_scale == {"10":26, "11":6}
+
+
+def test_calibration_planners_cover_directions_and_scales():
+    assert len(plan_viewport_boundary(1, 2, 10, (.1, .2))) == 8
+    assert len(plan_zero_result_confirmation(1, 2, [10, 11], (.1,))) == 10

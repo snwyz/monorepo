@@ -22,7 +22,7 @@ class FieldMapping:
     list_old_lat_param: str; list_scale_param: str; detail_id_param: str; detail_lng_param: str; detail_lat_param: str
     response_item_limit: int; coordinate_system: str; qps_limit: float; seed_scale: int
     scale_viewport: dict; overlap_ratio_by_scale: dict; edge_margin_ratio: float; edge_expansion_max_hops: int
-    burst: int = 1; concurrency: int = 1; dense_ratio: float = .8; empty_sample_ratio: float = .05
+    burst: int = 1; concurrency: int = 1; dense_ratio: float = .8; empty_sample_ratio: float = .05; response_item_limit_by_scale: dict | None = None
     truncation_signal_path: str | None = None; detail_name_path: str | None = None; detail_address_path: str | None = None
     required_auth: tuple = (); required_signature: str | None = None
 
@@ -33,6 +33,10 @@ class FieldMapping:
     def overlap_for_scale(self, scale: int) -> float:
         try: return float(self.overlap_ratio_by_scale[str(scale)])
         except (KeyError, TypeError, ValueError) as exc: raise FieldMappingError(f"overlap_ratio_by_scale missing scale {scale}") from exc
+    def item_limit_for_scale(self, scale: int) -> int:
+        if self.response_item_limit_by_scale and str(scale) in self.response_item_limit_by_scale:
+            return int(self.response_item_limit_by_scale[str(scale)])
+        return int(self.response_item_limit)
 
 def load_field_mapping(path: Path) -> FieldMapping:
     if not path.exists(): raise FieldMappingError(f"field_mapping not found: {path}")
@@ -49,6 +53,7 @@ def load_field_mapping(path: Path) -> FieldMapping:
         for scale in mapping.overlap_ratio_by_scale:
             mapping.viewport_for_scale(int(scale)); overlap = mapping.overlap_for_scale(int(scale))
             if not 0 <= overlap < 1: raise ValueError
+        if mapping.response_item_limit_by_scale and any(int(value) <= 0 for value in mapping.response_item_limit_by_scale.values()): raise ValueError
     except (ValueError, TypeError) as exc: raise FieldMappingError("invalid numeric field_mapping value") from exc
     return mapping
 
