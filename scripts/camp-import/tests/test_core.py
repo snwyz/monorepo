@@ -10,7 +10,7 @@ from camp_import.field_mapping import FieldMapping
 from camp_import.fetch_detail import DetailEngine, DetailStore
 from camp_import.normalize import dedup_camps, merge_details, raw_hash
 from camp_import import cli
-from camp_import.probe import ProbeRequestProfile, analyze_probe_results, build_probe_plan, run_probe
+from camp_import.probe import ProbeRequestProfile, analyze_probe_results, assess_qps_batch, build_probe_plan, run_probe
 
 
 def test_atomic_csv_replaces_and_keeps_old_on_row_error(tmp_path):
@@ -247,3 +247,14 @@ def test_probe_never_overwrites_existing_mapping(tmp_path):
     (probe_dir / "field_mapping.yaml").write_text("reviewed: true\n", encoding="utf-8")
     run_probe(FakeTransport([ApiResponse(200, body={"data":{"list":[]}})] * 3), build_probe_plan(1, 2, [11], profile, repeats=1), profile, probe_dir)
     assert (probe_dir / "field_mapping.yaml").read_text(encoding="utf-8") == "reviewed: true\n"
+
+
+def test_qps_assessment_stops_on_rate_limit_or_latency_regression():
+    assert assess_qps_batch(2, [200, 429], [10, 12]).should_stop
+    result = assess_qps_batch(2, [200] * 10, [20] * 10, baseline_p95_ms=10)
+    assert result.should_stop and "p95" in result.reason
+
+
+def test_qps_assessment_allows_healthy_batch():
+    result = assess_qps_batch(.5, [200] * 5, [10, 12, 11, 9, 10])
+    assert not result.should_stop and result.error_rate == 0
