@@ -58,7 +58,7 @@ scripts/camp-import/
 
 ### 状态文件
 
-- `processed/query_tiles.csv`:tile 状态机 `pending → running → done/retry/failed`;启动时将 `running` 且超过 10 分钟的 tile 重置为 `retry`。
+- `processed/query_tiles.csv`:tile 状态机 `pending → running → done/retry/failed`;启动时将 `running` 且超过 10 分钟的 tile 重置为 `retry`。每行保留种子继承的 `density_profile`，以便稀疏区域提高空叶复核概率而不影响密集区域的默认抽样。
 - `processed/detail_tasks.csv`:详情任务,字段 `external_id,lng,lat,status,attempts,last_error,started_at,updated_at`,与 tile 状态分离。
 - 所有 CSV 重写与 JSONL 追加均通过 common 层完成;CSV 重写必须 tmp + 原子 rename。
 

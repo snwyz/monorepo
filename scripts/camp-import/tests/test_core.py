@@ -111,6 +111,21 @@ def test_discover_samples_pruned_empty_leaves(tmp_path):
     assert any(row.depth == 3 for row in store.rows())
 
 
+def test_discover_preserves_sparse_profile_through_splits_and_edges(tmp_path):
+    store = TileStore(tmp_path / "tiles.csv")
+    engine = DiscoverEngine(mapping(), FakeTransport([camps(["1", "2", "3", "4", "5"], 104.19)] + [camps([])] * 8), store, tmp_path / "camps.jsonl", 1, 1)
+    engine.seed([(104, 30.6, 11, "sparse")], "510000")
+    engine.run()
+    assert {row.density_profile for row in store.rows()} == {"sparse"}
+
+
+def test_tile_store_defaults_legacy_profile_to_unknown(tmp_path):
+    path = tmp_path / "tiles.csv"
+    row = {"province_code":"510000", "tile_id":"legacy", "parent_tile_id":"", "center_lng":"1", "center_lat":"2", "old_lng":"1", "old_lat":"2", "min_lng":"0", "min_lat":"1", "max_lng":"2", "max_lat":"3", "scale":"11", "depth":"0", "status":"done", "attempts":"1", "discovered_count":"0", "new_id_count":"0", "last_error":"", "started_at":"", "updated_at":""}
+    write_csv_atomic(path, list(row), [row])
+    assert TileStore(path).get("legacy").density_profile == "unknown"
+
+
 def test_discover_truncation_signal_splits(tmp_path):
     store = TileStore(tmp_path / "tiles.csv")
     response = ApiResponse(200, body={"data":{"list":[], "truncated": True}})

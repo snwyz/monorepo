@@ -9,17 +9,19 @@ from .field_mapping import FieldMapping, extract_path
 from .tiles import Tile, can_split, grid_step_m, meters_to_degrees, split_tile, tile_from_center
 
 STALE_RUNNING_SECONDS=600
-TILE_FIELDNAMES=["province_code","tile_id","parent_tile_id","center_lng","center_lat","old_lng","old_lat","min_lng","min_lat","max_lng","max_lat","scale","depth","status","attempts","discovered_count","new_id_count","last_error","started_at","updated_at"]
+TILE_FIELDNAMES=["province_code","tile_id","parent_tile_id","center_lng","center_lat","old_lng","old_lat","min_lng","min_lat","max_lng","max_lat","scale","depth","status","attempts","discovered_count","new_id_count","last_error","started_at","updated_at","density_profile"]
 GET_CAMPS_URL="https://55camp.cn/api/index/getCamps"
 @dataclass
 class TileRow:
-    province_code:str; tile_id:str; parent_tile_id:str; center_lng:float; center_lat:float; old_lng:float; old_lat:float; min_lng:float; min_lat:float; max_lng:float; max_lat:float; scale:int; depth:int; status:str="pending"; attempts:int=0; discovered_count:int=0; new_id_count:int=0; last_error:str=""; started_at:str=""; updated_at:str=""
+    province_code:str; tile_id:str; parent_tile_id:str; center_lng:float; center_lat:float; old_lng:float; old_lat:float; min_lng:float; min_lat:float; max_lng:float; max_lat:float; scale:int; depth:int; status:str="pending"; attempts:int=0; discovered_count:int=0; new_id_count:int=0; last_error:str=""; started_at:str=""; updated_at:str=""; density_profile:str="unknown"
     @classmethod
-    def from_tile(cls,tile:Tile,province_code:str): return cls(province_code,tile.tile_id,tile.parent_tile_id or "",tile.center_lng,tile.center_lat,tile.center_lng,tile.center_lat,tile.min_lng,tile.min_lat,tile.max_lng,tile.max_lat,tile.scale,tile.depth)
+    def from_tile(cls,tile:Tile,province_code:str,density_profile="unknown"): return cls(province_code,tile.tile_id,tile.parent_tile_id or "",tile.center_lng,tile.center_lat,tile.center_lng,tile.center_lat,tile.min_lng,tile.min_lat,tile.max_lng,tile.max_lat,tile.scale,tile.depth,density_profile=density_profile)
     @classmethod
     def from_csv(cls,r:dict):
         nums={"center_lng":float,"center_lat":float,"old_lng":float,"old_lat":float,"min_lng":float,"min_lat":float,"max_lng":float,"max_lat":float,"scale":int,"depth":int,"attempts":int,"discovered_count":int,"new_id_count":int}
-        return cls(**{k:(nums[k](r[k] or 0) if k in nums else r.get(k,"") ) for k in TILE_FIELDNAMES})
+        values={k:(nums[k](r[k] or 0) if k in nums else r.get(k,"") ) for k in TILE_FIELDNAMES}
+        values["density_profile"] = values["density_profile"] or "unknown"
+        return cls(**values)
     def to_tile(self): return Tile(self.tile_id,self.parent_tile_id or None,self.center_lng,self.center_lat,self.min_lng,self.min_lat,self.max_lng,self.max_lat,self.scale,self.depth)
 class TileStore:
     def __init__(self,path:Path,clock:Callable[[],float]=time.time): self.path,self.clock,self._rows=path,clock,{r["tile_id"]:TileRow.from_csv(r) for r in common.read_csv_rows(path)}
@@ -59,8 +61,8 @@ class DiscoverEngine:
     def seed(self,centers,province_code):
         """Centers may be (lng, lat) or (lng, lat, scale), preserving CSV compatibility."""
         for center in centers:
-            lng,lat=center[0],center[1]; scale=int(center[2]) if len(center)>2 and center[2] is not None else self.m.seed_scale
-            w,h=self.m.viewport_for_scale(scale); self.s.add(TileRow.from_tile(tile_from_center(lng,lat,w,h,scale),province_code))
+            lng,lat=center[0],center[1]; scale=int(center[2]) if len(center)>2 and center[2] is not None else self.m.seed_scale; profile=center[3] if len(center)>3 else "unknown"
+            w,h=self.m.viewport_for_scale(scale); self.s.add(TileRow.from_tile(tile_from_center(lng,lat,w,h,scale),province_code,profile))
         self.s.save()
     def run(self):
         self.s.reset_stale_running()
@@ -78,7 +80,7 @@ class DiscoverEngine:
         parent=self.s.get(r.parent_tile_id) if r.parent_tile_id else None; pruned=bool(parent and not parent.new_id_count and not r.new_id_count)
         truncated=bool(extract_path(res.body,self.m.truncation_signal_path)) if self.m.truncation_signal_path else False
         if can_split(r.to_tile(),self.area,self.depth) and not pruned and (r.discovered_count>=self.m.item_limit_for_scale(r.scale)*self.m.dense_ratio or truncated or (r.depth>0 and r.new_id_count)):
-            for child in split_tile(r.to_tile()):self.s.add(TileRow.from_tile(child,r.province_code))
+            for child in split_tile(r.to_tile()):self.s.add(TileRow.from_tile(child,r.province_code,r.density_profile))
         self._expand_edges(r, items)
         self.s.mark_done(r)
     def _save_manifest(self):
@@ -102,14 +104,14 @@ class DiscoverEngine:
         step_lng,step_lat=meters_to_degrees(grid_step_m(viewport_w,self.m.overlap_for_scale(row.scale)),grid_step_m(viewport_h,self.m.overlap_for_scale(row.scale)),row.center_lat)
         for dx,dy in directions:
             neighbor=tile_from_center(row.center_lng+dx*step_lng,row.center_lat+dy*step_lat,viewport_w,viewport_h,row.scale,parent_tile_id=row.tile_id)
-            self.s.add(TileRow.from_tile(neighbor,row.province_code))
+            self.s.add(TileRow.from_tile(neighbor,row.province_code,row.density_profile))
     def _sample_pruned_empty_tiles(self):
         parents={r.parent_tile_id for r in self.s.rows() if r.parent_tile_id}
         candidates=[]
         for row in self.s.rows():
             parent=self.s.get(row.parent_tile_id) if row.parent_tile_id else None
             if row.status=="done" and row.tile_id not in parents and parent and not row.new_id_count and not parent.new_id_count and can_split(row.to_tile(),self.area,self.depth): candidates.append(row)
-        n=round(len(candidates)*self.m.empty_sample_ratio)
-        for row in self.rng.sample(candidates,min(n,len(candidates))):
-            for child in split_tile(row.to_tile()):self.s.add(TileRow.from_tile(child,row.province_code))
-        if n:self.s.save()
+        selected=[row for row in candidates if self.rng.random() < min(1, self.m.empty_sample_ratio * (2 if row.density_profile == "sparse" else 1))]
+        for row in selected:
+            for child in split_tile(row.to_tile()):self.s.add(TileRow.from_tile(child,row.province_code,row.density_profile))
+        if selected:self.s.save()

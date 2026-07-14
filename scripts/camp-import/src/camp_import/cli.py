@@ -37,7 +37,7 @@ def main(argv=None):
                 centers=[]
                 for row in common.read_csv_rows(Path(args.seed_centers)):
                     spec=SeedSpec(float(row["lng"]),float(row["lat"]),row.get("density_profile") or "unknown",int(row["seed_scale"]) if row.get("seed_scale") else None)
-                    centers.append((spec.lng,spec.lat,spec.resolved_scale(mapping.seed_scale)))
+                    centers.append((spec.lng,spec.lat,spec.resolved_scale(mapping.seed_scale),spec.density_profile))
                 engine.seed(centers,args.province_code)
             engine.run();return 0
         store=fetch_detail.DetailStore(province/"processed/detail_tasks.csv")

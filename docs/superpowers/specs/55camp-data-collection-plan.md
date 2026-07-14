@@ -196,12 +196,12 @@ edge_expansion_max_hops: null
 
 获得省级 bbox/边界后，切换为**边界覆盖采集**：按实测视口宽高平铺目标边界，只保留与边界相交的 tile；这是声明全量覆盖的前置条件。
 
-重叠不固定为 15%。每个 `scale` 的重叠比例由探针写入 `overlap_ratio_by_scale`，格点步长为 `viewport_size × (1 - overlap_ratio)`。每个格子写入 `query_tiles.csv`：
+重叠不固定为 15%。每个 `scale` 的重叠比例由探针写入 `overlap_ratio_by_scale`，格点步长为 `viewport_size × (1 - overlap_ratio)`。每个格子写入 `query_tiles.csv`；其中 `density_profile` 由种子继承（`dense`、`sparse` 或 `unknown`），用于记录密度策略和空叶复核强度：
 
 ```text
 province_code,tile_id,parent_tile_id,center_lng,center_lat,old_lng,old_lat,
 min_lng,min_lat,max_lng,max_lat,scale,depth,status,attempts,
-discovered_count,new_id_count,last_error,started_at,updated_at
+discovered_count,new_id_count,last_error,started_at,updated_at,density_profile
 ```
 
 ### 3. 去重与自适应细分
