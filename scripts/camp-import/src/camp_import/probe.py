@@ -93,8 +93,8 @@ def analyze_probe_results(results, profile):
         if len(sets)>1 and sets[0]|sets[1]:out.duplicate_ratio_by_scale[scale]=round(len(sets[0]&sets[1])/len(sets[0]|sets[1]),4)
     return out
 def render_probe_report(f):
-    lines=["# 55camp 接口探针报告","",f"## 候选 response_item_limit: {f.candidate_item_limit}"]
-    if f.candidate_item_limit_by_scale: lines += ["", "## 各 scale 候选上限", *[f"- scale {scale}: {limit}" for scale,limit in sorted(f.candidate_item_limit_by_scale.items())]]
+    lines=["# 55camp 接口探针报告","",f"## 重复样本的稳定返回计数（非接口上限）: {f.candidate_item_limit}"]
+    if f.candidate_item_limit_by_scale: lines += ["", "## 各 scale 稳定返回计数（非接口上限）", *[f"- scale {scale}: {limit}" for scale,limit in sorted(f.candidate_item_limit_by_scale.items())]]
     if f.latencies_ms: lines += ["", f"## 本批次 P95 延迟(ms): {sorted(f.latencies_ms)[min(len(f.latencies_ms)-1, max(0, int(len(f.latencies_ms)*.95)-1))]:.2f}"]
     if f.errors: lines += ["", "## 异常", *[f"- {e}" for e in f.errors]]
     return "\n".join(lines)+"\n"
@@ -106,5 +106,5 @@ def run_probe(transport:Transport,plan,profile:ProbeRequestProfile,probe_dir:Pat
         append_jsonl(probe_dir / "probe_responses.jsonl", {"params": request.params, "status_code": response.status_code, "latency_ms": elapsed, "response": response.body})
     findings=analyze_probe_results(results,profile); findings.latencies_ms=latencies;probe_dir.mkdir(parents=True,exist_ok=True);(probe_dir/"probe_report.md").write_text(render_probe_report(findings),encoding="utf-8")
     path=probe_dir/"field_mapping.yaml"
-    if not path.exists(): path.write_text(yaml.safe_dump({"list_items_path":profile.items_path,"list_external_id_path":profile.external_id_path,"list_lat_path":profile.lat_path,"list_lng_path":profile.lng_path,"list_lng_param":profile.list_lng_param,"list_lat_param":profile.list_lat_param,"list_old_lng_param":profile.list_old_lng_param,"list_old_lat_param":profile.list_old_lat_param,"list_scale_param":profile.list_scale_param,"detail_id_param":profile.detail_id_param,"detail_lng_param":profile.detail_lng_param,"detail_lat_param":profile.detail_lat_param,"detail_external_id_path":"","response_item_limit":findings.candidate_item_limit,"coordinate_system":"","qps_limit":None,"seed_scale":None,"scale_viewport":{},"overlap_ratio_by_scale":{},"edge_margin_ratio":None,"edge_expansion_max_hops":None},allow_unicode=True,sort_keys=False),encoding="utf-8")
+    if not path.exists(): path.write_text(yaml.safe_dump({"list_items_path":profile.items_path,"list_external_id_path":profile.external_id_path,"list_lat_path":profile.lat_path,"list_lng_path":profile.lng_path,"list_lng_param":profile.list_lng_param,"list_lat_param":profile.list_lat_param,"list_old_lng_param":profile.list_old_lng_param,"list_old_lat_param":profile.list_old_lat_param,"list_scale_param":profile.list_scale_param,"detail_id_param":profile.detail_id_param,"detail_lng_param":profile.detail_lng_param,"detail_lat_param":profile.detail_lat_param,"detail_external_id_path":"","response_item_limit":None,"split_item_threshold":None,"coordinate_system":"","qps_limit":None,"seed_scale":None,"scale_viewport":{},"overlap_ratio_by_scale":{},"edge_margin_ratio":None,"edge_expansion_max_hops":None},allow_unicode=True,sort_keys=False),encoding="utf-8")
     return findings

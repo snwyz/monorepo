@@ -9,7 +9,7 @@ uv run camp-import normalize --province-code 510000
 ```
 
 `discover` 与 `fetch-detail` 需要已审核的
-`data/55camp/<province_code>/probe/field_mapping.yaml`。契约包含响应路径、请求参数名、坐标系、视口、限流和边缘扩展设置；任一必填项为空或非法都会拒绝执行。
+`data/55camp/<province_code>/probe/field_mapping.yaml`。契约包含响应路径、请求参数名、坐标系、视口、限流和边缘扩展设置；细分信号必须是已验证的返回上限，或明确审核的 `split_item_threshold`，不能从局部稳定返回数量推断。
 
 探针是独立授权操作；必须显式提供 `--live`、QPS、列表响应路径以及所有请求参数名。例如：
 

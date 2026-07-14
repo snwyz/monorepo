@@ -74,7 +74,7 @@ normalize:raw JSONL → camps_dedup.csv → 合并详情 → camps_enriched.csv(
 
 ## 细分规则(修正版)
 
-1. 触发细分:`discovered_count >= response_item_limit × dense_ratio`、出现截断信号、或细分后仍持续新增 ID。
+1. 触发细分:`discovered_count >= response_item_limit × dense_ratio`（已验证上限时）或审核的 `split_item_threshold`、出现截断信号、或细分后仍持续新增 ID。
 2. 剪枝:沿 `parent_tile_id` 血缘"连续两级无新增"即停止,不再强制细分到底。
 3. 假阴性校验:对已剪枝的空格子按 `empty_sample_ratio`(默认 0.05)抽样强制细分一层,若抽样发现新增 ID 则该区域回退为正常细分。
 4. 边界:tile 面积小于 `min_tile_area_m2` 或达到 `max_depth` 时无条件停止。

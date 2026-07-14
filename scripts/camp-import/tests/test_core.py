@@ -247,6 +247,21 @@ def test_mapping_refuses_invalid_numeric_ranges(tmp_path):
     with pytest.raises(FieldMappingError): load_field_mapping(path)
 
 
+def test_mapping_requires_a_verified_limit_or_explicit_split_threshold(tmp_path):
+    data = {
+        "list_items_path":"data.list", "list_external_id_path":"id", "list_lat_path":"lat", "list_lng_path":"lng", "detail_external_id_path":"data.id",
+        "list_lng_param":"lnt", "list_lat_param":"lat", "list_old_lng_param":"oldlnt", "list_old_lat_param":"oldlat", "list_scale_param":"scale", "detail_id_param":"id", "detail_lng_param":"lnt", "detail_lat_param":"lat",
+        "coordinate_system":"gcj02", "qps_limit":1, "seed_scale":11, "scale_viewport":{"11":{"width_m":1,"height_m":1}}, "overlap_ratio_by_scale":{"11":.1}, "edge_margin_ratio":.1, "edge_expansion_max_hops":1,
+    }
+    path = tmp_path / "mapping.yaml"
+    import yaml
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(FieldMappingError): load_field_mapping(path)
+    data["split_item_threshold"] = 7
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    assert load_field_mapping(path).split_threshold_for_scale(11) == 7
+
+
 
 
 def test_probe_uses_profile_and_reports_contract_failure():

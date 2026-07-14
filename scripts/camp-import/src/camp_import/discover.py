@@ -79,7 +79,7 @@ class DiscoverEngine:
         items=extract_path(res.body,self.m.list_items_path); ids=[str(extract_path(i,self.m.list_external_id_path)) for i in items]; unique=list(dict.fromkeys(ids));new=[i for i in unique if i not in self.seen_ids];self.seen_ids.update(new); self._save_manifest(); r.discovered_count=len(ids);r.new_id_count=len(new)
         parent=self.s.get(r.parent_tile_id) if r.parent_tile_id else None; pruned=bool(parent and not parent.new_id_count and not r.new_id_count)
         truncated=bool(extract_path(res.body,self.m.truncation_signal_path)) if self.m.truncation_signal_path else False
-        if can_split(r.to_tile(),self.area,self.depth) and not pruned and (r.discovered_count>=self.m.item_limit_for_scale(r.scale)*self.m.dense_ratio or truncated or (r.depth>0 and r.new_id_count)):
+        if can_split(r.to_tile(),self.area,self.depth) and not pruned and (r.discovered_count>=self.m.split_threshold_for_scale(r.scale) or truncated or (r.depth>0 and r.new_id_count)):
             for child in split_tile(r.to_tile()):self.s.add(TileRow.from_tile(child,r.province_code,r.density_profile))
         self._expand_edges(r, items)
         self.s.mark_done(r)

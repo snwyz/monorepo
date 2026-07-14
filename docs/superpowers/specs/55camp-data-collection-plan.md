@@ -128,7 +128,8 @@ list_scale_param: ""
 detail_id_param: ""
 detail_lng_param: ""
 detail_lat_param: ""
-response_item_limit: null
+response_item_limit: null # 仅在已验证服务端截断上限时填写
+split_item_threshold: null # 未知上限时，可审核填写的保守细分阈值
 truncation_signal_path: null
 coordinate_system: ""        # 例如 gcj02/wgs84；阶段一不做转换
 scale_viewport:
@@ -164,7 +165,7 @@ concurrency: 1
 - 单次结果数量与固定返回上限；
 - 相邻 tile 的重复 ID 比例和边界漏失情况。
 
-若某个 scale 多次稳定达到同一返回数量，例如 100 条，将其作为 `response_item_limit`；`dense_ratio` 默认为该上限的 0.8。重叠比例由边界漏失测试结果写入 `overlap_ratio_by_scale`，不得写死为全局常量。
+重复样本中的稳定返回数量不是接口上限的充分证据；只有在更密集位置复测仍被截断，或响应显式提供截断字段时，才能填写 `response_item_limit`。若无法验证上限，必须填写经审核的保守 `split_item_threshold` 作为细分信号，并在报告中说明其不是服务端上限。`dense_ratio` 仅用于已验证上限；重叠比例由边界漏失测试结果写入 `overlap_ratio_by_scale`，不得写死为全局常量。
 
 ### 1.2 采集周期
 
@@ -208,9 +209,9 @@ discovered_count,new_id_count,last_error,started_at,updated_at,density_profile
 
 - 以旧系统的营地 ID（`external_id`）为全局唯一键去重。
 - 发现营地的格子记录新增 ID 数量。
-- 当 `discovered_count >= response_item_limit × dense_ratio`、接口出现 `truncation_signal_path` 指示的截断，或细分后仍持续发现新增 ID 时，拆分为四个子格子。`response_item_limit` 与 `dense_ratio` 必须来自探针配置；未确认时不允许启用自适应细分。
+- 当 `discovered_count >= response_item_limit × dense_ratio`（仅适用于已验证上限）、达到审核的 `split_item_threshold`、接口出现 `truncation_signal_path` 指示的截断，或细分后仍持续发现新增 ID 时，拆分为四个子格子。未知服务端上限时必须使用审核的 `split_item_threshold`，不得把局部稳定计数伪装为上限。
 - `parent_tile_id` 保存父子血缘；“连续两级无新增”沿该链路计算。
-- 细分为条件触发：达到 `response_item_limit × dense_ratio`、出现截断信号或细分后仍持续发现新增 ID。沿 `parent_tile_id` 血缘连续两级无新增即剪枝停止；tile 面积小于 `min_tile_area_m2` 或达到 `max_depth` 时无条件停止。对已剪枝的空格子按 `empty_sample_ratio`（默认 0.05）抽样强制细分一层做假阴性校验。
+- 细分为条件触发：达到已验证的 `response_item_limit × dense_ratio` 或审核的 `split_item_threshold`、出现截断信号或细分后仍持续发现新增 ID。沿 `parent_tile_id` 血缘连续两级无新增即剪枝停止；tile 面积小于 `min_tile_area_m2` 或达到 `max_depth` 时无条件停止。对已剪枝的空格子按 `empty_sample_ratio`（默认 0.05）抽样强制细分一层做假阴性校验。
 - 不依赖一次请求的结果数量来直接判断“已捞全”；必须结合相邻格、重叠区和细分后的新增 ID 判断。
 
 ### 4. 限流、重试与断点续跑
