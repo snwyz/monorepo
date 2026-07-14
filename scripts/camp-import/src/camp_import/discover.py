@@ -43,6 +43,12 @@ class TileStore:
         for r in rows:r.status="retry"
         if rows:self.save()
         return len(rows)
+    def requeue_running(self):
+        """Explicit recovery for a confirmed-dead worker; may replay one request."""
+        rows=[r for r in self.rows() if r.status=="running"]
+        for r in rows:r.status="retry"
+        if rows:self.save()
+        return len(rows)
     def _mark(self,r,status,error=""):
         r.status=status;r.updated_at=f"{self.clock():.3f}";r.last_error=error or r.last_error;self.save()
     def mark_running(self,r):r.attempts+=1;r.started_at=f"{self.clock():.3f}";self._mark(r,"running")
@@ -64,13 +70,18 @@ class DiscoverEngine:
             lng,lat=center[0],center[1]; scale=int(center[2]) if len(center)>2 and center[2] is not None else self.m.seed_scale; profile=center[3] if len(center)>3 else "unknown"
             w,h=self.m.viewport_for_scale(scale); self.s.add(TileRow.from_tile(tile_from_center(lng,lat,w,h,scale),province_code,profile))
         self.s.save()
-    def run(self):
+    def run(self,max_requests=None):
         self.s.reset_stale_running()
-        self._drain()
+        processed=self._drain(max_requests)
+        if max_requests is not None and processed >= max_requests:return processed
         self._sample_pruned_empty_tiles()
-        self._drain()
-    def _drain(self):
-        while (r:=self.s.next_pending()) is not None:self._process(r)
+        remaining=None if max_requests is None else max_requests-processed
+        return processed+self._drain(remaining)
+    def _drain(self,max_requests=None):
+        processed=0
+        while (r:=self.s.next_pending()) is not None and (max_requests is None or processed < max_requests):
+            self._process(r);processed+=1
+        return processed
     def _process(self,r):
         self.s.mark_running(r); req=build_camps_request(r,self.m)
         try:res=self.t.send(req)

@@ -28,4 +28,6 @@ uv run camp-import --live probe --province-code 510000 \
 
 `discover --seed-centers` 接受 `lng,lat`，也可附加 `density_profile`（`dense` / `sparse` / `unknown`）和 `seed_scale`。示例见 [`config/510000-seeds.example.csv`](config/510000-seeds.example.csv)。profile 会随 tile 血缘持久化：密集种子使用默认空叶抽样比例；稀疏种子的空叶复核概率为两倍，并应先完成多 scale 的零结果确认。
 
+长时间 live 运行可用 `--max-requests N` 分批退出并保留状态。仅在已确认前一工作进程终止时，才可显式传 `--retry-running` 重新排队遗留的 running tile 或详情任务；这可能重放一条未记录完成的请求。
+
 产物位于 `data/55camp/<province_code>/`：原始 JSONL、tile/详情状态 CSV、去重 CSV 和 enriched CSV。阶段一不做坐标转换、不写 PostgreSQL，也不导入 POI。

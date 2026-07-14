@@ -136,12 +136,29 @@ def test_discover_truncation_signal_splits(tmp_path):
     assert len(store.rows()) == 5
 
 
+def test_discover_request_budget_leaves_remaining_tiles_pending(tmp_path):
+    store = TileStore(tmp_path / "tiles.csv")
+    engine = DiscoverEngine(mapping(), FakeTransport([camps(["1", "2", "3", "4", "5"])]), store, tmp_path / "camps.jsonl", 1, 1)
+    engine.seed([(104, 30.6)], "510000")
+    assert engine.run(max_requests=1) == 1
+    assert store.rows()[0].status == "done"
+    assert any(row.status == "pending" for row in store.rows())
+
+
 def test_detail_engine_persists_and_checks_response_id(tmp_path):
     store = DetailStore(tmp_path / "details.csv")
     store.seed_tasks([{"external_id": "1", "lng": 104, "lat": 30.6}])
     engine = DetailEngine(mapping(), FakeTransport([ApiResponse(200, body={"data": {"id": "1"}})]), store, tmp_path / "details.jsonl")
     engine.run()
     assert store.get("1").status == "done"
+
+
+def test_detail_request_budget_leaves_remaining_tasks_pending(tmp_path):
+    store = DetailStore(tmp_path / "details.csv")
+    store.seed_tasks([{"external_id": "1", "lng": 104, "lat": 30.6}, {"external_id": "2", "lng": 104, "lat": 30.6}])
+    engine = DetailEngine(mapping(), FakeTransport([ApiResponse(200, body={"data": {"id": "1"}})]), store, tmp_path / "details.jsonl")
+    assert engine.run(max_requests=1) == 1
+    assert store.get("1").status == "done" and store.get("2").status == "pending"
 
 
 def test_stale_running_tile_is_retried(tmp_path):
@@ -177,6 +194,23 @@ def test_failed_tile_can_be_explicitly_requeued(tmp_path):
     store.add(item); store.mark_failed(item, "network")
     assert store.requeue_failed() == 1
     assert store.get(item.tile_id).status == "retry"
+
+
+def test_running_tile_can_be_explicitly_requeued(tmp_path):
+    store = TileStore(tmp_path / "tiles.csv")
+    from camp_import.discover import TileRow
+    item = TileRow.from_tile(tile_from_center(104, 30.6, 1, 1, 11), "510000")
+    store.add(item); store.mark_running(item)
+    assert store.requeue_running() == 1
+    assert store.get(item.tile_id).status == "retry"
+
+
+def test_running_detail_can_be_explicitly_requeued(tmp_path):
+    store = DetailStore(tmp_path / "details.csv")
+    store.seed_tasks([{"external_id": "1", "lng": 104, "lat": 30.6}])
+    store.mark_running(store.get("1"))
+    assert store.requeue_running() == 1
+    assert store.get("1").status == "retry"
 
 
 def test_detail_response_id_mismatch_is_contract_violation(tmp_path):
@@ -227,6 +261,16 @@ def test_cli_normalize_runs_without_live(tmp_path):
 def test_cli_retry_failed_option_is_available():
     parsed = cli.parser().parse_args(["discover", "--province-code", "510000", "--seed-centers", "seeds.csv", "--retry-failed"])
     assert parsed.retry_failed is True
+
+
+def test_cli_discover_request_budget_options_are_available():
+    parsed = cli.parser().parse_args(["discover", "--province-code", "510000", "--seed-centers", "seeds.csv", "--max-requests", "20", "--retry-running"])
+    assert parsed.max_requests == 20 and parsed.retry_running is True
+
+
+def test_cli_detail_request_budget_options_are_available():
+    parsed = cli.parser().parse_args(["fetch-detail", "--province-code", "510000", "--max-requests", "5", "--retry-running"])
+    assert parsed.max_requests == 5 and parsed.retry_running is True
 
 
 def test_mapping_refuses_missing_required_key(tmp_path):

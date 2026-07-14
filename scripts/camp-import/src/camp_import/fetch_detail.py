@@ -44,6 +44,11 @@ class DetailStore:
         for t in failed: t.status = "retry"
         if failed: self.save()
         return len(failed)
+    def requeue_running(self):
+        running = [t for t in self.tasks() if t.status == "running"]
+        for t in running: t.status = "retry"
+        if running: self.save()
+        return len(running)
     def mark_running(self, task): task.status = "running"; task.attempts += 1; task.started_at = f"{self.clock():.3f}"; self.save()
     def mark_done(self, task): task.status = "done"; task.updated_at = f"{self.clock():.3f}"; self.save()
     def mark_failed(self, task, error): task.status = "failed"; task.last_error = error; task.updated_at = f"{self.clock():.3f}"; self.save()
@@ -53,9 +58,12 @@ def build_detail_request(task: DetailTask, mapping: FieldMapping) -> ApiRequest:
 
 class DetailEngine:
     def __init__(self, mapping: FieldMapping, transport: Transport, store: DetailStore, raw_details_path: Path, clock=time.time): self.mapping,self.transport,self.store,self.raw,self.clock=mapping,transport,store,raw_details_path,clock
-    def run(self):
+    def run(self, max_requests=None):
         self.store.reset_stale_running()
-        while task := self.store.next_pending(): self._process(task)
+        processed = 0
+        while (task := self.store.next_pending()) is not None and (max_requests is None or processed < max_requests):
+            self._process(task); processed += 1
+        return processed
     def _process(self, task):
         self.store.mark_running(task); request = build_detail_request(task, self.mapping)
         try: response = self.transport.send(request)

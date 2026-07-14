@@ -16,7 +16,8 @@ def parser():
     for name in ("discover","fetch-detail","normalize"):
         x=sub.add_parser(name);x.add_argument("--province-code",required=True)
         if name!="normalize":x.add_argument("--retry-failed",action="store_true")
-        if name=="discover":x.add_argument("--seed-centers",required=True);x.add_argument("--min-tile-area-m2",type=float,default=250000);x.add_argument("--max-depth",type=int,default=8)
+        if name=="discover":x.add_argument("--seed-centers",required=True);x.add_argument("--min-tile-area-m2",type=float,default=250000);x.add_argument("--max-depth",type=int,default=8);x.add_argument("--max-requests",type=int);x.add_argument("--retry-running",action="store_true")
+        if name=="fetch-detail":x.add_argument("--max-requests",type=int);x.add_argument("--retry-running",action="store_true")
     return p
 def main(argv=None):
     args=parser().parse_args(argv);province=Path(args.data_dir)/args.province_code
@@ -32,6 +33,8 @@ def main(argv=None):
         if args.cmd=="discover":
             store=discover.TileStore(province/"processed/query_tiles.csv")
             if args.retry_failed:store.requeue_failed()
+            if args.retry_running:store.requeue_running()
+            if args.max_requests is not None and args.max_requests <= 0: raise ValueError("--max-requests must be > 0")
             engine=discover.DiscoverEngine(mapping,transport,store,province/"raw/camps.jsonl",args.min_tile_area_m2,args.max_depth)
             if not store.rows():
                 centers=[]
@@ -39,10 +42,12 @@ def main(argv=None):
                     spec=SeedSpec(float(row["lng"]),float(row["lat"]),row.get("density_profile") or "unknown",int(row["seed_scale"]) if row.get("seed_scale") else None)
                     centers.append((spec.lng,spec.lat,spec.resolved_scale(mapping.seed_scale),spec.density_profile))
                 engine.seed(centers,args.province_code)
-            engine.run();return 0
+            engine.run(args.max_requests);return 0
         store=fetch_detail.DetailStore(province/"processed/detail_tasks.csv")
         if args.retry_failed:store.requeue_failed()
-        store.seed_tasks(common.read_csv_rows(province/"processed/camps_dedup.csv"));fetch_detail.DetailEngine(mapping,transport,store,province/"raw/details.jsonl").run();return 0
+        if args.retry_running:store.requeue_running()
+        if args.max_requests is not None and args.max_requests <= 0: raise ValueError("--max-requests must be > 0")
+        store.seed_tasks(common.read_csv_rows(province/"processed/camps_dedup.csv"));fetch_detail.DetailEngine(mapping,transport,store,province/"raw/details.jsonl").run(args.max_requests);return 0
     except (LiveDisabledError,FieldMappingError) as exc:print(exc,file=sys.stderr);return 2
     except ContractViolation as exc:print(f"contract violation: {exc}",file=sys.stderr);return 1
 if __name__=="__main__":raise SystemExit(main())
