@@ -22,11 +22,11 @@ services:
     volumes:
       - redis_data:/data
 
-  api:
+  backend:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-    image: roadbook-api:local
+      dockerfile: apps/backend/Dockerfile
+    image: roadbook-backend:local
     ports:
       - "3000:3000"
     env_file: .env

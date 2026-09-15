@@ -12,7 +12,7 @@ const tencentMapKey =
   env.TARO_APP_TENCENT_MAP_KEY ?? env.TENCENT_MAP_KEY ?? "";
 
 export default defineConfig({
-  projectName: "roadbook",
+  projectName: "roadbook-mini-app",
   date: "2026-07-13",
   designWidth: 750,
   deviceRatio: { 640: 2.34 / 2, 750: 1, 828: 1.81 / 2 },

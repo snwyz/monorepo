@@ -27,8 +27,8 @@ ORM：Prisma
 ```text
 project/
   apps/
-    taro-app/        # Taro 小程序前端
-    api/             # NestJS 后端服务
+    roadbook-mini-app/ # Taro 小程序前端
+    backend/             # NestJS 后端服务
 
   packages/
     db/              # Prisma schema、迁移、seed、数据库 client
@@ -49,8 +49,8 @@ project/
 推进步骤：
 
 1. 创建 pnpm workspace。
-2. 创建 `apps/taro-app`。
-3. 创建 `apps/api`。
+2. 创建 `apps/roadbook-mini-app`。
+3. 创建 `apps/backend`。
 4. 创建 `packages/db`。
 5. 创建 `packages/types`。
 6. 创建 `packages/utils`。
@@ -70,8 +70,8 @@ packages:
 ```json
 {
   "scripts": {
-    "dev:api": "pnpm --filter api dev",
-    "dev:taro": "pnpm --filter taro-app dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:roadbook-mini-app": "pnpm --filter roadbook-mini-app dev:weapp",
     "db:migrate": "pnpm --filter @repo/db prisma migrate dev",
     "db:studio": "pnpm --filter @repo/db prisma studio"
   }
@@ -96,7 +96,7 @@ packages:
 建议基础模块：
 
 ```text
-apps/api/src/
+apps/backend/src/
   modules/
     auth/            # 登录、鉴权
     users/           # 用户
@@ -130,7 +130,7 @@ apps/api/src/
 4. 创建 migration。
 5. 创建 seed 脚本。
 6. 导出 Prisma Client。
-7. 在 `apps/api` 中引用 `packages/db`。
+7. 在 `apps/backend` 中引用 `packages/db`。
 
 建议结构：
 

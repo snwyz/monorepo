@@ -36,8 +36,8 @@ metadata:
 使用 Turborepo 统一编排工作区任务和本地/CI 缓存。Turborepo 只负责依赖图、并发和缓存，不替代各应用的编译器：
 
 - `packages/db`、`types`、`utils`、`monitor` 各自通过 `tsc` 输出 `dist/` JavaScript 与声明文件；所有包的 `main`、`types`、`exports` 指向构建产物，运行时不加载 `.ts` 源码。
-- `apps/api` 使用 `tsc` 编译为 `apps/api/dist/`，依赖 Turbo 保证共享包先构建；不使用 webpack/Vite 打包 NestJS，以保持 Prisma、Node 运行时依赖和调试栈清晰。
-- `apps/roadbook` 继续使用 Taro 的 webpack runner 构建小程序；Turborepo 只调度其 `build:weapp` 和开发任务。
+- `apps/backend` 使用 `tsc` 编译为 `apps/backend/dist/`，依赖 Turbo 保证共享包先构建；不使用 webpack/Vite 打包 NestJS，以保持 Prisma、Node 运行时依赖和调试栈清晰。
+- `apps/roadbook-mini-app` 继续使用 Taro 的 webpack runner 构建小程序；Turborepo 只调度其 `build:weapp` 和开发任务。
 - 根目录 `turbo.json` 定义 `build`、`typecheck`、`test`、`lint` 任务，`build` 依赖上游 `^build`；环境变量只作为任务输入，不写入远程缓存。
 
 ### 前端
@@ -99,8 +99,8 @@ metadata:
 ```text
 roadbook-monorepo/
   apps/
-    roadbook/          # 路书微信小程序（Taro）
-    api/               # NestJS 后端服务
+    roadbook-mini-app/          # 路书微信小程序（Taro）
+    backend/               # NestJS 后端服务
 
   packages/
     db/                # Prisma schema、迁移、seed、导出 client
@@ -231,7 +231,7 @@ RouteCollection  # 收藏
 
 - pnpm workspace 骨架
 - `packages/config`：统一 `tsconfig.base.json`、eslint、prettier
-- 根目录常用 scripts（`dev:api`、`dev:taro`、`db:migrate`、`db:studio`）
+- 根目录常用 scripts（`dev:backend`、`dev:roadbook-mini-app`、`db:migrate`、`db:studio`）
 - 完成所有固定版本可用性校验，生成首版 lockfile
 
 ### 阶段 2 — 数据库层（packages/db）
@@ -243,7 +243,7 @@ RouteCollection  # 收藏
 - 导出 Prisma Client 供 api 使用
 - 为 openid、收藏关系、路线 bbox、POI 经纬度建立索引
 
-### 阶段 3 — NestJS 后端（apps/api）
+### 阶段 3 — NestJS 后端（apps/backend）
 
 模块：
 
@@ -271,7 +271,7 @@ common/
 - refresh token 按设备维度存储，刷新时轮换，退出登录时删除。
 - `session_key` 不返回前端；如无手机号/加密数据解密场景，MVP 不持久化 `session_key`。
 
-### 阶段 4 — Taro 前端骨架（apps/taro-app）
+### 阶段 4 — Taro 前端骨架（apps/roadbook-mini-app）
 
 - 接入腾讯地图组件
 - 微信登录对接（wx.login → POST /auth/wx-login）
@@ -295,12 +295,12 @@ services:
     image: postgres:17
   redis:
     image: redis:7.4
-  api:
-    build: ./apps/api
-    image: roadbook-api:local
+  backend:
+    build: ./apps/backend
+    image: roadbook-backend:local
 ```
 
-`node:22-alpine` 只作为 `apps/api/Dockerfile` 的 base image，不直接作为业务镜像名。
+`node:22-alpine` 只作为 `apps/backend/Dockerfile` 的 base image，不直接作为业务镜像名。
 
 本地 `docker compose up` 跑通后，Taro 打包发布微信开发者工具。
 

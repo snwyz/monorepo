@@ -1,6 +1,6 @@
 {
   "miniprogramRoot": "dist/",
-  "projectname": "roadbook",
+  "projectname": "roadbook-mini-app",
   "setting": {
     "urlCheck": true,
     "es6": true,

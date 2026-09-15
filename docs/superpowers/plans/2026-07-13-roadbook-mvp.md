@@ -86,8 +86,8 @@ packages:
   "private": true,
   "packageManager": "pnpm@11.12.0",
   "scripts": {
-    "dev:api": "pnpm --filter api dev",
-    "dev:roadbook": "pnpm --filter roadbook dev:weapp",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:roadbook-mini-app": "pnpm --filter roadbook-mini-app dev:weapp",
     "db:migrate": "pnpm --filter @roadbook/db migrate:dev",
     "db:studio": "pnpm --filter @roadbook/db studio",
     "db:seed": "pnpm --filter @roadbook/db seed",
@@ -116,7 +116,7 @@ packages:
 }
 ```
 
-共享包必须提供 `build`、`typecheck` 脚本并将 package entry 指向 `dist/`。`apps/api` 使用 `tsc` 输出 `dist/`，不使用 webpack/Vite；`apps/roadbook` 保持 Taro 自身构建器，由 Turbo 调度。
+共享包必须提供 `build`、`typecheck` 脚本并将 package entry 指向 `dist/`。`apps/backend` 使用 `tsc` 输出 `dist/`，不使用 webpack/Vite；`apps/roadbook-mini-app` 保持 Taro 自身构建器，由 Turbo 调度。
 
 - [ ] **Step 5: 创建 `.gitignore`**
 
@@ -1061,30 +1061,30 @@ git commit -m "feat: add monitor package with winston and wx realtime log"
 
 ---
 
-## Task 7: apps/api — NestJS 骨架 + 基础设施
+## Task 7: apps/backend — NestJS 骨架 + 基础设施
 
 **Files:**
-- Create: `apps/api/package.json`
-- Create: `apps/api/tsconfig.json`
-- Create: `apps/api/src/main.ts`
-- Create: `apps/api/src/app.module.ts`
-- Create: `apps/api/src/common/filters/http-exception.filter.ts`
-- Create: `apps/api/src/common/interceptors/logging.interceptor.ts`
-- Create: `apps/api/src/common/guards/jwt-auth.guard.ts`
-- Create: `apps/api/src/modules/health/health.controller.ts`
-- Create: `apps/api/src/modules/redis/redis.module.ts`
-- Create: `apps/api/src/modules/redis/redis.service.ts`
-- Create: `apps/api/src/modules/db/db.module.ts`
-- Create: `apps/api/src/modules/db/db.service.ts`
-- Create: `apps/api/test/health.e2e-spec.ts`
+- Create: `apps/backend/package.json`
+- Create: `apps/backend/tsconfig.json`
+- Create: `apps/backend/src/main.ts`
+- Create: `apps/backend/src/app.module.ts`
+- Create: `apps/backend/src/common/filters/http-exception.filter.ts`
+- Create: `apps/backend/src/common/interceptors/logging.interceptor.ts`
+- Create: `apps/backend/src/common/guards/jwt-auth.guard.ts`
+- Create: `apps/backend/src/modules/health/health.controller.ts`
+- Create: `apps/backend/src/modules/redis/redis.module.ts`
+- Create: `apps/backend/src/modules/redis/redis.service.ts`
+- Create: `apps/backend/src/modules/db/db.module.ts`
+- Create: `apps/backend/src/modules/db/db.service.ts`
+- Create: `apps/backend/test/health.e2e-spec.ts`
 
 **Produces:** 可启动的 NestJS 服务，`GET /health` 返回 200
 
-- [ ] **Step 1: 创建 `apps/api/package.json`**
+- [ ] **Step 1: 创建 `apps/backend/package.json`**
 
 ```json
 {
-  "name": "api",
+  "name": "backend",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -1128,7 +1128,7 @@ git commit -m "feat: add monitor package with winston and wx realtime log"
 }
 ```
 
-- [ ] **Step 2: 创建 `apps/api/tsconfig.json`**
+- [ ] **Step 2: 创建 `apps/backend/tsconfig.json`**
 
 ```json
 {
@@ -1144,7 +1144,7 @@ git commit -m "feat: add monitor package with winston and wx realtime log"
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/api/src/modules/db/db.service.ts`**
+- [ ] **Step 3: 创建 `apps/backend/src/modules/db/db.service.ts`**
 
 ```typescript
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
@@ -1162,7 +1162,7 @@ export class DbService extends PrismaClient implements OnModuleInit, OnModuleDes
 }
 ```
 
-- [ ] **Step 4: 创建 `apps/api/src/modules/db/db.module.ts`**
+- [ ] **Step 4: 创建 `apps/backend/src/modules/db/db.module.ts`**
 
 ```typescript
 import { Global, Module } from '@nestjs/common';
@@ -1176,7 +1176,7 @@ import { DbService } from './db.service';
 export class DbModule {}
 ```
 
-- [ ] **Step 5: 创建 `apps/api/src/modules/redis/redis.service.ts`**
+- [ ] **Step 5: 创建 `apps/backend/src/modules/redis/redis.service.ts`**
 
 ```typescript
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
@@ -1199,7 +1199,7 @@ export class RedisService extends Redis implements OnModuleInit, OnModuleDestroy
 }
 ```
 
-- [ ] **Step 6: 创建 `apps/api/src/modules/redis/redis.module.ts`**
+- [ ] **Step 6: 创建 `apps/backend/src/modules/redis/redis.module.ts`**
 
 ```typescript
 import { Global, Module } from '@nestjs/common';
@@ -1213,7 +1213,7 @@ import { RedisService } from './redis.service';
 export class RedisModule {}
 ```
 
-- [ ] **Step 7: 创建 `apps/api/src/modules/health/health.controller.ts`**
+- [ ] **Step 7: 创建 `apps/backend/src/modules/health/health.controller.ts`**
 
 ```typescript
 import { Controller, Get } from '@nestjs/common';
@@ -1233,7 +1233,7 @@ export class HealthController {
 }
 ```
 
-- [ ] **Step 8: 创建 `apps/api/src/common/filters/http-exception.filter.ts`**
+- [ ] **Step 8: 创建 `apps/backend/src/common/filters/http-exception.filter.ts`**
 
 ```typescript
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
@@ -1265,7 +1265,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 }
 ```
 
-- [ ] **Step 9: 创建 `apps/api/src/common/interceptors/logging.interceptor.ts`**
+- [ ] **Step 9: 创建 `apps/backend/src/common/interceptors/logging.interceptor.ts`**
 
 ```typescript
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
@@ -1288,7 +1288,7 @@ export class LoggingInterceptor implements NestInterceptor {
 }
 ```
 
-- [ ] **Step 10: 创建 `apps/api/src/app.module.ts`**
+- [ ] **Step 10: 创建 `apps/backend/src/app.module.ts`**
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -1317,7 +1317,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 export class AppModule {}
 ```
 
-- [ ] **Step 11: 创建 `apps/api/src/main.ts`**
+- [ ] **Step 11: 创建 `apps/backend/src/main.ts`**
 
 ```typescript
 import 'reflect-metadata';
@@ -1336,7 +1336,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-- [ ] **Step 12: 写 e2e 测试 `apps/api/test/health.e2e-spec.ts`**
+- [ ] **Step 12: 写 e2e 测试 `apps/backend/test/health.e2e-spec.ts`**
 
 ```typescript
 import { Test } from '@nestjs/testing';
@@ -1370,7 +1370,7 @@ describe('GET /api/v1/health', () => {
 - [ ] **Step 13: 安装依赖并启动**
 
 ```bash
-cd apps/api && pnpm install
+cd apps/backend && pnpm install
 pnpm dev
 ```
 
@@ -1387,29 +1387,29 @@ curl http://localhost:3000/api/v1/health
 - [ ] **Step 15: Commit**
 
 ```bash
-git add apps/api
+git add apps/backend
 git commit -m "feat: add NestJS api skeleton with health, db, redis"
 ```
 
 ---
 
-## Task 8: apps/api — Auth 模块（微信登录 + JWT）
+## Task 8: apps/backend — Auth 模块（微信登录 + JWT）
 
 **Files:**
-- Create: `apps/api/src/modules/auth/dto/wx-login.dto.ts`
-- Create: `apps/api/src/modules/auth/strategies/jwt.strategy.ts`
-- Create: `apps/api/src/modules/auth/auth.service.ts`
-- Create: `apps/api/src/modules/auth/auth.controller.ts`
-- Create: `apps/api/src/modules/auth/auth.module.ts`
-- Create: `apps/api/src/common/guards/jwt-auth.guard.ts`
-- Create: `apps/api/src/common/decorators/current-user.decorator.ts`
-- Create: `apps/api/test/auth.e2e-spec.ts`
+- Create: `apps/backend/src/modules/auth/dto/wx-login.dto.ts`
+- Create: `apps/backend/src/modules/auth/strategies/jwt.strategy.ts`
+- Create: `apps/backend/src/modules/auth/auth.service.ts`
+- Create: `apps/backend/src/modules/auth/auth.controller.ts`
+- Create: `apps/backend/src/modules/auth/auth.module.ts`
+- Create: `apps/backend/src/common/guards/jwt-auth.guard.ts`
+- Create: `apps/backend/src/common/decorators/current-user.decorator.ts`
+- Create: `apps/backend/test/auth.e2e-spec.ts`
 
 **Interfaces:**
 - Consumes: `DbService`（Task 7），`RedisService`（Task 7）
 - Produces: `JwtAuthGuard`，`@CurrentUser()` decorator，被后续所有需鉴权的模块使用
 
-- [ ] **Step 1: 创建 `apps/api/src/modules/auth/dto/wx-login.dto.ts`**
+- [ ] **Step 1: 创建 `apps/backend/src/modules/auth/dto/wx-login.dto.ts`**
 
 ```typescript
 import { IsString, IsNotEmpty } from 'class-validator';
@@ -1421,7 +1421,7 @@ export class WxLoginDto {
 }
 ```
 
-- [ ] **Step 2: 创建 `apps/api/src/modules/auth/strategies/jwt.strategy.ts`**
+- [ ] **Step 2: 创建 `apps/backend/src/modules/auth/strategies/jwt.strategy.ts`**
 
 ```typescript
 import { Injectable, UnauthorizedException } from '@nestjs/common';
@@ -1450,7 +1450,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/api/src/common/guards/jwt-auth.guard.ts`**
+- [ ] **Step 3: 创建 `apps/backend/src/common/guards/jwt-auth.guard.ts`**
 
 ```typescript
 import { Injectable } from '@nestjs/common';
@@ -1460,7 +1460,7 @@ import { AuthGuard } from '@nestjs/passport';
 export class JwtAuthGuard extends AuthGuard('jwt') {}
 ```
 
-- [ ] **Step 4: 创建 `apps/api/src/common/decorators/current-user.decorator.ts`**
+- [ ] **Step 4: 创建 `apps/backend/src/common/decorators/current-user.decorator.ts`**
 
 ```typescript
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
@@ -1470,7 +1470,7 @@ export const CurrentUser = createParamDecorator((_: unknown, ctx: ExecutionConte
 });
 ```
 
-- [ ] **Step 5: 写失败测试 `apps/api/test/auth.e2e-spec.ts`**
+- [ ] **Step 5: 写失败测试 `apps/backend/test/auth.e2e-spec.ts`**
 
 ```typescript
 import { Test } from '@nestjs/testing';
@@ -1506,7 +1506,7 @@ describe('Auth', () => {
 });
 ```
 
-- [ ] **Step 6: 创建 `apps/api/src/modules/auth/auth.service.ts`**
+- [ ] **Step 6: 创建 `apps/backend/src/modules/auth/auth.service.ts`**
 
 ```typescript
 import { Injectable, UnauthorizedException } from '@nestjs/common';
@@ -1585,7 +1585,7 @@ export class AuthService {
 }
 ```
 
-- [ ] **Step 7: 创建 `apps/api/src/modules/auth/auth.controller.ts`**
+- [ ] **Step 7: 创建 `apps/backend/src/modules/auth/auth.controller.ts`**
 
 ```typescript
 import { Controller, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
@@ -1624,7 +1624,7 @@ export class AuthController {
 }
 ```
 
-- [ ] **Step 8: 创建 `apps/api/src/modules/auth/auth.module.ts`**
+- [ ] **Step 8: 创建 `apps/backend/src/modules/auth/auth.module.ts`**
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -1648,7 +1648,7 @@ export class AuthModule {}
 
 - [ ] **Step 9: 注册 AuthModule 到 `app.module.ts`**
 
-在 `apps/api/src/app.module.ts` 的 imports 数组加入 `AuthModule`：
+在 `apps/backend/src/app.module.ts` 的 imports 数组加入 `AuthModule`：
 
 ```typescript
 import { AuthModule } from './modules/auth/auth.module';
@@ -1664,7 +1664,7 @@ imports: [
 - [ ] **Step 10: 运行测试**
 
 ```bash
-cd apps/api && pnpm test:e2e
+cd apps/backend && pnpm test:e2e
 ```
 
 期望：auth 测试 PASS（400 和 401 两个用例）
@@ -1672,26 +1672,26 @@ cd apps/api && pnpm test:e2e
 - [ ] **Step 11: Commit**
 
 ```bash
-git add apps/api/src/modules/auth apps/api/src/common apps/api/test/auth.e2e-spec.ts
+git add apps/backend/src/modules/auth apps/backend/src/common apps/backend/test/auth.e2e-spec.ts
 git commit -m "feat: add wx-login auth with JWT and Redis refresh token"
 ```
 
 ---
 
-## Task 9: apps/api — Routes 模块
+## Task 9: apps/backend — Routes 模块
 
 **Files:**
-- Create: `apps/api/src/modules/routes/dto/nearby-query.dto.ts`
-- Create: `apps/api/src/modules/routes/routes.service.ts`
-- Create: `apps/api/src/modules/routes/routes.controller.ts`
-- Create: `apps/api/src/modules/routes/routes.module.ts`
-- Create: `apps/api/test/routes.e2e-spec.ts`
+- Create: `apps/backend/src/modules/routes/dto/nearby-query.dto.ts`
+- Create: `apps/backend/src/modules/routes/routes.service.ts`
+- Create: `apps/backend/src/modules/routes/routes.controller.ts`
+- Create: `apps/backend/src/modules/routes/routes.module.ts`
+- Create: `apps/backend/test/routes.e2e-spec.ts`
 
 **Interfaces:**
 - Consumes: `DbService`，`@roadbook/utils`（haversine, bbox），`JwtAuthGuard`
 - Produces: `GET /routes/nearby`，`GET /routes/:id`，`POST/DELETE /routes/:id/collection`
 
-- [ ] **Step 1: 写失败测试 `apps/api/test/routes.e2e-spec.ts`**
+- [ ] **Step 1: 写失败测试 `apps/backend/test/routes.e2e-spec.ts`**
 
 ```typescript
 import { Test } from '@nestjs/testing';
@@ -1732,7 +1732,7 @@ describe('Routes', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `apps/api/src/modules/routes/dto/nearby-query.dto.ts`**
+- [ ] **Step 2: 创建 `apps/backend/src/modules/routes/dto/nearby-query.dto.ts`**
 
 ```typescript
 import { IsNumber, IsOptional, Min, Max } from 'class-validator';
@@ -1749,7 +1749,7 @@ export class NearbyQueryDto {
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/api/src/modules/routes/routes.service.ts`**
+- [ ] **Step 3: 创建 `apps/backend/src/modules/routes/routes.service.ts`**
 
 ```typescript
 import { Injectable, NotFoundException } from '@nestjs/common';
@@ -1836,7 +1836,7 @@ export class RoutesService {
 }
 ```
 
-- [ ] **Step 4: 创建 `apps/api/src/modules/routes/routes.controller.ts`**
+- [ ] **Step 4: 创建 `apps/backend/src/modules/routes/routes.controller.ts`**
 
 ```typescript
 import { Controller, Get, Post, Delete, Param, Query, UseGuards, HttpCode, Request } from '@nestjs/common';
@@ -1875,7 +1875,7 @@ export class RoutesController {
 }
 ```
 
-- [ ] **Step 5: 创建 `apps/api/src/modules/routes/routes.module.ts`**
+- [ ] **Step 5: 创建 `apps/backend/src/modules/routes/routes.module.ts`**
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -1899,7 +1899,7 @@ import { RoutesModule } from './modules/routes/routes.module';
 - [ ] **Step 7: 运行测试**
 
 ```bash
-cd apps/api && pnpm test:e2e
+cd apps/backend && pnpm test:e2e
 ```
 
 期望：routes 测试 3 条全部 PASS
@@ -1907,26 +1907,26 @@ cd apps/api && pnpm test:e2e
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/api/src/modules/routes apps/api/test/routes.e2e-spec.ts
+git add apps/backend/src/modules/routes apps/backend/test/routes.e2e-spec.ts
 git commit -m "feat: add routes nearby query and collection endpoints"
 ```
 
 ---
 
-## Task 10: apps/api — POIs + Articles 模块
+## Task 10: apps/backend — POIs + Articles 模块
 
 **Files:**
-- Create: `apps/api/src/modules/pois/pois.service.ts`
-- Create: `apps/api/src/modules/pois/pois.controller.ts`
-- Create: `apps/api/src/modules/pois/pois.module.ts`
-- Create: `apps/api/src/modules/articles/articles.service.ts`
-- Create: `apps/api/src/modules/articles/articles.controller.ts`
-- Create: `apps/api/src/modules/articles/articles.module.ts`
+- Create: `apps/backend/src/modules/pois/pois.service.ts`
+- Create: `apps/backend/src/modules/pois/pois.controller.ts`
+- Create: `apps/backend/src/modules/pois/pois.module.ts`
+- Create: `apps/backend/src/modules/articles/articles.service.ts`
+- Create: `apps/backend/src/modules/articles/articles.controller.ts`
+- Create: `apps/backend/src/modules/articles/articles.module.ts`
 
 **Interfaces:**
 - Produces: `GET /pois/near-route`，`GET /articles`，`GET /articles/:id`
 
-- [ ] **Step 1: 创建 `apps/api/src/modules/pois/pois.service.ts`**
+- [ ] **Step 1: 创建 `apps/backend/src/modules/pois/pois.service.ts`**
 
 ```typescript
 import { Injectable, NotFoundException } from '@nestjs/common';
@@ -1977,7 +1977,7 @@ export class PoisService {
 }
 ```
 
-- [ ] **Step 2: 创建 `apps/api/src/modules/pois/pois.controller.ts`**
+- [ ] **Step 2: 创建 `apps/backend/src/modules/pois/pois.controller.ts`**
 
 ```typescript
 import { Controller, Get, Query } from '@nestjs/common';
@@ -2001,7 +2001,7 @@ export class PoisController {
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/api/src/modules/pois/pois.module.ts`**
+- [ ] **Step 3: 创建 `apps/backend/src/modules/pois/pois.module.ts`**
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -2012,7 +2012,7 @@ import { PoisController } from './pois.controller';
 export class PoisModule {}
 ```
 
-- [ ] **Step 4: 创建 `apps/api/src/modules/articles/articles.service.ts`**
+- [ ] **Step 4: 创建 `apps/backend/src/modules/articles/articles.service.ts`**
 
 ```typescript
 import { Injectable, NotFoundException } from '@nestjs/common';
@@ -2046,7 +2046,7 @@ export class ArticlesService {
 }
 ```
 
-- [ ] **Step 5: 创建 `apps/api/src/modules/articles/articles.controller.ts`**
+- [ ] **Step 5: 创建 `apps/backend/src/modules/articles/articles.controller.ts`**
 
 ```typescript
 import { Controller, Get, Param, Query } from '@nestjs/common';
@@ -2075,7 +2075,7 @@ export class ArticlesController {
 }
 ```
 
-- [ ] **Step 6: 创建 `apps/api/src/modules/articles/articles.module.ts`**
+- [ ] **Step 6: 创建 `apps/backend/src/modules/articles/articles.module.ts`**
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -2106,29 +2106,29 @@ curl "http://localhost:3000/api/v1/pois/near-route?route_id=seed-route-1"
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/api/src/modules/pois apps/api/src/modules/articles
+git add apps/backend/src/modules/pois apps/backend/src/modules/articles
 git commit -m "feat: add pois near-route and articles list/detail endpoints"
 ```
 
 ---
 
-## Task 11: apps/api — Storage 模块（COS 预签名 URL）
+## Task 11: apps/backend — Storage 模块（COS 预签名 URL）
 
 **Files:**
-- Create: `apps/api/src/modules/storage/storage.service.ts`
-- Create: `apps/api/src/modules/storage/storage.controller.ts`
-- Create: `apps/api/src/modules/storage/storage.module.ts`
+- Create: `apps/backend/src/modules/storage/storage.service.ts`
+- Create: `apps/backend/src/modules/storage/storage.controller.ts`
+- Create: `apps/backend/src/modules/storage/storage.module.ts`
 
 **Produces:** `POST /storage/presigned-url`，鉴权后返回腾讯 COS 直传 URL
 
 - [ ] **Step 1: 安装腾讯 COS SDK**
 
 ```bash
-cd apps/api && pnpm add cos-nodejs-sdk-v5@2.14.6
+cd apps/backend && pnpm add cos-nodejs-sdk-v5@2.14.6
 pnpm add -D @types/cos-nodejs-sdk-v5@2.1.7
 ```
 
-- [ ] **Step 2: 创建 `apps/api/src/modules/storage/storage.service.ts`**
+- [ ] **Step 2: 创建 `apps/backend/src/modules/storage/storage.service.ts`**
 
 ```typescript
 import { Injectable, BadRequestException } from '@nestjs/common';
@@ -2190,7 +2190,7 @@ export class StorageService {
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/api/src/modules/storage/storage.controller.ts`**
+- [ ] **Step 3: 创建 `apps/backend/src/modules/storage/storage.controller.ts`**
 
 ```typescript
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
@@ -2216,7 +2216,7 @@ export class StorageController {
 }
 ```
 
-- [ ] **Step 4: 创建 `apps/api/src/modules/storage/storage.module.ts`**
+- [ ] **Step 4: 创建 `apps/backend/src/modules/storage/storage.module.ts`**
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -2237,37 +2237,37 @@ import { StorageModule } from './modules/storage/storage.module';
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/api/src/modules/storage
+git add apps/backend/src/modules/storage
 git commit -m "feat: add COS presigned URL storage endpoint"
 ```
 
 ---
 
-## Task 12: apps/roadbook — Taro 骨架 + API Client + Monitor
+## Task 12: apps/roadbook-mini-app — Taro 骨架 + API Client + Monitor
 
 **Files:**
-- Create: `apps/roadbook/package.json`
-- Create: `apps/roadbook/project.config.json`
-- Create: `apps/roadbook/src/app.tsx`
-- Create: `apps/roadbook/src/app.config.ts`
-- Create: `apps/roadbook/src/services/http.ts`
-- Create: `apps/roadbook/src/services/auth.ts`
-- Create: `apps/roadbook/src/pages/index/index.tsx`
-- Create: `apps/roadbook/src/pages/index/index.config.ts`
-- Create: `apps/roadbook/src/pages/route-detail/index.tsx`
-- Create: `apps/roadbook/src/pages/route-detail/index.config.ts`
-- Create: `apps/roadbook/src/pages/articles/index.tsx`
-- Create: `apps/roadbook/src/pages/articles/index.config.ts`
-- Create: `apps/roadbook/src/pages/profile/index.tsx`
-- Create: `apps/roadbook/src/pages/profile/index.config.ts`
+- Create: `apps/roadbook-mini-app/package.json`
+- Create: `apps/roadbook-mini-app/project.config.json`
+- Create: `apps/roadbook-mini-app/src/app.tsx`
+- Create: `apps/roadbook-mini-app/src/app.config.ts`
+- Create: `apps/roadbook-mini-app/src/services/http.ts`
+- Create: `apps/roadbook-mini-app/src/services/auth.ts`
+- Create: `apps/roadbook-mini-app/src/pages/index/index.tsx`
+- Create: `apps/roadbook-mini-app/src/pages/index/index.config.ts`
+- Create: `apps/roadbook-mini-app/src/pages/route-detail/index.tsx`
+- Create: `apps/roadbook-mini-app/src/pages/route-detail/index.config.ts`
+- Create: `apps/roadbook-mini-app/src/pages/articles/index.tsx`
+- Create: `apps/roadbook-mini-app/src/pages/articles/index.config.ts`
+- Create: `apps/roadbook-mini-app/src/pages/profile/index.tsx`
+- Create: `apps/roadbook-mini-app/src/pages/profile/index.config.ts`
 
 **Produces:** 可在微信开发者工具运行的 Taro 小程序，4 个页面路由，API client，日志集成
 
-- [ ] **Step 1: 创建 `apps/roadbook/package.json`**
+- [ ] **Step 1: 创建 `apps/roadbook-mini-app/package.json`**
 
 ```json
 {
-  "name": "roadbook",
+  "name": "roadbook-mini-app",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -2296,7 +2296,7 @@ git commit -m "feat: add COS presigned URL storage endpoint"
 }
 ```
 
-- [ ] **Step 2: 创建 `apps/roadbook/project.config.json`**
+- [ ] **Step 2: 创建 `apps/roadbook-mini-app/project.config.json`**
 
 ```json
 {
@@ -2314,7 +2314,7 @@ git commit -m "feat: add COS presigned URL storage endpoint"
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/roadbook/src/services/http.ts`**
+- [ ] **Step 3: 创建 `apps/roadbook-mini-app/src/services/http.ts`**
 
 ```typescript
 import Taro from '@tarojs/taro';
@@ -2357,7 +2357,7 @@ export const http = {
 };
 ```
 
-- [ ] **Step 4: 创建 `apps/roadbook/src/services/auth.ts`**
+- [ ] **Step 4: 创建 `apps/roadbook-mini-app/src/services/auth.ts`**
 
 ```typescript
 import Taro from '@tarojs/taro';
@@ -2387,7 +2387,7 @@ export function logout(): void {
 }
 ```
 
-- [ ] **Step 5: 创建 `apps/roadbook/src/app.tsx`**
+- [ ] **Step 5: 创建 `apps/roadbook-mini-app/src/app.tsx`**
 
 ```tsx
 import { PropsWithChildren, useEffect } from 'react';
@@ -2406,7 +2406,7 @@ function App({ children }: PropsWithChildren) {
 export default App;
 ```
 
-- [ ] **Step 6: 创建 `apps/roadbook/src/app.config.ts`**
+- [ ] **Step 6: 创建 `apps/roadbook-mini-app/src/app.config.ts`**
 
 ```typescript
 export default defineAppConfig({
@@ -2431,7 +2431,7 @@ export default defineAppConfig({
 });
 ```
 
-- [ ] **Step 7: 创建首页占位 `apps/roadbook/src/pages/index/index.tsx`**
+- [ ] **Step 7: 创建首页占位 `apps/roadbook-mini-app/src/pages/index/index.tsx`**
 
 ```tsx
 import { View, Text } from '@tarojs/components';
@@ -2455,30 +2455,30 @@ export default definePageConfig({ navigationBarTitleText: '路书地图' });
 - [ ] **Step 8: 安装依赖并启动**
 
 ```bash
-cd apps/roadbook && pnpm install
+cd apps/roadbook-mini-app && pnpm install
 pnpm dev:weapp
 ```
 
-在微信开发者工具导入 `apps/roadbook/dist/` 目录，确认 4 个页面可切换。
+在微信开发者工具导入 `apps/roadbook-mini-app/dist/` 目录，确认 4 个页面可切换。
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/roadbook
+git add apps/roadbook-mini-app
 git commit -m "feat: add Taro roadbook skeleton with 4 pages and api client"
 ```
 
 ---
 
-## Task 13: apps/roadbook — 地图页（半径拖动 + 路线 Markers）
+## Task 13: apps/roadbook-mini-app — 地图页（半径拖动 + 路线 Markers）
 
 **Files:**
-- Modify: `apps/roadbook/src/pages/index/index.tsx`
+- Modify: `apps/roadbook-mini-app/src/pages/index/index.tsx`
 
 **Interfaces:**
 - Consumes: `http.get('/routes/nearby')`，`RouteMarker`（@roadbook/types）
 
-- [ ] **Step 1: 修改 `apps/roadbook/src/pages/index/index.tsx`**
+- [ ] **Step 1: 修改 `apps/roadbook-mini-app/src/pages/index/index.tsx`**
 
 ```tsx
 import { useState, useCallback } from 'react';
@@ -2563,21 +2563,21 @@ export default function IndexPage() {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/roadbook/src/pages/index
+git add apps/roadbook-mini-app/src/pages/index
 git commit -m "feat: map page with radius slider and nearby routes markers"
 ```
 
 ---
 
-## Task 14: apps/roadbook — 路线详情 + POI
+## Task 14: apps/roadbook-mini-app — 路线详情 + POI
 
 **Files:**
-- Modify: `apps/roadbook/src/pages/route-detail/index.tsx`
+- Modify: `apps/roadbook-mini-app/src/pages/route-detail/index.tsx`
 
 **Interfaces:**
 - Consumes: `http.get('/routes/:id')`，`http.get('/pois/near-route')`，`RouteDetail`，`PoiItem`
 
-- [ ] **Step 1: 修改 `apps/roadbook/src/pages/route-detail/index.tsx`**
+- [ ] **Step 1: 修改 `apps/roadbook-mini-app/src/pages/route-detail/index.tsx`**
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -2672,7 +2672,7 @@ export default function RouteDetailPage() {
 
 - [ ] **Step 2: 从地图页跳转路线详情**
 
-在 `apps/roadbook/src/pages/index/index.tsx` 的 markers 添加点击事件：
+在 `apps/roadbook-mini-app/src/pages/index/index.tsx` 的 markers 添加点击事件：
 
 ```tsx
 const onMarkerTap = (e: { detail: { markerId: number } }) => {
@@ -2691,19 +2691,19 @@ const onMarkerTap = (e: { detail: { markerId: number } }) => {
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/roadbook/src/pages/route-detail apps/roadbook/src/pages/index
+git add apps/roadbook-mini-app/src/pages/route-detail apps/roadbook-mini-app/src/pages/index
 git commit -m "feat: route detail page with POI list and collect action"
 ```
 
 ---
 
-## Task 15: apps/roadbook — 文章列表 + 个人中心
+## Task 15: apps/roadbook-mini-app — 文章列表 + 个人中心
 
 **Files:**
-- Modify: `apps/roadbook/src/pages/articles/index.tsx`
-- Modify: `apps/roadbook/src/pages/profile/index.tsx`
+- Modify: `apps/roadbook-mini-app/src/pages/articles/index.tsx`
+- Modify: `apps/roadbook-mini-app/src/pages/profile/index.tsx`
 
-- [ ] **Step 1: 修改 `apps/roadbook/src/pages/articles/index.tsx`**
+- [ ] **Step 1: 修改 `apps/roadbook-mini-app/src/pages/articles/index.tsx`**
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -2742,7 +2742,7 @@ export default function ArticlesPage() {
 }
 ```
 
-- [ ] **Step 2: 修改 `apps/roadbook/src/pages/profile/index.tsx`**
+- [ ] **Step 2: 修改 `apps/roadbook-mini-app/src/pages/profile/index.tsx`**
 
 ```tsx
 import { View, Text, Button } from '@tarojs/components';
@@ -2779,7 +2779,7 @@ export default function ProfilePage() {
 }
 ```
 
-- [ ] **Step 3: 创建 `apps/roadbook/src/pages/article-detail/index.tsx`**
+- [ ] **Step 3: 创建 `apps/roadbook-mini-app/src/pages/article-detail/index.tsx`**
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -2817,7 +2817,7 @@ export default function ArticleDetailPage() {
 export default definePageConfig({ navigationBarTitleText: '文章详情' });
 ```
 
-同时在 `apps/roadbook/src/app.config.ts` 的 pages 数组末尾加入 `'pages/article-detail/index'`。
+同时在 `apps/roadbook-mini-app/src/app.config.ts` 的 pages 数组末尾加入 `'pages/article-detail/index'`。
 
 - [ ] **Step 4: 验证**
 
@@ -2829,7 +2829,7 @@ export default definePageConfig({ navigationBarTitleText: '文章详情' });
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/roadbook/src/pages/articles apps/roadbook/src/pages/article-detail apps/roadbook/src/pages/profile apps/roadbook/src/app.config.ts
+git add apps/roadbook-mini-app/src/pages/articles apps/roadbook-mini-app/src/pages/article-detail apps/roadbook-mini-app/src/pages/profile apps/roadbook-mini-app/src/app.config.ts
 git commit -m "feat: articles list/detail and profile login/logout"
 ```
 
@@ -2838,13 +2838,13 @@ git commit -m "feat: articles list/detail and profile login/logout"
 ## Task 16: Docker 部署 + 上线检查清单
 
 **Files:**
-- Create: `apps/api/Dockerfile`
+- Create: `apps/backend/Dockerfile`
 - Modify: `docker-compose.yml`
-- Create: `apps/api/.dockerignore`
+- Create: `apps/backend/.dockerignore`
 
 **Produces:** 可通过 Docker 构建和运行的完整服务栈
 
-- [ ] **Step 1: 创建 `apps/api/Dockerfile`**
+- [ ] **Step 1: 创建 `apps/backend/Dockerfile`**
 
 ```dockerfile
 FROM node:22-alpine AS base
@@ -2859,29 +2859,29 @@ COPY packages/types/package.json packages/types/
 COPY packages/utils/package.json packages/utils/
 COPY packages/db/package.json packages/db/
 COPY packages/monitor/package.json packages/monitor/
-COPY apps/api/package.json apps/api/
-RUN pnpm install --frozen-lockfile --filter api...
+COPY apps/backend/package.json apps/backend/
+RUN pnpm install --frozen-lockfile --filter backend...
 
 # 构建层
 FROM deps AS builder
 COPY packages/ packages/
-COPY apps/api/ apps/api/
-RUN pnpm --filter api build
+COPY apps/backend/ apps/backend/
+RUN pnpm --filter backend build
 
 # 运行层
 FROM node:22-alpine AS runner
 RUN corepack enable && corepack prepare pnpm@11.12.0 --activate
 WORKDIR /app
-COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/backend/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY packages/db/prisma ./prisma
 
 EXPOSE 3000
 CMD ["node", "dist/main"]
 ```
 
-- [ ] **Step 2: 创建 `apps/api/.dockerignore`**
+- [ ] **Step 2: 创建 `apps/backend/.dockerignore`**
 
 ```
 node_modules
@@ -2917,11 +2917,11 @@ services:
     volumes:
       - redis_data:/data
 
-  api:
+  backend:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-    image: roadbook-api:local
+      dockerfile: apps/backend/Dockerfile
+    image: roadbook-backend:local
     ports:
       - "3000:3000"
     env_file: .env
@@ -2976,7 +2976,7 @@ docker compose run --rm api node -e "require('@prisma/client'); process.exit(0)"
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/api/Dockerfile apps/api/.dockerignore docker-compose.yml
+git add apps/backend/Dockerfile apps/backend/.dockerignore docker-compose.yml
 git commit -m "feat: add Dockerfile and complete docker-compose for deployment"
 ```
 

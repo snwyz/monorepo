@@ -15,7 +15,7 @@ importers:
         specifier: 2.8.11
         version: 2.8.11
 
-  apps/api:
+  apps/backend:
     dependencies:
       '@nestjs/common':
         specifier: 11.1.28
@@ -112,7 +112,7 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
-  apps/roadbook:
+  apps/roadbook-mini-app:
     dependencies:
       '@babel/runtime':
         specifier: 7.24.4
