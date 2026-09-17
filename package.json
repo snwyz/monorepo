@@ -5,6 +5,7 @@
   "scripts": {
     "dev:backend": "pnpm --filter backend dev",
     "dev:roadbook-mini-app": "pnpm --filter roadbook-mini-app dev:weapp",
+    "dev:roadbook-web": "pnpm --filter roadbook-web dev",
     "db:migrate": "pnpm --filter @roadbook/db migrate:dev",
     "db:studio": "pnpm --filter @roadbook/db studio",
     "db:seed": "pnpm --filter @roadbook/db seed",
