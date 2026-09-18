@@ -1,9 +1,5 @@
-import { Button } from "@/components/ui/button";
+import { RoutePlanningWorkspace } from "@/components/route-planning/route-planning-workspace";
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <Button>Hello World</Button>
-    </main>
-  );
+  return <RoutePlanningWorkspace />;
 }
