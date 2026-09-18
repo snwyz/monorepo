@@ -728,7 +728,7 @@ export class TencentMapWebAdapter {
       locationDebug("info", "locate:approximate-fallback-retained", approximateFallback);
     }
     locationDebug("info", "locate:precise-start");
-    this.currentLocationRequest = (async () => {
+    const request = (async () => {
       try {
         const coordinate = await this.getPreciseLocation();
         locationDebug("info", "locate:precise-success", { coordinate });
@@ -761,7 +761,8 @@ export class TencentMapWebAdapter {
       .finally(() => {
         this.currentLocationRequest = null;
       });
-    return this.currentLocationRequest;
+    this.currentLocationRequest = request;
+    return request;
   }
 
   private async hasGrantedLocationPermission() {
@@ -803,7 +804,7 @@ export class TencentMapWebAdapter {
       timeout: 8000,
       maximumAge: 0,
     });
-    this.preciseLocationRequest = new Promise<MapCoordinate>((resolve, reject) => {
+    const request = new Promise<MapCoordinate>((resolve, reject) => {
       let settled = false;
       const timeout = window.setTimeout(() => {
         if (settled) return;
@@ -914,7 +915,8 @@ export class TencentMapWebAdapter {
       .finally(() => {
         this.preciseLocationRequest = null;
       });
-    return this.preciseLocationRequest;
+    this.preciseLocationRequest = request;
+    return request;
   }
 
   private async getIpLocation() {
