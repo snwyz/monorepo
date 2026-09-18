@@ -63,6 +63,7 @@ export interface WebMapCanvas {
   setControlPoints(controlPoints: WebMapControlPoint[]): void;
   setRouteLegs(routeLegs: WebMapRouteLeg[]): void;
   setUserLocation(location: WebMapLocation | null): void;
+  setCenter(center: MapCoordinate): void;
   setView(center: MapCoordinate, zoom: number): void;
   fitCoordinates(coordinates: MapCoordinate[]): void;
   zoomBy(delta: number): void;

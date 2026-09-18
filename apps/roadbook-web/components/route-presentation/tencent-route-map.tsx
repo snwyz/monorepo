@@ -5,7 +5,7 @@ import type {
   TencentMapWebAdapter,
   WebMapCanvas,
 } from "@roadbook/map/web";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import type { ControlPoint } from "@/domain/route-planning/model";
 import {
@@ -14,6 +14,12 @@ import {
   PlusIcon,
 } from "@/components/route-presentation/tool-icons";
 
+const MapControlPointDeleteAction = lazy(() =>
+  import("@/components/route-presentation/map-control-point-delete-action").then(
+    (module) => ({ default: module.MapControlPointDeleteAction }),
+  ),
+);
+
 interface TencentRouteMapProps {
   adapter: TencentMapWebAdapter | null;
   controlPoints: ControlPoint[];
@@ -21,9 +27,14 @@ interface TencentRouteMapProps {
   selectedControlPointId: string | null;
   selectedRouteLegId: string | null;
   routeUpdating: boolean;
+  focusControlPointRequest: { id: string; sequence: number } | null;
+  controlPointDeleteActionId: string | null;
+  controlPointDeleteActionLoaded: boolean;
   onDoubleClick: (coordinate: { latitude: number; longitude: number }) => void;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
+  onDismissControlPointDeleteAction: () => void;
+  onRemoveControlPoint: (id: string) => void;
 }
 
 export function TencentRouteMap({
@@ -33,9 +44,14 @@ export function TencentRouteMap({
   selectedControlPointId,
   selectedRouteLegId,
   routeUpdating,
+  focusControlPointRequest,
+  controlPointDeleteActionId,
+  controlPointDeleteActionLoaded,
   onDoubleClick,
   onSelectControlPoint,
   onSelectRouteLeg,
+  onDismissControlPointDeleteAction,
+  onRemoveControlPoint,
 }: TencentRouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<WebMapCanvas | null>(null);
@@ -46,6 +62,9 @@ export function TencentRouteMap({
   const selectedRouteLegIdRef = useRef(selectedRouteLegId);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [mapVisualReady, setMapVisualReady] = useState(false);
+  const deleteActionPoint = controlPoints.find(
+    (point) => point.id === controlPointDeleteActionId,
+  );
 
   useEffect(() => {
     controlPointsRef.current = controlPoints;
@@ -130,6 +149,15 @@ export function TencentRouteMap({
   }, [controlPoints, selectedControlPointId]);
 
   useEffect(() => {
+    if (!focusControlPointRequest) return;
+    const point = controlPointsRef.current.find(
+      (controlPoint) => controlPoint.id === focusControlPointRequest.id,
+    );
+    if (!point) return;
+    canvasRef.current?.setCenter(point);
+  }, [focusControlPointRequest]);
+
+  useEffect(() => {
     canvasRef.current?.setRouteLegs(
       (route?.legs ?? []).map((leg) => ({
         id: leg.id,
@@ -158,7 +186,16 @@ export function TencentRouteMap({
   };
 
   return (
-    <div className="route-map" aria-label="腾讯地图路线工作区">
+    <div
+      className="route-map"
+      aria-label="腾讯地图路线工作区"
+      onPointerDownCapture={(event) => {
+        const target = event.target as HTMLElement;
+        if (!target.closest(".map-control-point-delete-action")) {
+          onDismissControlPointDeleteAction();
+        }
+      }}
+    >
       <div className="route-map__fallback" aria-hidden="true">
         <span className="route-map__road route-map__road--one" />
         <span className="route-map__road route-map__road--two" />
@@ -173,6 +210,16 @@ export function TencentRouteMap({
         <div className="map-center-location" aria-hidden="true">
           <span className="loc_icon center_icon" />
         </div>
+      ) : null}
+      {controlPointDeleteActionLoaded ? (
+        <Suspense fallback={null}>
+          <MapControlPointDeleteAction
+            pointName={deleteActionPoint?.name ?? null}
+            onDelete={() => {
+              if (deleteActionPoint) onRemoveControlPoint(deleteActionPoint.id);
+            }}
+          />
+        </Suspense>
       ) : null}
       <div className="map-attribution">腾讯地图</div>
       <div className="map-controls" aria-label="地图工具">

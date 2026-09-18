@@ -362,6 +362,23 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     locationDebug("info", "map:user-location-applied", location);
   }
 
+  setCenter(center: MapCoordinate) {
+    if (!isValidCoordinate(center)) {
+      locationDebug("error", "map:set-center-rejected", { center });
+      return;
+    }
+    try {
+      this.map.setCenter(new this.tmap.LatLng(center.latitude, center.longitude));
+      locationDebug("info", "map:set-center-applied", { center });
+    } catch (error) {
+      locationDebug("error", "map:set-center-failed", {
+        center,
+        error: debugError(error),
+      });
+      throw error;
+    }
+  }
+
   setView(center: MapCoordinate, zoom: number) {
     if (!isValidCoordinate(center)) {
       locationDebug("error", "map:set-view-rejected", { center, zoom });

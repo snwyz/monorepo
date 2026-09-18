@@ -42,8 +42,10 @@ export function useRoutePlanningWorkspace() {
   const [selectedControlPointId, setSelectedControlPointId] = useState<string | null>(null);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [pendingControlPointId, setPendingControlPointId] = useState<string | null>(null);
+  const [mapFocusRequest, setMapFocusRequest] = useState<{ id: string; sequence: number } | null>(null);
   const [history, setHistory] = useState<RoutePlan[]>([]);
   const calculationToken = useRef(0);
+  const mapFocusSequence = useRef(0);
   const calculationPlanId = activePlan?.id;
   const calculationStrategy = activePlan?.strategy;
   const calculationPointsJson = JSON.stringify(
@@ -145,6 +147,7 @@ export function useRoutePlanningWorkspace() {
     setSelectedControlPointId(null);
     setSelectedRouteLegId(null);
     setPendingControlPointId(null);
+    setMapFocusRequest(null);
     setHistory([]);
     setDraftStatus("saving");
     setRouteStatus("waiting-for-points");
@@ -166,6 +169,7 @@ export function useRoutePlanningWorkspace() {
     setSelectedControlPointId(null);
     setSelectedRouteLegId(null);
     setPendingControlPointId(null);
+    setMapFocusRequest(null);
     setHistory([]);
     setDraftStatus("saved");
     return true;
@@ -246,41 +250,15 @@ export function useRoutePlanningWorkspace() {
     setPendingControlPointId((current) => current === id ? null : current);
   }, [mutatePlan]);
 
-  useEffect(() => {
-    if (!pendingControlPointId) return;
-    const removePendingPoint = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const isEditing = target?.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
-      if (isEditing || !["Escape", "Delete", "Backspace"].includes(event.key)) return;
-      event.preventDefault();
-      removeControlPoint(pendingControlPointId);
-    };
-    window.addEventListener("keydown", removePendingPoint);
-    return () => window.removeEventListener("keydown", removePendingPoint);
-  }, [pendingControlPointId, removeControlPoint]);
-
-  const moveControlPoint = useCallback((id: string, direction: -1 | 1) => {
+  const reorderControlPoint = useCallback((activeId: string, overId: string) => {
     mutatePlan((plan) => {
-      const index = plan.controlPoints.findIndex((point) => point.id === id);
-      const target = index + direction;
-      if (index < 0 || target < 0 || target >= plan.controlPoints.length) return plan;
+      const activeIndex = plan.controlPoints.findIndex((point) => point.id === activeId);
+      const overIndex = plan.controlPoints.findIndex((point) => point.id === overId);
+      if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) return plan;
       const points = [...plan.controlPoints];
-      [points[index], points[target]] = [points[target], points[index]];
+      const [activePoint] = points.splice(activeIndex, 1);
+      points.splice(overIndex, 0, activePoint);
       return { ...plan, controlPoints: points };
-    });
-  }, [mutatePlan]);
-
-  const setAsStart = useCallback((id: string) => {
-    mutatePlan((plan) => {
-      const index = plan.controlPoints.findIndex((point) => point.id === id);
-      if (index <= 0) return plan;
-      return {
-        ...plan,
-        controlPoints: [
-          ...plan.controlPoints.slice(index),
-          ...plan.controlPoints.slice(0, index),
-        ],
-      };
     });
   }, [mutatePlan]);
 
@@ -303,6 +281,7 @@ export function useRoutePlanningWorkspace() {
       setRouteStatus("idle");
       setHistory([]);
       setPendingControlPointId(null);
+      setMapFocusRequest(null);
     }
   }, [activePlan?.id, repository]);
 
@@ -316,6 +295,8 @@ export function useRoutePlanningWorkspace() {
   const selectControlPoint = useCallback((id: string) => {
     setSelectedControlPointId(id);
     setPendingControlPointId((current) => current === id ? current : null);
+    mapFocusSequence.current += 1;
+    setMapFocusRequest({ id, sequence: mapFocusSequence.current });
   }, []);
 
   return {
@@ -332,6 +313,7 @@ export function useRoutePlanningWorkspace() {
     selectedControlPointId,
     selectedRouteLegId,
     pendingControlPointId,
+    mapFocusRequest,
     canUndo: history.length > 0,
     createPlan,
     loadPlan,
@@ -341,8 +323,7 @@ export function useRoutePlanningWorkspace() {
     addCoordinate,
     searchPlaces,
     removeControlPoint,
-    moveControlPoint,
-    setAsStart,
+    reorderControlPoint,
     setStrategy,
     undo,
     selectControlPoint,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
 import { ElevationPanel } from "@/components/elevation-analysis/elevation-panel";
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
@@ -9,18 +9,83 @@ import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-pane
 import { TencentRouteMap } from "@/components/route-presentation/tencent-route-map";
 import { PlaceSearch } from "@/components/route-planning/place-search";
 import { RouteAddressList } from "@/components/route-planning/route-address-list";
+import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
 import { RouteStrategySelector } from "@/components/route-planning/route-strategy-selector";
 import { AlertIcon, LayersIcon } from "@/components/ui/icons";
 import { useRoutePlanningWorkspace } from "@/hooks/use-route-planning-workspace";
 
+const ControlPointDeleteConfirmation = lazy(() =>
+  import("@/components/route-planning/control-point-delete-confirmation").then(
+    (module) => ({ default: module.ControlPointDeleteConfirmation }),
+  ),
+);
+
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
   const points = workspace.activePlan?.controlPoints ?? [];
-  const { addCoordinate: addCoordinateToPlan } = workspace;
+  const {
+    addCoordinate: addCoordinateToPlan,
+    removeControlPoint: removeControlPointFromPlan,
+    selectControlPoint,
+  } = workspace;
+  const [mapControlPointActionId, setMapControlPointActionId] = useState<string | null>(null);
+  const [mapControlPointActionLoaded, setMapControlPointActionLoaded] = useState(false);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
+  const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
+  const deleteCandidate = points.find((point) => point.id === deleteCandidateId);
 
   const addCoordinate = useCallback((coordinate: { latitude: number; longitude: number }) => {
+    setMapControlPointActionId(null);
     void addCoordinateToPlan(coordinate);
   }, [addCoordinateToPlan]);
+
+  const selectMapControlPoint = useCallback((id: string) => {
+    setMapControlPointActionLoaded(true);
+    setMapControlPointActionId(id);
+    selectControlPoint(id);
+  }, [selectControlPoint]);
+
+  const selectAddressControlPoint = useCallback((id: string) => {
+    setMapControlPointActionId(null);
+    selectControlPoint(id);
+  }, [selectControlPoint]);
+
+  const requestControlPointRemoval = useCallback((id: string) => {
+    setDeleteConfirmationLoaded(true);
+    setDeleteCandidateId(id);
+  }, []);
+
+  const confirmControlPointRemoval = useCallback(() => {
+    if (!deleteCandidateId) return;
+    setMapControlPointActionId(null);
+    removeControlPointFromPlan(deleteCandidateId);
+    setDeleteCandidateId(null);
+  }, [deleteCandidateId, removeControlPointFromPlan]);
+
+  useEffect(() => {
+    const removableControlPointId = workspace.pendingControlPointId
+      ?? workspace.selectedControlPointId;
+    if (!removableControlPointId || deleteCandidateId) return;
+    const requestRemovalWithKeyboard = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditing = target?.isContentEditable
+        || target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement;
+      const deleteSelectedPoint = ["Delete", "Backspace"].includes(event.key);
+      const cancelPendingPoint = event.key === "Escape" && workspace.pendingControlPointId;
+      if (isEditing || (!deleteSelectedPoint && !cancelPendingPoint)) return;
+      event.preventDefault();
+      requestControlPointRemoval(removableControlPointId);
+    };
+    window.addEventListener("keydown", requestRemovalWithKeyboard);
+    return () => window.removeEventListener("keydown", requestRemovalWithKeyboard);
+  }, [
+    deleteCandidateId,
+    requestControlPointRemoval,
+    workspace.pendingControlPointId,
+    workspace.selectedControlPointId,
+  ]);
 
   return (
     <main className="planning-workspace">
@@ -31,10 +96,19 @@ export function RoutePlanningWorkspace() {
         selectedControlPointId={workspace.selectedControlPointId}
         selectedRouteLegId={workspace.selectedRouteLegId}
         routeUpdating={workspace.routeStatus === "updating"}
+        focusControlPointRequest={workspace.mapFocusRequest}
+        controlPointDeleteActionId={mapControlPointActionId}
+        controlPointDeleteActionLoaded={mapControlPointActionLoaded}
         onDoubleClick={addCoordinate}
-        onSelectControlPoint={workspace.selectControlPoint}
+        onSelectControlPoint={selectMapControlPoint}
         onSelectRouteLeg={workspace.selectRouteLeg}
+        onDismissControlPointDeleteAction={() => setMapControlPointActionId(null)}
+        onRemoveControlPoint={requestControlPointRemoval}
       />
+
+      {workspace.routeStatus === "updating" && points.length >= 2 ? (
+        <RouteCalculationFeedback controlPointCount={points.length} />
+      ) : null}
 
       <div className="workspace-topbar">
         <RoutePlanSelector
@@ -90,12 +164,24 @@ export function RoutePlanningWorkspace() {
           selectedControlPointId={workspace.selectedControlPointId}
           selectedRouteLegId={workspace.selectedRouteLegId}
           pendingControlPointId={workspace.pendingControlPointId}
-          onSelectControlPoint={workspace.selectControlPoint}
+          onSelectControlPoint={selectAddressControlPoint}
           onSelectRouteLeg={workspace.selectRouteLeg}
-          onMove={workspace.moveControlPoint}
-          onRemove={workspace.removeControlPoint}
-          onSetAsStart={workspace.setAsStart}
+          onReorder={workspace.reorderControlPoint}
+          onRemove={requestControlPointRemoval}
         />
+      ) : null}
+
+      {deleteConfirmationLoaded ? (
+        <Suspense fallback={null}>
+          <ControlPointDeleteConfirmation
+            open={Boolean(deleteCandidate)}
+            pointName={deleteCandidate?.name ?? null}
+            onOpenChange={(open) => {
+              if (!open) setDeleteCandidateId(null);
+            }}
+            onConfirm={confirmControlPointRemoval}
+          />
+        </Suspense>
       ) : null}
 
       {workspace.route ? (

@@ -3,6 +3,14 @@
 import type { DrivingStrategy } from "@roadbook/map/web";
 
 import { AlertIcon, CheckIcon, UndoIcon } from "@/components/ui/icons";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import type { DraftStatus, RouteCalculationStatus } from "@/domain/route-planning/model";
 
 interface RouteStrategySelectorProps {
@@ -36,17 +44,22 @@ export function RouteStrategySelector({ strategy, routeStatus, draftStatus, erro
     <section className="strategy-selector widget" aria-label="路线策略与状态">
       <label>
         <span>全程策略</span>
-        <select value={strategy} onChange={(event) => onStrategyChange(event.target.value as DrivingStrategy)}>
-          {Object.entries(labels).map(([value, label]) => (
-            <option value={value} key={value} disabled={value === "highway"}>
-              {value === "highway" ? `${label}（当前服务不支持）` : label}
-            </option>
-          ))}
-        </select>
+        <Select value={strategy} onValueChange={(value) => onStrategyChange(value as DrivingStrategy)}>
+          <SelectTrigger className="strategy-selector__select-trigger" aria-label="选择全程路线策略">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="strategy-selector__select-content" align="start">
+            {Object.entries(labels).map(([value, label]) => (
+              <SelectItem value={value} key={value} disabled={value === "highway"}>
+                {value === "highway" ? `${label}（当前服务不支持）` : label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <span className="strategy-selector__divider" />
       <span className={`route-feedback ${feedback.className}`} title={feedback.label}>
-        {feedback.className === "is-error" ? <AlertIcon /> : feedback.className === "is-success" ? <CheckIcon /> : <span className="spinner" />}
+        {feedback.className === "is-error" ? <AlertIcon /> : feedback.className === "is-success" ? <CheckIcon /> : <Spinner />}
         <span>{feedback.label}</span>
       </span>
       <button type="button" disabled={!canUndo} onClick={onUndo} className="undo-button" title="撤销最近一次编辑"><UndoIcon />撤销</button>
