@@ -132,7 +132,7 @@ function combineStepPolylines(steps: AmapDrivingPath["steps"]) {
   const path: MapCoordinate[] = [];
   for (const step of steps ?? []) {
     for (const coordinate of decodePolyline(step.polyline)) {
-      const previous = path.at(-1);
+      const previous = path[path.length - 1];
       if (
         previous
         && previous.latitude === coordinate.latitude

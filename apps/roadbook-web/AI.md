@@ -137,6 +137,7 @@ App Router 页面
 - `components/ui` 不得反向依赖路线规划领域。
 - SDK 对象和平台类型不得泄漏到组件 Props。
 - 组件名称使用领域语言，禁止 `LeftPanel`、`RightBox` 等位置型命名。
+- `@roadbook/map` 以 `ES2019` 为 ECMAScript 运行库基线。地图包代码不得直接使用 `Array.prototype.at()` 等 ES2020 及以上内建 API；TypeScript `lib` 只提供类型声明，不负责运行时 polyfill，不得为绕过类型错误而单独提高 `lib`。
 
 ## 6. 地图能力基线
 
@@ -285,6 +286,8 @@ rtk pnpm --filter roadbook-web build
 rtk git diff --check
 ```
 
+- 修改 `packages/map` 时，必须先执行 `rtk pnpm --filter @roadbook/map build`，再执行受影响应用或 monorepo 完整构建，确保 ES2019 类型基线和真实产物构建同时通过。
+- 出现 `TS2550` 等内建 API 兼容性错误时，优先改用 ES2019 等价写法；只有在明确更新运行环境兼容矩阵并提供必要 polyfill 后，才允许提高 `target` 或 `lib`。
 - 只改文档时不要求重新构建应用，但必须检查标题、链接、格式和文档一致性。
 - 生产构建可能自动改写 `apps/roadbook-web/next-env.d.ts`；如果并非本次改动，恢复原有开发声明路径。
 - 浏览器交互变更必须验证实际页面，不仅依赖静态检查。
