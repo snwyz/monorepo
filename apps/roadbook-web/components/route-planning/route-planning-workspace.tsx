@@ -195,6 +195,7 @@ export function RoutePlanningWorkspace() {
       {workspace.route ? (
         <RouteMetricsPanel
           route={workspace.route}
+          provider={workspace.mapProvider}
           controlPoints={points}
           selectedRouteLegId={workspace.selectedRouteLegId}
         />

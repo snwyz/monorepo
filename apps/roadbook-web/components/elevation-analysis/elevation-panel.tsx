@@ -17,7 +17,7 @@ export function ElevationPanel({ hasRoute }: { hasRoute: boolean }) {
       <div className="elevation-panel__content">
         <div className="elevation-empty">
           <svg aria-hidden="true" viewBox="0 0 620 100" preserveAspectRatio="none"><path d="M0 80C55 78 72 42 125 51s70 25 112 15 55-50 104-47 58 57 108 50 81-42 120-31 31 40 51 34"/><path className="baseline" d="M0 86h620"/></svg>
-          <div><strong>当前腾讯地图服务不提供高程数据</strong><span>路线规划和指标可继续使用；接入经授权的高程来源后，这里将展示估算海拔曲线。</span></div>
+          <div><strong>当前地图服务暂未接入高程数据</strong><span>路线规划和指标可继续使用；接入经授权的高程来源后，这里将展示估算海拔曲线。</span></div>
         </div>
       </div>
     </section>

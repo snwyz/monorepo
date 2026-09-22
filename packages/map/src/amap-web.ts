@@ -202,6 +202,11 @@ function locationMarkerSvg() {
 }
 
 function markerContent(source: string, size: number) {
+  const container = document.createElement("div");
+  container.style.width = `${size}px`;
+  container.style.height = `${size}px`;
+  container.style.pointerEvents = "none";
+
   const image = document.createElement("img");
   image.src = source;
   image.alt = "";
@@ -209,8 +214,12 @@ function markerContent(source: string, size: number) {
   image.height = size;
   image.draggable = false;
   image.style.display = "block";
+  image.style.width = "100%";
+  image.style.height = "100%";
+  image.style.maxWidth = "none";
   image.style.pointerEvents = "none";
-  return image;
+  container.appendChild(image);
+  return container;
 }
 
 interface InteractiveOverlay {

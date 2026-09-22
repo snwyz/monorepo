@@ -1,12 +1,13 @@
 "use client";
 
-import type { ClosedDrivingRoute } from "@roadbook/map/web";
+import type { ClosedDrivingRoute, WebMapProvider } from "@roadbook/map/web";
 
 import { ClockIcon, DistanceIcon, ExternalIcon, TrafficIcon } from "@/components/ui/icons";
 import type { ControlPoint } from "@/domain/route-planning/model";
 
 interface RouteMetricsPanelProps {
   route: ClosedDrivingRoute;
+  provider: WebMapProvider;
   controlPoints: ControlPoint[];
   selectedRouteLegId: string | null;
 }
@@ -34,7 +35,12 @@ function createAmapUrl(from: ControlPoint, to: ControlPoint) {
   return `https://uri.amap.com/navigation?${params.toString()}`;
 }
 
-export function RouteMetricsPanel({ route, controlPoints, selectedRouteLegId }: RouteMetricsPanelProps) {
+export function RouteMetricsPanel({
+  route,
+  provider,
+  controlPoints,
+  selectedRouteLegId,
+}: RouteMetricsPanelProps) {
   const selectedLeg = route.legs.find((leg) => leg.id === selectedRouteLegId) ?? null;
   const distance = selectedLeg?.distanceMeters ?? route.distanceMeters;
   const duration = selectedLeg?.durationMinutes ?? route.durationMinutes;
@@ -58,7 +64,7 @@ export function RouteMetricsPanel({ route, controlPoints, selectedRouteLegId }: 
           <span><small>外部导航</small><strong>{from.name} → {to.name}</strong></span><ExternalIcon />
         </a>
       ) : <p className="metrics-hint">选择右侧连接线，可查看路段数据并在高德中打开。</p>}
-      <footer>数据来自腾讯地图 · 预计值仅供参考</footer>
+      <footer>数据来自{provider === "amap" ? "高德" : "腾讯"}地图 · 预计值仅供参考</footer>
     </aside>
   );
 }
