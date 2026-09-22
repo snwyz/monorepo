@@ -32,6 +32,7 @@ export const TrashIcon = (props: IconProps) => <IconBase {...props}><path d="M4 
 export const LocateIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></IconBase>;
 export const UndoIcon = (props: IconProps) => <IconBase {...props}><path d="m9 7-5 5 5 5"/><path d="M4 12h9a6 6 0 0 1 6 6"/></IconBase>;
 export const LayersIcon = (props: IconProps) => <IconBase {...props}><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></IconBase>;
+export const NavigationIcon = (props: IconProps) => <IconBase {...props}><path d="m20 4-7.2 16-2.1-6.7L4 11.2 20 4Z"/><path d="m10.7 13.3 3.6-3.6"/></IconBase>;
 export const MountainIcon = (props: IconProps) => <IconBase {...props}><path d="m3 19 6.5-11 3.2 5 2.2-3 6.1 9H3Z"/></IconBase>;
 export const ClockIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></IconBase>;
 export const DistanceIcon = (props: IconProps) => <IconBase {...props}><path d="M5 6h14M5 18h14M8 3 5 6l3 3M16 15l3 3-3 3"/></IconBase>;

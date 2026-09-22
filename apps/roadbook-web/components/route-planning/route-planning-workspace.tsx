@@ -168,6 +168,7 @@ export function RoutePlanningWorkspace() {
 
       {workspace.activePlan && points.length ? (
         <RouteAddressList
+          provider={workspace.mapProvider}
           controlPoints={points}
           selectedControlPointId={workspace.selectedControlPointId}
           selectedRouteLegId={workspace.selectedRouteLegId}

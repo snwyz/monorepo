@@ -4,6 +4,7 @@ import type { ClosedDrivingRoute, WebMapProvider } from "@roadbook/map/web";
 
 import { ClockIcon, DistanceIcon, ExternalIcon, TrafficIcon } from "@/components/ui/icons";
 import type { ControlPoint } from "@/domain/route-planning/model";
+import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
 interface RouteMetricsPanelProps {
   route: ClosedDrivingRoute;
@@ -21,18 +22,6 @@ function formatDuration(minutes: number) {
   const hours = Math.floor(rounded / 60);
   const rest = rounded % 60;
   return hours ? `${hours} 小时 ${rest} 分` : `${rest} 分钟`;
-}
-
-function createAmapUrl(from: ControlPoint, to: ControlPoint) {
-  const params = new URLSearchParams({
-    from: `${from.longitude},${from.latitude},${from.name}`,
-    to: `${to.longitude},${to.latitude},${to.name}`,
-    mode: "car",
-    policy: "1",
-    src: "roadbook",
-    callnative: "0",
-  });
-  return `https://uri.amap.com/navigation?${params.toString()}`;
 }
 
 export function RouteMetricsPanel({
@@ -60,10 +49,10 @@ export function RouteMetricsPanel({
         <div><TrafficIcon /><span><small>红绿灯</small><strong>{lights === null ? "暂无数据" : `${lights} 个`}</strong></span></div>
       </div>
       {from && to ? (
-        <a className="external-navigation" href={createAmapUrl(from, to)} target="_blank" rel="noreferrer">
+        <a className="external-navigation" href={createMapNavigationUri({ provider, from, to })} target="_blank" rel="noreferrer">
           <span><small>外部导航</small><strong>{from.name} → {to.name}</strong></span><ExternalIcon />
         </a>
-      ) : <p className="metrics-hint">选择右侧连接线，可查看路段数据并在高德中打开。</p>}
+      ) : <p className="metrics-hint">选择右侧连接线，可查看路段数据并在当前地图中打开。</p>}
       <footer>数据来自{provider === "amap" ? "高德" : "腾讯"}地图 · 预计值仅供参考</footer>
     </aside>
   );

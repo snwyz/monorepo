@@ -17,12 +17,16 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type { WebMapProvider } from "@roadbook/map/web";
 import { GripVerticalIcon } from "lucide-react";
+import { useState } from "react";
 
-import { CloseIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, CloseIcon, NavigationIcon } from "@/components/ui/icons";
 import type { ControlPoint } from "@/domain/route-planning/model";
+import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
 interface RouteAddressListProps {
+  provider: WebMapProvider;
   controlPoints: ControlPoint[];
   selectedControlPointId: string | null;
   selectedRouteLegId: string | null;
@@ -34,6 +38,7 @@ interface RouteAddressListProps {
 }
 
 interface SortableAddressSequenceProps {
+  provider: WebMapProvider;
   point: ControlPoint;
   index: number;
   controlPointCount: number;
@@ -47,6 +52,7 @@ interface SortableAddressSequenceProps {
 }
 
 function SortableAddressSequence({
+  provider,
   point,
   index,
   controlPointCount,
@@ -107,21 +113,35 @@ function SortableAddressSequence({
           <CloseIcon />
         </button>
       </div>
-      {controlPointCount > 1 && legId ? (
-        <button
-          type="button"
-          className={`leg-link ${isLegSelected ? "is-selected" : ""}`}
-          onClick={() => onSelectRouteLeg(legId)}
-          aria-label={`选择第 ${index + 1} 路段`}
-        >
-          <span /><small>{index === controlPointCount - 1 ? "返回起点" : `路段 ${index + 1}`}</small>
-        </button>
+      {controlPointCount > 1 && nextPoint && legId ? (
+        <div className={`leg-row ${isLegSelected ? "is-selected" : ""}`}>
+          <button
+            type="button"
+            className="leg-link"
+            onClick={() => onSelectRouteLeg(legId)}
+            aria-label={`选择第 ${index + 1} 路段`}
+          >
+            <span /><small>{index === controlPointCount - 1 ? "返回起点" : `路段 ${index + 1}`}</small>
+          </button>
+          <a
+            className="leg-navigation"
+            href={createMapNavigationUri({ provider, from: point, to: nextPoint })}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`使用${provider === "amap" ? "高德" : "腾讯"}地图导航：${point.name}到${nextPoint.name}`}
+            title={`在${provider === "amap" ? "高德" : "腾讯"}地图中导航`}
+            onClick={() => onSelectRouteLeg(legId)}
+          >
+            <NavigationIcon />
+          </a>
+        </div>
       ) : null}
     </div>
   );
 }
 
 export function RouteAddressList({
+  provider,
   controlPoints,
   selectedControlPointId,
   selectedRouteLegId,
@@ -131,6 +151,7 @@ export function RouteAddressList({
   onReorder,
   onRemove,
 }: RouteAddressListProps) {
+  const [collapsed, setCollapsed] = useState(true);
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
@@ -155,11 +176,24 @@ export function RouteAddressList({
   };
 
   return (
-    <aside className="address-list widget" aria-label="路线控制点">
-      <header className="widget-title">
+    <aside className={`address-list widget${collapsed ? " is-collapsed" : ""}`} aria-label="路线控制点">
+      <header className="widget-title address-list__header address-list__header--desktop">
         <div><small>路线顺序</small><h2>控制点</h2></div>
         <span className="count-badge">{controlPoints.length}/20</span>
       </header>
+      <button
+        type="button"
+        className="widget-title address-list__header address-list__toggle"
+        aria-expanded={!collapsed}
+        aria-label={`${collapsed ? "展开" : "收起"}路线顺序`}
+        onClick={() => setCollapsed((value) => !value)}
+      >
+        <span><small>路线顺序</small><strong>控制点</strong></span>
+        <span className="address-list__toggle-summary">
+          <span className="count-badge">{controlPoints.length}/20</span>
+          <ChevronDownIcon className={collapsed ? undefined : "is-rotated"} />
+        </span>
+      </button>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -176,6 +210,7 @@ export function RouteAddressList({
               return (
                 <SortableAddressSequence
                   key={point.id}
+                  provider={provider}
                   point={point}
                   index={index}
                   controlPointCount={controlPoints.length}
