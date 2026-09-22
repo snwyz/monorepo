@@ -3,10 +3,11 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
 import { ElevationPanel } from "@/components/elevation-analysis/elevation-panel";
+import { MapProviderSwitch } from "@/components/map-provider/map-provider-switch";
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
 import { RoutePlanWelcomePanel } from "@/components/route-plan-catalog/route-plan-welcome-panel";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
-import { TencentRouteMap } from "@/components/route-presentation/tencent-route-map";
+import { RouteMap } from "@/components/route-presentation/route-map";
 import { PlaceSearch } from "@/components/route-planning/place-search";
 import { RouteAddressList } from "@/components/route-planning/route-address-list";
 import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
@@ -89,8 +90,9 @@ export function RoutePlanningWorkspace() {
 
   return (
     <main className="planning-workspace">
-      <TencentRouteMap
+      <RouteMap
         adapter={workspace.adapter}
+        provider={workspace.mapProvider}
         controlPoints={points}
         route={workspace.route}
         selectedControlPointId={workspace.selectedControlPointId}
@@ -104,6 +106,12 @@ export function RoutePlanningWorkspace() {
         onSelectRouteLeg={workspace.selectRouteLeg}
         onDismissControlPointDeleteAction={() => setMapControlPointActionId(null)}
         onRemoveControlPoint={requestControlPointRemoval}
+      />
+
+      <MapProviderSwitch
+        provider={workspace.mapProvider}
+        loading={workspace.mapStatus === "loading"}
+        onProviderChange={workspace.setMapProvider}
       />
 
       {workspace.routeStatus === "updating" && points.length >= 2 ? (
@@ -148,13 +156,13 @@ export function RoutePlanningWorkspace() {
       {workspace.activePlan && points.length < 2 ? (
         <section className="workspace-guide widget" aria-live="polite">
           <span className="guide-step">{points.length + 1}</span>
-          <span><strong>{points.length === 0 ? "添加环线起点" : "继续添加控制点"}</strong><small>{workspace.mapStatus === "ready" ? "搜索地点，或双击腾讯地图选点" : workspace.mapMessage}</small></span>
+          <span><strong>{points.length === 0 ? "添加环线起点" : "继续添加控制点"}</strong><small>{workspace.mapStatus === "ready" ? `搜索地点，或双击${workspace.mapProvider === "amap" ? "高德" : "腾讯"}地图选点` : workspace.mapMessage}</small></span>
         </section>
       ) : null}
 
       {workspace.mapStatus === "unavailable" ? (
         <section className="map-unavailable widget" role="status">
-          <AlertIcon /><span><strong>腾讯地图尚未启用</strong><small>{workspace.mapMessage}</small></span>
+          <AlertIcon /><span><strong>{workspace.mapProvider === "amap" ? "高德" : "腾讯"}地图尚未启用</strong><small>{workspace.mapMessage}</small></span>
         </section>
       ) : null}
 

@@ -2,8 +2,9 @@
 
 import type {
   ClosedDrivingRoute,
-  TencentMapWebAdapter,
+  WebMapAdapter,
   WebMapCanvas,
+  WebMapProvider,
 } from "@roadbook/map/web";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
@@ -20,8 +21,9 @@ const MapControlPointDeleteAction = lazy(() =>
   ),
 );
 
-interface TencentRouteMapProps {
-  adapter: TencentMapWebAdapter | null;
+interface RouteMapProps {
+  adapter: WebMapAdapter | null;
+  provider: WebMapProvider;
   controlPoints: ControlPoint[];
   route: ClosedDrivingRoute | null;
   selectedControlPointId: string | null;
@@ -37,8 +39,9 @@ interface TencentRouteMapProps {
   onRemoveControlPoint: (id: string) => void;
 }
 
-export function TencentRouteMap({
+export function RouteMap({
   adapter,
+  provider,
   controlPoints,
   route,
   selectedControlPointId,
@@ -52,7 +55,7 @@ export function TencentRouteMap({
   onSelectRouteLeg,
   onDismissControlPointDeleteAction,
   onRemoveControlPoint,
-}: TencentRouteMapProps) {
+}: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<WebMapCanvas | null>(null);
   const controlPointsRef = useRef(controlPoints);
@@ -188,7 +191,7 @@ export function TencentRouteMap({
   return (
     <div
       className="route-map"
-      aria-label="腾讯地图路线工作区"
+      aria-label={`${provider === "amap" ? "高德" : "腾讯"}地图路线工作区`}
       onPointerDownCapture={(event) => {
         const target = event.target as HTMLElement;
         if (!target.closest(".map-control-point-delete-action")) {
@@ -221,7 +224,7 @@ export function TencentRouteMap({
           />
         </Suspense>
       ) : null}
-      <div className="map-attribution">腾讯地图</div>
+      <div className="map-attribution">{provider === "amap" ? "高德地图" : "腾讯地图"}</div>
       <div className="map-controls" aria-label="地图工具">
         <button
           type="button"

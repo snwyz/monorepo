@@ -7,6 +7,7 @@ import type {
   TencentMapWebAdapterOptions,
   WebMapCanvas,
   WebMapControlPoint,
+  WebMapAdapter,
   WebMapLocation,
   WebMapOptions,
   WebMapRouteLeg,
@@ -504,7 +505,8 @@ function loadTencentMapSdk(key: string) {
   return sdkPromise;
 }
 
-export class TencentMapWebAdapter {
+export class TencentMapWebAdapter implements WebMapAdapter {
+  readonly provider = "tencent" as const;
   private searchLocation: MapCoordinate | null = null;
   private preciseLocation: MapCoordinate | null = null;
   private preciseLocationRequest: Promise<MapCoordinate> | null = null;

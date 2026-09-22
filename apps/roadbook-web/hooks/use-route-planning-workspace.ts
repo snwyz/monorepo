@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  AmapWebAdapter,
   TencentMapWebAdapter,
   type ClosedDrivingRoute,
   type DrivingStrategy,
   type MapCoordinate,
   type PlaceCandidate,
+  type WebMapAdapter,
+  type WebMapProvider,
 } from "@roadbook/map/web";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -36,9 +39,10 @@ export function useRoutePlanningWorkspace() {
   const [routeStatus, setRouteStatus] = useState<RouteCalculationStatus>("idle");
   const [routeError, setRouteError] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>("idle");
-  const [adapter, setAdapter] = useState<TencentMapWebAdapter | null>(null);
+  const [mapProvider, setMapProviderState] = useState<WebMapProvider>("amap");
+  const [adapter, setAdapter] = useState<WebMapAdapter | null>(null);
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "unavailable">("loading");
-  const [mapMessage, setMapMessage] = useState("正在连接腾讯地图…");
+  const [mapMessage, setMapMessage] = useState("正在连接高德地图…");
   const [selectedControlPointId, setSelectedControlPointId] = useState<string | null>(null);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [pendingControlPointId, setPendingControlPointId] = useState<string | null>(null);
@@ -46,6 +50,16 @@ export function useRoutePlanningWorkspace() {
   const [history, setHistory] = useState<RoutePlan[]>([]);
   const calculationToken = useRef(0);
   const mapFocusSequence = useRef(0);
+  const changeMapProvider = useCallback((provider: WebMapProvider) => {
+    calculationToken.current += 1;
+    setAdapter(null);
+    setMapStatus("loading");
+    setMapMessage(`正在连接${provider === "amap" ? "高德地图" : "腾讯地图"}…`);
+    setRouteStatus((status) => status === "idle" || status === "waiting-for-points"
+      ? status
+      : "updating");
+    setMapProviderState(provider);
+  }, []);
   const calculationPlanId = activePlan?.id;
   const calculationStrategy = activePlan?.strategy;
   const calculationPointsJson = JSON.stringify(
@@ -66,25 +80,31 @@ export function useRoutePlanningWorkspace() {
 
   useEffect(() => {
     let current = true;
-    TencentMapWebAdapter.create({
-      key: process.env.NEXT_PUBLIC_TENCENT_MAP_KEY ?? "",
-    })
+    const providerName = mapProvider === "amap" ? "高德地图" : "腾讯地图";
+    const adapterRequest = mapProvider === "amap"
+      ? AmapWebAdapter.create({
+        key: process.env.NEXT_PUBLIC_AMAP_KEY ?? "",
+      })
+      : TencentMapWebAdapter.create({
+        key: process.env.NEXT_PUBLIC_TENCENT_MAP_KEY ?? "",
+      });
+    adapterRequest
       .then((nextAdapter) => {
         if (!current) return;
         setAdapter(nextAdapter);
         setMapStatus("ready");
-        setMapMessage("腾讯地图已连接");
+        setMapMessage(`${providerName}已连接`);
         setRouteStatus((status) => status === "failed" ? "updating" : status);
       })
       .catch((error: unknown) => {
         if (!current) return;
         setMapStatus("unavailable");
-        setMapMessage(error instanceof Error ? error.message : "腾讯地图暂不可用");
+        setMapMessage(error instanceof Error ? error.message : `${providerName}暂不可用`);
       });
     return () => {
       current = false;
     };
-  }, []);
+  }, [mapProvider]);
 
   useEffect(() => {
     if (!activePlan) return;
@@ -115,15 +135,19 @@ export function useRoutePlanningWorkspace() {
     }
     if (!adapter) {
       const timer = window.setTimeout(() => {
-        setRouteStatus("failed");
-        setRouteError("腾讯地图服务未连接，控制点已保留但暂时无法算路。");
+        if (mapStatus === "loading") {
+          setRouteStatus("updating");
+          setRouteError(null);
+        } else {
+          setRouteStatus("failed");
+          setRouteError(`${mapProvider === "amap" ? "高德" : "腾讯"}地图服务未连接，控制点已保留但暂时无法算路。`);
+        }
       }, 0);
       return () => window.clearTimeout(timer);
     }
     const timer = window.setTimeout(() => {
       setRouteStatus("updating");
       setRouteError(null);
-      setRoute(null);
       adapter
         .calculateClosedDrivingRoute(calculationPoints, calculationStrategy ?? "recommend")
         .then((nextRoute) => {
@@ -138,7 +162,7 @@ export function useRoutePlanningWorkspace() {
         });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [adapter, calculationPlanId, calculationPointsJson, calculationStrategy]);
+  }, [adapter, calculationPlanId, calculationPointsJson, calculationStrategy, mapProvider, mapStatus]);
 
   const createPlan = useCallback(() => {
     const plan = createRoutePlan(createId("plan"));
@@ -301,6 +325,7 @@ export function useRoutePlanningWorkspace() {
 
   return {
     adapter,
+    mapProvider,
     catalog,
     catalogReady,
     activePlan,
@@ -310,6 +335,7 @@ export function useRoutePlanningWorkspace() {
     draftStatus,
     mapStatus,
     mapMessage,
+    setMapProvider: changeMapProvider,
     selectedControlPointId,
     selectedRouteLegId,
     pendingControlPointId,

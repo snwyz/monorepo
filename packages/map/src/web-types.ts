@@ -41,6 +41,8 @@ export interface PlaceCandidate {
 
 export type DrivingStrategy = "recommend" | "highway" | "avoid-highway";
 
+export type WebMapProvider = "amap" | "tencent";
+
 export interface DrivingRouteLeg {
   id: string;
   fromControlPointId: string;
@@ -71,6 +73,27 @@ export interface WebMapCanvas {
   destroy(): void;
 }
 
+export interface WebMapAdapter {
+  readonly provider: WebMapProvider;
+  createMap(container: HTMLElement, options?: WebMapOptions): WebMapCanvas;
+  resolveInitialLocation(): Promise<MapCoordinate | null>;
+  resolveAuthorizedLocation(): Promise<MapCoordinate | null>;
+  searchPlaces(keyword: string): Promise<PlaceCandidate[]>;
+  reverseGeocode(coordinate: MapCoordinate): Promise<{
+    name: string;
+    address: string;
+  }>;
+  calculateClosedDrivingRoute(
+    controlPoints: Array<MapCoordinate & { id: string }>,
+    strategy: DrivingStrategy,
+  ): Promise<ClosedDrivingRoute>;
+}
+
+export interface AmapWebAdapterOptions {
+  key: string;
+  serviceHost?: string;
+}
+
 export interface TencentMapWebAdapterOptions {
   key: string;
 }
@@ -83,5 +106,16 @@ export class TencentMapWebError extends Error {
   ) {
     super(message);
     this.name = "TencentMapWebError";
+  }
+}
+
+export class AmapWebError extends Error {
+  constructor(
+    message: string,
+    readonly code: "MISSING_KEY" | "LOAD_FAILED" | "SERVICE_FAILED" | "INVALID_RESULT",
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = "AmapWebError";
   }
 }

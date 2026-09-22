@@ -119,10 +119,13 @@ App Router 页面
 | 应用用例编排 | `apps/roadbook-web/hooks/use-route-planning-workspace.ts` |
 | 路线规划领域模型 | `apps/roadbook-web/domain/route-planning/model.ts` |
 | 本地路线仓储 | `apps/roadbook-web/infrastructure/route-plan/local-route-plan-repository.ts` |
-| 地图展示组件 | `apps/roadbook-web/components/route-presentation/tencent-route-map.tsx` |
+| 地图展示组件 | `apps/roadbook-web/components/route-presentation/route-map.tsx` |
+| 地图供应商切换 | `apps/roadbook-web/components/map-provider/map-provider-switch.tsx` |
+| 高德地图服务端代理基础 | `apps/roadbook-web/lib/amap/amap-web-service.ts` |
 | 腾讯地图服务端代理基础 | `apps/roadbook-web/lib/tencent-map/tencent-map-web-service.ts` |
 | 地图 Web 领域契约 | `packages/map/src/web-types.ts` |
 | 腾讯地图 Web 适配器 | `packages/map/src/tencent-map-web.ts` |
+| 高德地图 Web 适配器 | `packages/map/src/amap-web.ts` |
 | 地图包 Web 出口 | `packages/map/src/web.ts` |
 | 地图包统一出口 | `packages/map/src/index.ts` |
 
@@ -130,7 +133,7 @@ App Router 页面
 
 - 领域模型不得依赖 React、Next.js 或地图 SDK。
 - 页面和业务组件不得直接访问 `window.TMap`。
-- 业务组件不得读取环境变量、直接访问 `localStorage` 或计算腾讯地图签名。
+- 业务组件不得读取环境变量、直接访问 `localStorage` 或计算地图供应商签名。
 - `components/ui` 不得反向依赖路线规划领域。
 - SDK 对象和平台类型不得泄漏到组件 Props。
 - 组件名称使用领域语言，禁止 `LeftPanel`、`RightBox` 等位置型命名。
@@ -141,8 +144,9 @@ App Router 页面
 
 - `@roadbook/map` 是统一地图领域入口。
 - 小程序继续使用现有腾讯地图小程序 SDK。
-- Web 使用腾讯地图 JavaScript API 和 WebService 服务端代理。
-- Web 页面通过 `WebMapCanvas` 等领域接口操作地图。
+- Web 默认使用高德地图 JavaScript API，并允许用户通过页面右下角 Switch 切换腾讯地图。
+- Web 页面通过 `WebMapAdapter`、`WebMapCanvas` 等领域接口操作地图，不依赖具体供应商类型。
+- 地图供应商切换同时作用于底图、地点搜索、逆地址解析、定位坐标转换和驾车算路。
 
 ### 6.2 服务端地图接口
 
@@ -154,11 +158,22 @@ App Router 页面
 
 地点搜索、逆地址解析、驾车路线、IP 定位和坐标转换不得在浏览器中使用 SK 直接签名。
 
+高德地图对应接口包括：
+
+- `/api/amap/suggestion`
+- `/api/amap/reverse-geocode`
+- `/api/amap/driving`
+- `/api/amap/ip-location`
+- `/api/amap/coordinate-translate`
+- `/_AMapService/*`：高德 JavaScript API 同源安全代理
+
 ### 6.3 环境变量
 
 - `NEXT_PUBLIC_TENCENT_MAP_KEY`：浏览器加载地图 JavaScript API。
 - `TENCENT_MAP_KEY`：服务端 WebService Key，可选。
 - `TENCENT_MAP_SK`：服务端签名密钥，禁止添加 `NEXT_PUBLIC_` 前缀。
+- `NEXT_PUBLIC_AMAP_KEY`：浏览器加载高德地图 JavaScript API 的 Web 端 Key。
+- `AMAP_SK`：与高德 Web 端 Key 配套的 `securityJsCode`，仅允许由服务端安全代理读取。
 
 不得读取、打印、提交或写入文档中的真实 Key/SK。Next.js 环境变量应注入到具体 Web 应用运行环境；不要假设 monorepo 根目录环境文件会自动加载。
 
@@ -198,10 +213,10 @@ App Router 页面
 - `Esc`、`Delete` 或 `Backspace` 删除待确认或当前选中点；输入框编辑时不得误触。
 - 地址解析失败保留坐标并显示“未识别地址”，不阻断路线计算。
 - 两个及以上有效控制点计算闭合路线，最后一个点必须返回第一个点。
-- 路线段顺序请求并节流，避免腾讯地图 QPS 状态码 120。
+- 路线段顺序请求并节流，避免地图供应商 QPS 限流。
 - 控制点变化需要防抖；路线请求使用版本号隔离过期结果。
 - 旧路线在更新期间保持可见并标记状态，不闪成空白。
-- `MultiPolyline` 样式必须使用腾讯地图 `PolylineStyle` 实例。
+- 腾讯适配器的 `MultiPolyline` 样式必须使用腾讯地图 `PolylineStyle` 实例。
 
 ## 9. UI 基线摘要
 
@@ -224,7 +239,8 @@ App Router 页面
 ## 10. 组件实现摘要
 
 - 页面只负责组合，业务组件负责展示，Hook 负责编排，领域层负责规则，基础设施负责外部系统。
-- 地图实例只创建一次；控制点、路线、位置和选中状态通过独立方法增量更新。
+- 同一供应商生命周期内地图实例只创建一次；切换供应商时销毁旧实例，再创建新实例。
+- 控制点、路线、位置和选中状态通过独立方法增量更新。
 - 控制点、用户位置、路线外描边和路线主线使用独立图层。
 - Effect 只同步外部系统，依赖完整，异步回调具备 `disposed`、版本号或取消机制。
 - 可由 Props 推导的值不得重复保存为本地状态。
@@ -284,6 +300,7 @@ rtk git diff --check
 - 滚轮、手势和加减按钮可缩放。
 - 创建至少 5 个控制点的闭合路线，确认所有路线段均绘制。
 - 删除点位后编号、地址列表和路线同步更新。
+- 页面首次进入默认高德地图；右下角 Switch 可切换腾讯地图并重新计算当前路线。
 
 ## 13. 文档同步规则
 

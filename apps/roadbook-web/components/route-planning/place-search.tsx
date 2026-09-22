@@ -87,7 +87,7 @@ export function PlaceSearch({ disabled, onSearch, onSelect }: PlaceSearchProps) 
               setErrorMessage("");
             }
           }}
-          placeholder={disabled ? "腾讯地图连接后可搜索" : "搜索地点，添加路线控制点"}
+          placeholder={disabled ? "地图服务连接后可搜索" : "搜索地点，添加路线控制点"}
           aria-label="搜索地点"
           aria-autocomplete="list"
         />
