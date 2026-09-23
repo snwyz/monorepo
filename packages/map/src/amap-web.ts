@@ -13,6 +13,7 @@ import type {
   WebMapRouteLeg,
 } from "./web-types";
 import { AmapWebError } from "./web-types";
+import { createControlPointLabelVisual } from "./control-point-label";
 
 type AmapPosition = [number, number];
 
@@ -53,6 +54,7 @@ interface AmapNamespace {
   Marker: new (options: Record<string, unknown>) => AmapOverlay;
   Polyline: new (options: Record<string, unknown>) => AmapOverlay;
   Bounds: new (southwest: AmapPosition, northeast: AmapPosition) => unknown;
+  Pixel: new (x: number, y: number) => unknown;
 }
 
 interface AmapServiceResponse {
@@ -187,31 +189,22 @@ async function requestAmapProxy<T extends AmapServiceResponse>(url: string) {
   return payload;
 }
 
-function markerSvg(order: number, active: boolean) {
-  const size = active ? 32 : order === 1 ? 30 : 28;
-  const fill = order === 1 ? "%230a0a0a" : "%23ffffff";
-  const text = order === 1 ? "%23ffffff" : "%230a0a0a";
-  const width = active ? 3 : 2;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${fill}" stroke="%23ffffff" stroke-width="4"/><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${fill}" stroke="%230a0a0a" stroke-width="${width}"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" fill="${text}" font-family="Arial,sans-serif" font-size="12" font-weight="700">${order}</text></svg>`;
-  return `data:image/svg+xml,${svg}`;
-}
-
 function locationMarkerSvg() {
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%231677ff" fill-opacity=".3"/><circle cx="16" cy="16" r="10" fill="%231677ff" stroke="%23ffffff" stroke-width="2"/></svg>';
   return `data:image/svg+xml,${svg}`;
 }
 
-function markerContent(source: string, size: number) {
+function markerContent(source: string, width: number, height = width) {
   const container = document.createElement("div");
-  container.style.width = `${size}px`;
-  container.style.height = `${size}px`;
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
   container.style.pointerEvents = "none";
 
   const image = document.createElement("img");
   image.src = source;
   image.alt = "";
-  image.width = size;
-  image.height = size;
+  image.width = width;
+  image.height = height;
   image.draggable = false;
   image.style.display = "block";
   image.style.width = "100%";
@@ -267,11 +260,12 @@ class AmapCanvasImpl implements WebMapCanvas {
   setControlPoints(controlPoints: WebMapControlPoint[]) {
     this.clearInteractiveOverlays(this.controlPointOverlays);
     this.controlPointOverlays = controlPoints.map((point) => {
-      const size = point.selected ? 32 : point.order === 1 ? 30 : 28;
+      const visual = createControlPointLabelVisual(point);
       const marker = new this.amap.Marker({
         position: toPosition(point),
-        content: markerContent(markerSvg(point.order, Boolean(point.selected)), size),
-        anchor: "center",
+        content: markerContent(visual.source, visual.width, visual.height),
+        anchor: "top-left",
+        offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
         zIndex: point.selected ? 130 : 120,
       });
       const handler = () => this.onMarkerSelect?.(point.id);

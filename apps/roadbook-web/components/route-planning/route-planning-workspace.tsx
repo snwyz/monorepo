@@ -138,7 +138,10 @@ export function RoutePlanningWorkspace() {
       ) : null}
 
       {workspace.activePlan && points.length < 2 ? (
-        <section className="workspace-guide widget" aria-live="polite">
+        <section
+          className={`workspace-guide widget${points.length ? " has-control-points" : ""}`}
+          aria-live="polite"
+        >
           <span className="guide-step">{points.length + 1}</span>
           <span><strong>{points.length === 0 ? "添加环线起点" : "继续添加控制点"}</strong><small>{workspace.mapStatus === "ready" ? `搜索地点，或双击${workspace.mapProvider === "amap" ? "高德" : "腾讯"}地图选点` : workspace.mapMessage}</small></span>
         </section>

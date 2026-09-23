@@ -2,9 +2,8 @@
 
 import type { ClosedDrivingRoute, WebMapProvider } from "@roadbook/map/web";
 
-import { ClockIcon, DistanceIcon, ExternalIcon, TrafficIcon } from "@/components/ui/icons";
+import { ClockIcon, DistanceIcon } from "@/components/ui/icons";
 import type { ControlPoint } from "@/domain/route-planning/model";
-import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
 interface RouteMetricsPanelProps {
   route: ClosedDrivingRoute;
@@ -33,12 +32,11 @@ export function RouteMetricsPanel({
   const selectedLeg = route.legs.find((leg) => leg.id === selectedRouteLegId) ?? null;
   const distance = selectedLeg?.distanceMeters ?? route.distanceMeters;
   const duration = selectedLeg?.durationMinutes ?? route.durationMinutes;
-  const lights = selectedLeg?.trafficLightCount ?? route.trafficLightCount;
-  const from = selectedLeg ? controlPoints.find((point) => point.id === selectedLeg.fromControlPointId) : null;
-  const to = selectedLeg ? controlPoints.find((point) => point.id === selectedLeg.toControlPointId) : null;
-
   return (
-    <aside className="route-metrics widget" aria-label="路线摘要">
+    <aside
+      className={`route-metrics widget${selectedLeg ? " is-leg-selected" : ""}`}
+      aria-label="路线摘要"
+    >
       <header className="widget-title">
         <div><small>{selectedLeg ? "当前路段" : "完整环线"}</small><h2>{selectedLeg ? `路段 ${route.legs.indexOf(selectedLeg) + 1}` : `${controlPoints.length} 个控制点`}</h2></div>
         <span className="status-dot">路线有效</span>
@@ -46,13 +44,7 @@ export function RouteMetricsPanel({
       <div className="metric-grid">
         <div><DistanceIcon /><span><small>预计里程</small><strong>{formatDistance(distance)}</strong></span></div>
         <div><ClockIcon /><span><small>预计驾驶</small><strong>{formatDuration(duration)}</strong></span></div>
-        <div><TrafficIcon /><span><small>红绿灯</small><strong>{lights === null ? "暂无数据" : `${lights} 个`}</strong></span></div>
       </div>
-      {from && to ? (
-        <a className="external-navigation" href={createMapNavigationUri({ provider, from, to })}>
-          <span><small>外部导航</small><strong>{from.name} → {to.name}</strong></span><ExternalIcon />
-        </a>
-      ) : <p className="metrics-hint">选择右侧连接线，可查看路段数据并在当前地图中打开。</p>}
       <footer>数据来自{provider === "amap" ? "高德" : "腾讯"}地图 · 预计值仅供参考</footer>
     </aside>
   );

@@ -20,6 +20,7 @@ export interface WebMapOptions {
 
 export interface WebMapControlPoint extends MapCoordinate {
   id: string;
+  name: string;
   order: number;
   selected?: boolean;
 }

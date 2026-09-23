@@ -13,6 +13,7 @@ import type {
   WebMapRouteLeg,
 } from "./web-types";
 import { TencentMapWebError } from "./web-types";
+import { createControlPointLabelVisual } from "./control-point-label";
 
 interface TencentLatLng {
   getLat(): number;
@@ -49,6 +50,7 @@ interface TencentOverlay {
   off?(event: string, handler: (event: TencentMapEvent) => void): void;
   setMap?(map: TencentMapInstance | null): void;
   setGeometries(geometries: unknown[]): void;
+  setStyles?(styles: Record<string, unknown>): void;
 }
 
 interface TencentSuggestionItem {
@@ -169,22 +171,13 @@ function describeTencentServiceError(error: unknown) {
   return "服务暂不可用";
 }
 
-function markerSvg(order: number, active: boolean) {
-  const size = active ? 32 : order === 1 ? 30 : 28;
-  const fill = order === 1 ? "%230a0a0a" : "%23ffffff";
-  const text = order === 1 ? "%23ffffff" : "%230a0a0a";
-  const width = active ? 3 : 2;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${fill}" stroke="%23ffffff" stroke-width="4"/><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${fill}" stroke="%230a0a0a" stroke-width="${width}"/><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" fill="${text}" font-family="Arial,sans-serif" font-size="12" font-weight="700">${order}</text></svg>`;
-  return `data:image/svg+xml,${svg}`;
-}
-
 function locationMarkerSvg() {
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%231677ff" fill-opacity=".3"/><circle cx="16" cy="16" r="10" fill="%231677ff" stroke="%23ffffff" stroke-width="2"/></svg>';
   return `data:image/svg+xml,${svg}`;
 }
 
 class TencentMapCanvasImpl implements WebMapCanvas {
-  private readonly markerLayer: TencentOverlay;
+  private readonly controlPointLayer: TencentOverlay;
   private readonly userLocationLayer: TencentOverlay;
   private readonly routeOutlineLayer: TencentOverlay;
   private readonly routeLayer: TencentOverlay;
@@ -232,7 +225,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.onLoading = options.onLoading;
     this.onReady = options.onReady;
     this.beginVisualUpdate();
-    this.markerLayer = new tmap.MultiMarker({ map, styles: {}, geometries: [] });
+    this.controlPointLayer = new tmap.MultiMarker({ map, styles: {}, geometries: [] });
     this.routeOutlineLayer = new tmap.MultiPolyline({
       map,
       styles: {
@@ -289,20 +282,20 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     });
     map.on("dblclick", this.doubleClickHandler);
     map.on("tilesloaded", this.mapReadyHandler);
-    this.markerLayer.on?.("click", this.markerClickHandler);
+    this.controlPointLayer.on?.("click", this.markerClickHandler);
     this.routeLayer.on?.("click", this.routeClickHandler);
   }
 
   setControlPoints(controlPoints: WebMapControlPoint[]) {
     const styles: Record<string, unknown> = {};
     const geometries = controlPoints.map((point) => {
-      const styleId = `point-${point.order}-${point.selected ? "selected" : "normal"}`;
-      const size = point.selected ? 32 : point.order === 1 ? 30 : 28;
+      const styleId = `label-${point.id}-${point.selected ? "selected" : "normal"}`;
+      const visual = createControlPointLabelVisual(point);
       styles[styleId] = new this.tmap.MarkerStyle({
-        width: size,
-        height: size,
-        anchor: { x: size / 2, y: size / 2 },
-        src: markerSvg(point.order, Boolean(point.selected)),
+        width: visual.width,
+        height: visual.height,
+        anchor: visual.anchor,
+        src: visual.source,
       });
       return {
         id: point.id,
@@ -310,11 +303,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
         position: new this.tmap.LatLng(point.latitude, point.longitude),
       };
     });
-    this.markerLayer.setGeometries(geometries);
-    const layerWithStyles = this.markerLayer as TencentOverlay & {
-      setStyles?: (next: Record<string, unknown>) => void;
-    };
-    layerWithStyles.setStyles?.(styles);
+    this.controlPointLayer.setStyles?.(styles);
+    this.controlPointLayer.setGeometries(geometries);
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
@@ -463,9 +453,9 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   destroy() {
     this.map.off("dblclick", this.doubleClickHandler);
     this.map.off("tilesloaded", this.mapReadyHandler);
-    this.markerLayer.off?.("click", this.markerClickHandler);
+    this.controlPointLayer.off?.("click", this.markerClickHandler);
     this.routeLayer.off?.("click", this.routeClickHandler);
-    this.markerLayer.setMap?.(null);
+    this.controlPointLayer.setMap?.(null);
     this.userLocationLayer.setMap?.(null);
     this.routeOutlineLayer.setMap?.(null);
     this.routeLayer.setMap?.(null);

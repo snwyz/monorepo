@@ -330,6 +330,7 @@ export function useRoutePlanningWorkspace() {
 
   const selectControlPoint = useCallback((id: string) => {
     setSelectedControlPointId(id);
+    setSelectedRouteLegId(null);
     setPendingControlPointId((current) => current === id ? current : null);
     mapFocusSequence.current += 1;
     setMapFocusRequest({ id, sequence: mapFocusSequence.current });
