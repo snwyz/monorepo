@@ -145,11 +145,9 @@ export function RoutePlanningWorkspace() {
         ) : <div className="workspace-mode widget"><LayersIcon /><span>地图工作台</span></div>}
       </div>
 
-      {workspace.catalogReady && !workspace.activePlan ? (
+      {workspace.catalogReady && !workspace.activePlan && workspace.catalog.length === 0 ? (
         <RoutePlanWelcomePanel
-          catalog={workspace.catalog}
           onCreate={workspace.createPlan}
-          onLoad={workspace.loadPlan}
         />
       ) : null}
 

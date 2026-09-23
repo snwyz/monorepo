@@ -9,18 +9,20 @@ interface SwipeGesture {
   isHorizontal: boolean;
 }
 
-interface UseMobileControlPointSwipeRemovalOptions {
+interface UseMobileSwipeRemovalOptions {
   onRequestRemoval: () => void;
+  ignoredTargetSelector?: string;
 }
 
-const MOBILE_ADDRESS_LIST_MEDIA_QUERY = "(max-width: 760px)";
+const MOBILE_MEDIA_QUERY = "(max-width: 760px)";
 const SWIPE_DELETE_MAX_OFFSET = 96;
 const SWIPE_DELETE_TRIGGER_OFFSET = 72;
 const SWIPE_DIRECTION_THRESHOLD = 8;
 
-export function useMobileControlPointSwipeRemoval({
+export function useMobileSwipeRemoval({
   onRequestRemoval,
-}: UseMobileControlPointSwipeRemovalOptions) {
+  ignoredTargetSelector,
+}: UseMobileSwipeRemovalOptions) {
   const swipeGestureRef = useRef<SwipeGesture | null>(null);
   const suppressClickUntilRef = useRef(0);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -31,12 +33,12 @@ export function useMobileControlPointSwipeRemoval({
     setSwipeOffset(0);
   };
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (
       !event.isPrimary
       || event.button !== 0
-      || !window.matchMedia(MOBILE_ADDRESS_LIST_MEDIA_QUERY).matches
-      || (event.target as HTMLElement).closest(".address-row__navigation")
+      || !window.matchMedia(MOBILE_MEDIA_QUERY).matches
+      || (ignoredTargetSelector && (event.target as Element).closest(ignoredTargetSelector))
     ) return;
 
     swipeGestureRef.current = {
@@ -47,7 +49,7 @@ export function useMobileControlPointSwipeRemoval({
     };
   };
 
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
     const gesture = swipeGestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
 
@@ -72,7 +74,7 @@ export function useMobileControlPointSwipeRemoval({
     setSwipeOffset(Math.max(deltaX, -SWIPE_DELETE_MAX_OFFSET));
   };
 
-  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = (event: ReactPointerEvent<HTMLElement>) => {
     const gesture = swipeGestureRef.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
 
@@ -83,7 +85,7 @@ export function useMobileControlPointSwipeRemoval({
     if (shouldRequestRemoval) onRequestRemoval();
   };
 
-  const handlePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLElement>) => {
     if (swipeGestureRef.current?.pointerId !== event.pointerId) return;
     suppressClickUntilRef.current = 0;
     resetSwipe();

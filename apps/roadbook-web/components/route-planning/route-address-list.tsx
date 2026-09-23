@@ -22,7 +22,7 @@ import { GripVerticalIcon } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 
 import { ChevronDownIcon, CloseIcon, NavigationIcon } from "@/components/ui/icons";
-import { useMobileControlPointSwipeRemoval } from "@/components/route-planning/use-mobile-control-point-swipe-removal";
+import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
 import type { ControlPoint } from "@/domain/route-planning/model";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
@@ -84,8 +84,9 @@ function SortableAddressSequence({
     handlePointerUp,
     handlePointerCancel,
     shouldSuppressClick,
-  } = useMobileControlPointSwipeRemoval({
+  } = useMobileSwipeRemoval({
     onRequestRemoval: () => onRemove(point.id),
+    ignoredTargetSelector: ".address-row__navigation",
   });
 
   const handleSelectClick = () => {

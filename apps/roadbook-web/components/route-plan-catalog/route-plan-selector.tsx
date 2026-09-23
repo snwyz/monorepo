@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type SyntheticEvent } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, PlusIcon, RouteIcon, TrashIcon } from "@/components/ui/icons";
+import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
 import { formatPlanUpdatedAt, type RoutePlan, type RoutePlanSummary } from "@/domain/route-planning/model";
 
 interface RoutePlanSelectorProps {
@@ -15,11 +16,83 @@ interface RoutePlanSelectorProps {
   onDelete: (id: string) => void;
 }
 
+interface RoutePlanRowProps {
+  plan: RoutePlanSummary;
+  isActive: boolean;
+  onLoad: (id: string) => boolean;
+  onLoaded: () => void;
+  onRequestDelete: (id: string, label: string) => void;
+}
+
+function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: RoutePlanRowProps) {
+  const {
+    swipeOffset,
+    isSwipeDeleteReady,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    shouldSuppressClick,
+  } = useMobileSwipeRemoval({
+    onRequestRemoval: () => onRequestDelete(plan.id, plan.name),
+    ignoredTargetSelector: ".plan-row__action",
+  });
+
+  const handleLoad = () => {
+    if (shouldSuppressClick()) return;
+    if (onLoad(plan.id)) onLoaded();
+  };
+
+  return (
+    <div className="plan-row-shell">
+      <div
+        className={`plan-row__swipe-action${isSwipeDeleteReady ? " is-ready" : ""}`}
+        aria-hidden="true"
+      >
+        {isSwipeDeleteReady ? "松开删除" : "左滑删除"}
+      </div>
+      <button
+        className={`plan-row ${isActive ? "is-active" : ""}${swipeOffset < 0 ? " is-swiping" : ""}`}
+        style={{ "--plan-swipe-offset": `${swipeOffset}px` } as CSSProperties}
+        type="button"
+        disabled={!plan.loadable}
+        onClick={handleLoad}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        <span className="plan-row__route"><span /><span /><span /></span>
+        <span className="plan-row__copy">
+          <strong>{plan.name}</strong>
+          <small>{plan.controlPointCount} 个控制点 · {formatPlanUpdatedAt(plan.updatedAt)}</small>
+        </span>
+        <span
+          className="plan-row__action"
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRequestDelete(plan.id, plan.name);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.stopPropagation();
+            onRequestDelete(plan.id, plan.name);
+          }}
+          aria-label={`删除${plan.name}`}
+        >
+          <TrashIcon />
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRename, onDelete }: RoutePlanSelectorProps) {
   const [open, setOpen] = useState(false);
 
-  const remove = (event: SyntheticEvent, id: string, label: string) => {
-    event.stopPropagation();
+  const requestDelete = (id: string, label: string) => {
     if (window.confirm(`确认删除“${label}”吗？此操作只删除当前浏览器中的方案。`)) onDelete(id);
   };
 
@@ -42,24 +115,14 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
           <div className="plan-selector__list">
             {catalog.length === 0 ? <p className="empty-list">还没有路线方案</p> : null}
             {catalog.map((plan) => (
-              <button
-                className={`plan-row ${activePlan?.id === plan.id ? "is-active" : ""}`}
-                type="button"
+              <RoutePlanRow
                 key={plan.id}
-                disabled={!plan.loadable}
-                onClick={() => {
-                  if (onLoad(plan.id)) setOpen(false);
-                }}
-              >
-                <span className="plan-row__route"><span /><span /><span /></span>
-                <span className="plan-row__copy">
-                  <strong>{plan.name}</strong>
-                  <small>{plan.controlPointCount} 个控制点 · {formatPlanUpdatedAt(plan.updatedAt)}</small>
-                </span>
-                <span className="plan-row__action" role="button" tabIndex={0} onClick={(event) => remove(event, plan.id, plan.name)} onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") remove(event, plan.id, plan.name);
-                }} aria-label={`删除${plan.name}`}><TrashIcon /></span>
-              </button>
+                plan={plan}
+                isActive={activePlan?.id === plan.id}
+                onLoad={onLoad}
+                onLoaded={() => setOpen(false)}
+                onRequestDelete={requestDelete}
+              />
             ))}
           </div>
           <Button size="lg" className="plan-selector__create" onClick={() => { onCreate(); setOpen(false); }}>
