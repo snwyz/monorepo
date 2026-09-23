@@ -7,6 +7,7 @@ import { CloseIcon, FilledLocationIcon, SearchIcon } from "@/components/ui/icons
 
 interface PlaceSearchProps {
   disabled?: boolean;
+  disabledReason?: string;
   placeholder?: string;
   onSearch: (keyword: string) => Promise<PlaceCandidate[]>;
   onSelect: (candidate: PlaceCandidate) => void;
@@ -14,6 +15,7 @@ interface PlaceSearchProps {
 
 export function PlaceSearch({
   disabled,
+  disabledReason,
   placeholder = "搜索地点，添加路线控制点",
   onSearch,
   onSelect,
@@ -93,14 +95,15 @@ export function PlaceSearch({
               setErrorMessage("");
             }
           }}
-          placeholder={disabled ? "地图服务连接后可搜索" : placeholder}
-          aria-label="搜索地点"
+          placeholder={disabled ? disabledReason ?? "地图服务连接后可搜索" : placeholder}
+          aria-label={disabled && disabledReason ? disabledReason : "搜索地点"}
+          title={disabledReason}
           aria-autocomplete="list"
         />
         {query ? <button className="place-search__clear" type="button" aria-label="清空搜索" onClick={clear}><CloseIcon /></button> : <kbd>⌘ K</kbd>}
         <button className="place-search__submit" type="submit" disabled={disabled || query.trim().length < 2}>搜索</button>
       </form>
-      {items.length > 0 || status !== "idle" && query.trim().length >= 2 ? (
+      {!disabled && (items.length > 0 || status !== "idle" && query.trim().length >= 2) ? (
         <div className="place-search__results" role="listbox">
           {status === "loading" ? <p className="search-message"><span className="spinner" />正在搜索附近地点…</p> : null}
           {status === "empty" ? <p className="search-message">没有找到匹配地点，请换个关键词。</p> : null}

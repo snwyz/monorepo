@@ -10,8 +10,52 @@ interface WebMapViewportState {
   height: number;
 }
 
+export interface WebMapCoordinateBounds {
+  southwest: MapCoordinate;
+  northeast: MapCoordinate;
+  validCoordinateCount: number;
+}
+
 const TILE_SIZE = 256;
 const MAX_MERCATOR_LATITUDE = 85.05112878;
+
+export function isValidMapCoordinate(coordinate: MapCoordinate) {
+  return Number.isFinite(coordinate.latitude)
+    && Number.isFinite(coordinate.longitude)
+    && coordinate.latitude >= -90
+    && coordinate.latitude <= 90
+    && coordinate.longitude >= -180
+    && coordinate.longitude <= 180
+    && (Math.abs(coordinate.latitude) > 0.000001
+      || Math.abs(coordinate.longitude) > 0.000001);
+}
+
+export function getCoordinateBounds(
+  coordinates: MapCoordinate[],
+): WebMapCoordinateBounds | null {
+  let minLatitude = Number.POSITIVE_INFINITY;
+  let maxLatitude = Number.NEGATIVE_INFINITY;
+  let minLongitude = Number.POSITIVE_INFINITY;
+  let maxLongitude = Number.NEGATIVE_INFINITY;
+  let validCoordinateCount = 0;
+
+  for (let index = 0; index < coordinates.length; index += 1) {
+    const coordinate = coordinates[index];
+    if (!isValidMapCoordinate(coordinate)) continue;
+    validCoordinateCount += 1;
+    minLatitude = Math.min(minLatitude, coordinate.latitude);
+    maxLatitude = Math.max(maxLatitude, coordinate.latitude);
+    minLongitude = Math.min(minLongitude, coordinate.longitude);
+    maxLongitude = Math.max(maxLongitude, coordinate.longitude);
+  }
+
+  if (validCoordinateCount === 0) return null;
+  return {
+    southwest: { latitude: minLatitude, longitude: minLongitude },
+    northeast: { latitude: maxLatitude, longitude: maxLongitude },
+    validCoordinateCount,
+  };
+}
 
 function projectCoordinate(coordinate: MapCoordinate, worldSize: number) {
   const latitude = Math.max(
@@ -50,10 +94,15 @@ export function areCoordinatesInsideViewport(
   const top = -viewport.height / 2 + padding.top;
   const bottom = viewport.height / 2 - padding.bottom;
 
-  return coordinates.every((coordinate) => {
+  let validCoordinateCount = 0;
+  for (let index = 0; index < coordinates.length; index += 1) {
+    const coordinate = coordinates[index];
+    if (!isValidMapCoordinate(coordinate)) continue;
+    validCoordinateCount += 1;
     const projected = projectCoordinate(coordinate, worldSize);
     const x = wrappedHorizontalDelta(projected.x, projectedCenter.x, worldSize);
     const y = projected.y - projectedCenter.y;
-    return x >= left && x <= right && y >= top && y <= bottom;
-  });
+    if (x < left || x > right || y < top || y > bottom) return false;
+  }
+  return validCoordinateCount > 0;
 }

@@ -16,7 +16,11 @@ import type {
 } from "./web-types";
 import { AmapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
-import { areCoordinatesInsideViewport } from "./web-viewport";
+import {
+  areCoordinatesInsideViewport,
+  getCoordinateBounds,
+  isValidMapCoordinate,
+} from "./web-viewport";
 
 type AmapPosition = [number, number];
 
@@ -94,17 +98,6 @@ const DEFAULT_CENTER: MapCoordinate = { latitude: 34.3416, longitude: 108.9398 }
 const MAX_PRECISE_LOCATION_ACCURACY_METERS = 50_000;
 let sdkPromise: Promise<AmapNamespace> | null = null;
 
-function isValidCoordinate(coordinate: MapCoordinate) {
-  return Number.isFinite(coordinate.latitude)
-    && Number.isFinite(coordinate.longitude)
-    && coordinate.latitude >= -90
-    && coordinate.latitude <= 90
-    && coordinate.longitude >= -180
-    && coordinate.longitude <= 180
-    && (Math.abs(coordinate.latitude) > 0.000001
-      || Math.abs(coordinate.longitude) > 0.000001);
-}
-
 function toPosition(coordinate: MapCoordinate): AmapPosition {
   return [coordinate.longitude, coordinate.latitude];
 }
@@ -120,7 +113,7 @@ function parseCoordinate(value: unknown): MapCoordinate | null {
     latitude: Number(latitudeText),
     longitude: Number(longitudeText),
   };
-  return isValidCoordinate(coordinate) ? coordinate : null;
+  return isValidMapCoordinate(coordinate) ? coordinate : null;
 }
 
 function decodePolyline(value: string | undefined): MapCoordinate[] {
@@ -350,7 +343,7 @@ class AmapCanvasImpl implements WebMapCanvas {
 
   setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null) {
     this.clearRouteLegInsertion();
-    if (!insertion || !isValidCoordinate(insertion.coordinate)) return;
+    if (!insertion || !isValidMapCoordinate(insertion.coordinate)) return;
 
     const path = [insertion.from, insertion.coordinate, insertion.to].map(toPosition);
     this.routeLegInsertionOutline = new this.amap.Polyline({
@@ -414,7 +407,7 @@ class AmapCanvasImpl implements WebMapCanvas {
   setUserLocation(location: WebMapLocation | null) {
     this.userLocationOverlay?.setMap(null);
     this.userLocationOverlay = null;
-    if (!location || !isValidCoordinate(location.coordinate)) return;
+    if (!location || !isValidMapCoordinate(location.coordinate)) return;
     const marker = new this.amap.Marker({
       position: toPosition(location.coordinate),
       content: markerContent(locationMarkerSvg(), 32),
@@ -426,11 +419,11 @@ class AmapCanvasImpl implements WebMapCanvas {
   }
 
   setCenter(center: MapCoordinate) {
-    if (isValidCoordinate(center)) this.map.setCenter(toPosition(center));
+    if (isValidMapCoordinate(center)) this.map.setCenter(toPosition(center));
   }
 
   setView(center: MapCoordinate, zoom: number) {
-    if (!isValidCoordinate(center)) return;
+    if (!isValidMapCoordinate(center)) return;
     this.map.setCenter(toPosition(center));
     this.map.setZoom(zoom);
   }
@@ -439,9 +432,8 @@ class AmapCanvasImpl implements WebMapCanvas {
     coordinates: MapCoordinate[],
     padding: WebMapViewportPadding,
   ) {
-    const validCoordinates = coordinates.filter(isValidCoordinate);
     const center = this.map.getCenter();
-    return areCoordinatesInsideViewport(validCoordinates, {
+    return areCoordinatesInsideViewport(coordinates, {
       center: toCoordinate(center),
       zoom: this.map.getZoom(),
       width: this.container.clientWidth,
@@ -453,18 +445,16 @@ class AmapCanvasImpl implements WebMapCanvas {
     coordinates: MapCoordinate[],
     options: Parameters<WebMapCanvas["fitCoordinates"]>[1] = {},
   ) {
-    const validCoordinates = coordinates.filter(isValidCoordinate);
-    if (validCoordinates.length === 0) return;
-    if (validCoordinates.length === 1) {
-      this.setView(validCoordinates[0], 13);
+    const bounds = getCoordinateBounds(coordinates);
+    if (!bounds) return;
+    if (bounds.validCoordinateCount === 1) {
+      this.setView(bounds.southwest, 13);
       return;
     }
-    const latitudes = validCoordinates.map((point) => point.latitude);
-    const longitudes = validCoordinates.map((point) => point.longitude);
     const padding = options.padding ?? { top: 48, right: 48, bottom: 48, left: 48 };
     this.map.setBounds(new this.amap.Bounds(
-      [Math.min(...longitudes), Math.min(...latitudes)],
-      [Math.max(...longitudes), Math.max(...latitudes)],
+      toPosition(bounds.southwest),
+      toPosition(bounds.northeast),
     ), options.animated === false, [
       padding.top,
       padding.bottom,
@@ -479,7 +469,7 @@ class AmapCanvasImpl implements WebMapCanvas {
 
   async locate() {
     const result = await this.resolveCurrentLocation();
-    if (!isValidCoordinate(result.coordinate)) {
+    if (!isValidMapCoordinate(result.coordinate)) {
       throw new AmapWebError("定位结果无效", "INVALID_RESULT");
     }
     this.setUserLocation(result);
@@ -834,7 +824,7 @@ export class AmapWebAdapter implements WebMapAdapter {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           };
-          if (!isValidCoordinate(coordinate)) {
+          if (!isValidMapCoordinate(coordinate)) {
             reject(new AmapWebError("浏览器返回了无效位置", "INVALID_RESULT"));
             return;
           }
@@ -908,7 +898,7 @@ export class AmapWebAdapter implements WebMapAdapter {
       latitude: (southwest.latitude + northeast.latitude) / 2,
       longitude: (southwest.longitude + northeast.longitude) / 2,
     };
-    return isValidCoordinate(coordinate) ? coordinate : null;
+    return isValidMapCoordinate(coordinate) ? coordinate : null;
   }
 
   private scheduleDrivingRequest<T>(operation: () => Promise<T>) {

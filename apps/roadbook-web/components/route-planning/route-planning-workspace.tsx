@@ -1,6 +1,13 @@
 "use client";
 
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ElevationPanel } from "@/components/elevation-analysis/elevation-panel";
 import { MapProviderSwitch } from "@/components/map-provider/map-provider-switch";
@@ -13,6 +20,8 @@ import { RouteAddressList } from "@/components/route-planning/route-address-list
 import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
 import { RouteStrategySelector } from "@/components/route-planning/route-strategy-selector";
 import { AlertIcon, LayersIcon } from "@/components/ui/icons";
+import { appToast } from "@/components/ui/toast-store";
+import { ROUTE_PLAN_CONTROL_POINT_LIMIT } from "@/domain/route-planning/model";
 import { useRoutePlanningWorkspace } from "@/hooks/use-route-planning-workspace";
 
 const ControlPointDeleteConfirmation = lazy(() =>
@@ -24,30 +33,66 @@ const ControlPointDeleteConfirmation = lazy(() =>
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
   const points = workspace.activePlan?.controlPoints ?? [];
-  const searchPlaceholder = workspace.startPointStatus === "locating"
-    ? workspace.startPointMessage ?? "正在获取当前位置作为起点…"
-    : workspace.startPointStatus === "manual-required" && points.length === 0
-      ? workspace.startPointMessage ?? "定位失败，请搜索地点添加起点"
-      : points.length === 0
-        ? "搜索地点，规划当前位置出发路线"
-        : "搜索地点，继续添加控制点";
+  const controlPointLimitReached =
+    points.length >= ROUTE_PLAN_CONTROL_POINT_LIMIT;
+  const controlPointLimitMessage = `当前点位已满（${points.length}/${ROUTE_PLAN_CONTROL_POINT_LIMIT}），请先删除一个点位`;
+  const searchDisabledReason = controlPointLimitReached
+    ? controlPointLimitMessage
+    : workspace.mapStatus !== "ready"
+      ? "地图服务连接后可搜索"
+      : undefined;
+  const searchPlaceholder =
+    workspace.startPointStatus === "locating"
+      ? (workspace.startPointMessage ?? "正在获取当前位置作为起点…")
+      : workspace.startPointStatus === "manual-required" && points.length === 0
+        ? (workspace.startPointMessage ?? "定位失败，请搜索地点添加起点")
+        : points.length === 0
+          ? "搜索地点，规划当前位置出发路线"
+          : "搜索地点，继续添加控制点";
   const {
     addCoordinate: addCoordinateToPlan,
     clearRouteLegSelection,
     removeControlPoint: removeControlPointFromPlan,
     selectControlPoint,
   } = workspace;
-  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
-  const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
-  const deleteCandidate = points.find((point) => point.id === deleteCandidateId);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(
+    null,
+  );
+  const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] =
+    useState(false);
+  const limitToastPlanIdRef = useRef<string | null>(null);
+  const deleteCandidate = points.find(
+    (point) => point.id === deleteCandidateId,
+  );
 
-  const addCoordinate = useCallback((coordinate: { latitude: number; longitude: number }) => {
-    void addCoordinateToPlan(coordinate);
-  }, [addCoordinateToPlan]);
+  useEffect(() => {
+    const activePlanId = workspace.activePlan?.id ?? null;
+    if (!controlPointLimitReached || !activePlanId) {
+      limitToastPlanIdRef.current = null;
+      return;
+    }
+    if (limitToastPlanIdRef.current === activePlanId) return;
+    limitToastPlanIdRef.current = activePlanId;
+    appToast.info(controlPointLimitMessage);
+  }, [
+    controlPointLimitMessage,
+    controlPointLimitReached,
+    workspace.activePlan?.id,
+  ]);
 
-  const selectMapControlPoint = useCallback((id: string) => {
-    selectControlPoint(id);
-  }, [selectControlPoint]);
+  const addCoordinate = useCallback(
+    (coordinate: { latitude: number; longitude: number }) => {
+      void addCoordinateToPlan(coordinate);
+    },
+    [addCoordinateToPlan],
+  );
+
+  const selectMapControlPoint = useCallback(
+    (id: string) => {
+      selectControlPoint(id);
+    },
+    [selectControlPoint],
+  );
 
   const requestControlPointRemoval = useCallback((id: string) => {
     setDeleteConfirmationLoaded(true);
@@ -61,23 +106,26 @@ export function RoutePlanningWorkspace() {
   }, [deleteCandidateId, removeControlPointFromPlan]);
 
   useEffect(() => {
-    const removableControlPointId = workspace.pendingControlPointId
-      ?? workspace.selectedControlPointId;
+    const removableControlPointId =
+      workspace.pendingControlPointId ?? workspace.selectedControlPointId;
     if (!removableControlPointId || deleteCandidateId) return;
     const requestRemovalWithKeyboard = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const isEditing = target?.isContentEditable
-        || target instanceof HTMLInputElement
-        || target instanceof HTMLTextAreaElement
-        || target instanceof HTMLSelectElement;
+      const isEditing =
+        target?.isContentEditable ||
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement;
       const deleteSelectedPoint = ["Delete", "Backspace"].includes(event.key);
-      const cancelPendingPoint = event.key === "Escape" && workspace.pendingControlPointId;
+      const cancelPendingPoint =
+        event.key === "Escape" && workspace.pendingControlPointId;
       if (isEditing || (!deleteSelectedPoint && !cancelPendingPoint)) return;
       event.preventDefault();
       requestControlPointRemoval(removableControlPointId);
     };
     window.addEventListener("keydown", requestRemovalWithKeyboard);
-    return () => window.removeEventListener("keydown", requestRemovalWithKeyboard);
+    return () =>
+      window.removeEventListener("keydown", requestRemovalWithKeyboard);
   }, [
     deleteCandidateId,
     requestControlPointRemoval,
@@ -89,17 +137,21 @@ export function RoutePlanningWorkspace() {
     if (!workspace.selectedRouteLegId) return;
     const clearRouteSelectionWithKeyboard = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const isEditing = target?.isContentEditable
-        || target instanceof HTMLInputElement
-        || target instanceof HTMLTextAreaElement
-        || target instanceof HTMLSelectElement;
-      const isDialogOpen = Boolean(target?.closest('[role="alertdialog"], [role="dialog"]'));
+      const isEditing =
+        target?.isContentEditable ||
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement;
+      const isDialogOpen = Boolean(
+        target?.closest('[role="alertdialog"], [role="dialog"]'),
+      );
       if (isEditing || isDialogOpen || event.key !== "Escape") return;
       event.preventDefault();
       clearRouteLegSelection();
     };
     window.addEventListener("keydown", clearRouteSelectionWithKeyboard);
-    return () => window.removeEventListener("keydown", clearRouteSelectionWithKeyboard);
+    return () =>
+      window.removeEventListener("keydown", clearRouteSelectionWithKeyboard);
   }, [clearRouteLegSelection, workspace.selectedRouteLegId]);
 
   return (
@@ -142,7 +194,9 @@ export function RoutePlanningWorkspace() {
           onClearAll={workspace.clearPlans}
         />
         <PlaceSearch
-          disabled={workspace.mapStatus !== "ready"}
+          key={searchDisabledReason ?? "search-enabled"}
+          disabled={Boolean(searchDisabledReason)}
+          disabledReason={searchDisabledReason}
           placeholder={searchPlaceholder}
           onSearch={workspace.searchPlaces}
           onSelect={workspace.addPlaceCandidate}
@@ -157,18 +211,29 @@ export function RoutePlanningWorkspace() {
             onStrategyChange={workspace.setStrategy}
             onUndo={workspace.undo}
           />
-        ) : <div className="workspace-mode widget"><LayersIcon /><span>地图工作台</span></div>}
+        ) : (
+          <div className="workspace-mode widget">
+            <LayersIcon />
+            <span>地图工作台</span>
+          </div>
+        )}
       </div>
 
-      {workspace.catalogReady && !workspace.activePlan && workspace.catalog.length === 0 ? (
-        <RoutePlanWelcomePanel
-          onCreate={workspace.createPlan}
-        />
+      {workspace.catalogReady &&
+      !workspace.activePlan &&
+      workspace.catalog.length === 0 ? (
+        <RoutePlanWelcomePanel onCreate={workspace.createPlan} />
       ) : null}
 
       {workspace.mapStatus === "unavailable" ? (
         <section className="map-unavailable widget" role="status">
-          <AlertIcon /><span><strong>{workspace.mapProvider === "amap" ? "高德" : "腾讯"}地图尚未启用</strong><small>{workspace.mapMessage}</small></span>
+          <AlertIcon />
+          <span>
+            <strong>
+              {workspace.mapProvider === "amap" ? "高德" : "腾讯"}地图尚未启用
+            </strong>
+            <small>{workspace.mapMessage}</small>
+          </span>
         </section>
       ) : null}
 

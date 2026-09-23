@@ -16,7 +16,11 @@ import type {
 } from "./web-types";
 import { TencentMapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
-import { areCoordinatesInsideViewport } from "./web-viewport";
+import {
+  areCoordinatesInsideViewport,
+  getCoordinateBounds,
+  isValidMapCoordinate,
+} from "./web-viewport";
 
 interface TencentLatLng {
   getLat(): number;
@@ -108,17 +112,6 @@ function toCoordinate(value: TencentLatLng): MapCoordinate {
 
 function toWebServiceCoordinate(value: TencentWebServiceLocation): MapCoordinate {
   return { latitude: value.lat, longitude: value.lng };
-}
-
-function isValidCoordinate(coordinate: MapCoordinate) {
-  return Number.isFinite(coordinate.latitude)
-    && Number.isFinite(coordinate.longitude)
-    && coordinate.latitude >= -90
-    && coordinate.latitude <= 90
-    && coordinate.longitude >= -180
-    && coordinate.longitude <= 180
-    && (Math.abs(coordinate.latitude) > 0.000001
-      || Math.abs(coordinate.longitude) > 0.000001);
 }
 
 async function requestTencentMapProxy<T extends TencentWebServiceResponse>(url: string) {
@@ -483,7 +476,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   setUserLocation(location: WebMapLocation | null) {
-    if (!location || !isValidCoordinate(location.coordinate)) {
+    if (!location || !isValidMapCoordinate(location.coordinate)) {
       this.userLocationLayer.setGeometries([]);
       locationDebug("info", "map:user-location-cleared");
       return;
@@ -500,7 +493,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   setCenter(center: MapCoordinate) {
-    if (!isValidCoordinate(center)) {
+    if (!isValidMapCoordinate(center)) {
       locationDebug("error", "map:set-center-rejected", { center });
       return;
     }
@@ -517,7 +510,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   setView(center: MapCoordinate, zoom: number) {
-    if (!isValidCoordinate(center)) {
+    if (!isValidMapCoordinate(center)) {
       locationDebug("error", "map:set-view-rejected", { center, zoom });
       return;
     }
@@ -552,23 +545,22 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     coordinates: MapCoordinate[],
     options: Parameters<WebMapCanvas["fitCoordinates"]>[1] = {},
   ) {
-    if (coordinates.length === 0) return;
-    if (coordinates.length === 1) {
+    const bounds = getCoordinateBounds(coordinates);
+    if (!bounds) return;
+    if (bounds.validCoordinateCount === 1) {
       this.map.setCenter(
-        new this.tmap.LatLng(coordinates[0].latitude, coordinates[0].longitude),
+        new this.tmap.LatLng(bounds.southwest.latitude, bounds.southwest.longitude),
       );
       this.map.setZoom(13);
       return;
     }
-    const latitudes = coordinates.map((point) => point.latitude);
-    const longitudes = coordinates.map((point) => point.longitude);
     const southwest = new this.tmap.LatLng(
-      Math.min(...latitudes),
-      Math.min(...longitudes),
+      bounds.southwest.latitude,
+      bounds.southwest.longitude,
     );
     const northeast = new this.tmap.LatLng(
-      Math.max(...latitudes),
-      Math.max(...longitudes),
+      bounds.northeast.latitude,
+      bounds.northeast.longitude,
     );
     const padding = options.padding ?? { top: 48, right: 48, bottom: 48, left: 48 };
     this.map.fitBounds(new this.tmap.LatLngBounds(southwest, northeast), {
@@ -588,7 +580,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     locationDebug("info", "map:locate-clicked");
     const result = await this.resolveCurrentLocation();
     locationDebug("info", "map:location-resolved", result);
-    if (!isValidCoordinate(result.coordinate)) {
+    if (!isValidMapCoordinate(result.coordinate)) {
       locationDebug("error", "map:location-rejected", result);
       throw new TencentMapWebError("定位结果无效", "INVALID_RESULT");
     }
@@ -664,7 +656,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
 
   private updateRouteLegInsertion(coordinate: MapCoordinate) {
     const insertion = this.routeLegInsertion;
-    if (!insertion || !isValidCoordinate(coordinate)) return;
+    if (!insertion || !isValidMapCoordinate(coordinate)) return;
     this.routeLegInsertionCoordinate = coordinate;
     const paths = [insertion.from, coordinate, insertion.to].map(
       (point) => new this.tmap.LatLng(point.latitude, point.longitude),
@@ -1049,7 +1041,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
             accuracy,
             timestamp: position.timestamp,
           });
-          if (!isValidCoordinate(coordinate)) {
+          if (!isValidMapCoordinate(coordinate)) {
             locationDebug("error", "geolocation:invalid-coordinate", { coordinate });
             reject(new TencentMapWebError("浏览器返回了无效位置", "INVALID_RESULT"));
             return;
@@ -1110,7 +1102,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
           const translated = response.locations?.[0]
             ? toWebServiceCoordinate(response.locations[0])
             : coordinate;
-          const normalized = isValidCoordinate(translated) ? translated : coordinate;
+          const normalized = isValidMapCoordinate(translated) ? translated : coordinate;
           locationDebug("info", "coordinate-translate:success", {
             source: coordinate,
             translated,
@@ -1146,7 +1138,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
       return null;
     }
     const coordinate = toWebServiceCoordinate(response.result.location);
-    if (!isValidCoordinate(coordinate)) {
+    if (!isValidMapCoordinate(coordinate)) {
       locationDebug("error", "ip-location:invalid-coordinate", { coordinate });
       return null;
     }
