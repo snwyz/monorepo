@@ -75,4 +75,14 @@ export class LocalRoutePlanRepository {
     const catalog = this.list().filter((item) => item.id !== id);
     window.localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
   }
+
+  clearAll() {
+    const snapshotKeys: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(SNAPSHOT_PREFIX)) snapshotKeys.push(key);
+    }
+    snapshotKeys.forEach((key) => window.localStorage.removeItem(key));
+    window.localStorage.removeItem(CATALOG_KEY);
+  }
 }

@@ -120,6 +120,7 @@ export function RoutePlanningWorkspace() {
           onLoad={workspace.loadPlan}
           onRename={workspace.renamePlan}
           onDelete={workspace.deletePlan}
+          onClearAll={workspace.clearPlans}
         />
         <PlaceSearch
           disabled={workspace.mapStatus !== "ready"}

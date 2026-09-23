@@ -32,6 +32,7 @@ export function RouteMetricsPanel({
   const selectedLeg = route.legs.find((leg) => leg.id === selectedRouteLegId) ?? null;
   const distance = selectedLeg?.distanceMeters ?? route.distanceMeters;
   const duration = selectedLeg?.durationMinutes ?? route.durationMinutes;
+  const distanceLabel = selectedLeg ? "路段里程" : "环线里程";
   return (
     <aside
       className={`route-metrics widget${selectedLeg ? " is-leg-selected" : ""}`}
@@ -42,7 +43,7 @@ export function RouteMetricsPanel({
         <span className="status-dot">路线有效</span>
       </header>
       <div className="metric-grid">
-        <div><DistanceIcon /><span><small>预计里程</small><strong>{formatDistance(distance)}</strong></span></div>
+        <div><DistanceIcon /><span><small>{distanceLabel}</small><strong>{formatDistance(distance)}</strong></span></div>
         <div><ClockIcon /><span><small>预计驾驶</small><strong>{formatDuration(duration)}</strong></span></div>
       </div>
       <footer>数据来自{provider === "amap" ? "高德" : "腾讯"}地图 · 预计值仅供参考</footer>

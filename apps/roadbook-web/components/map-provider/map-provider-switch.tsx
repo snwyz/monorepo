@@ -3,7 +3,6 @@
 import type { WebMapProvider } from "@roadbook/map/web";
 
 import { CheckIcon, LayersIcon } from "@/components/ui/icons";
-import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 
 interface MapProviderSwitchProps {
@@ -17,7 +16,6 @@ export function MapProviderSwitch({
   loading,
   onProviderChange,
 }: MapProviderSwitchProps) {
-  const isTencent = provider === "tencent";
   const [expanded, setExpanded] = useState(false);
 
   const chooseProvider = (nextProvider: WebMapProvider) => {
@@ -27,17 +25,6 @@ export function MapProviderSwitch({
 
   return (
     <section className={`map-provider-switch widget${expanded ? " is-expanded" : ""}`} aria-label="地图供应商">
-      <div className="map-provider-switch__standard">
-        <span className={!isTencent ? "is-active" : undefined}>高德地图</span>
-        <Switch
-          checked={isTencent}
-          disabled={loading}
-          aria-label={`切换到${isTencent ? "高德地图" : "腾讯地图"}`}
-          title={`切换到${isTencent ? "高德地图" : "腾讯地图"}`}
-          onCheckedChange={(checked) => onProviderChange(checked ? "tencent" : "amap")}
-        />
-        <span className={isTencent ? "is-active" : undefined}>腾讯地图</span>
-      </div>
       <div className="map-provider-switch__compact">
         {expanded ? (
           <div className="map-provider-switch__options" role="group" aria-label="选择地图供应商">

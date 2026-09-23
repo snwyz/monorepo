@@ -487,23 +487,39 @@ export function useRoutePlanningWorkspace() {
     mutatePlan((plan) => ({ ...plan, name: normalized }));
   }, [mutatePlan]);
 
+  const resetActivePlan = useCallback(() => {
+    calculationToken.current += 1;
+    activePlanRef.current = null;
+    routeRef.current = null;
+    pendingStartPointRef.current = null;
+    setActivePlan(null);
+    setRoute(null);
+    setRouteStatus("idle");
+    setRouteError(null);
+    setDraftStatus("idle");
+    setHistory([]);
+    setSelectedControlPointId(null);
+    setSelectedRouteLegId(null);
+    setPendingControlPointId(null);
+    setMapFocusRequest(null);
+    setFitRoutePlanRequest(null);
+    setStartPointStatus("idle");
+    setStartPointMessage(null);
+  }, []);
+
   const deletePlan = useCallback((id: string) => {
     repository.delete(id);
     setCatalog(repository.list());
     if (activePlan?.id === id) {
-      calculationToken.current += 1;
-      activePlanRef.current = null;
-      setActivePlan(null);
-      setRoute(null);
-      setRouteStatus("idle");
-      setHistory([]);
-      setPendingControlPointId(null);
-      setMapFocusRequest(null);
-      setFitRoutePlanRequest(null);
-      setStartPointStatus("idle");
-      setStartPointMessage(null);
+      resetActivePlan();
     }
-  }, [activePlan?.id, repository]);
+  }, [activePlan?.id, repository, resetActivePlan]);
+
+  const clearPlans = useCallback(() => {
+    repository.clearAll();
+    setCatalog([]);
+    resetActivePlan();
+  }, [repository, resetActivePlan]);
 
   const undo = useCallback(() => {
     const previous = history.at(-1);
@@ -553,6 +569,7 @@ export function useRoutePlanningWorkspace() {
     loadPlan,
     renamePlan,
     deletePlan,
+    clearPlans,
     addPlaceCandidate,
     addCoordinate,
     insertRouteLegControlPoint,

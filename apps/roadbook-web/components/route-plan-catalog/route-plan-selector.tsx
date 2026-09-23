@@ -13,6 +13,12 @@ const RoutePlanDeleteConfirmation = lazy(() =>
   ),
 );
 
+const RoutePlanClearConfirmation = lazy(() =>
+  import("@/components/route-plan-catalog/route-plan-clear-confirmation").then(
+    (module) => ({ default: module.RoutePlanClearConfirmation }),
+  ),
+);
+
 interface RoutePlanSelectorProps {
   catalog: RoutePlanSummary[];
   activePlan: RoutePlan | null;
@@ -20,6 +26,7 @@ interface RoutePlanSelectorProps {
   onLoad: (id: string) => boolean;
   onRename: (name: string) => void;
   onDelete: (id: string) => void;
+  onClearAll: () => void;
 }
 
 interface RoutePlanRowProps {
@@ -96,10 +103,20 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
   );
 }
 
-export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRename, onDelete }: RoutePlanSelectorProps) {
+export function RoutePlanSelector({
+  catalog,
+  activePlan,
+  onCreate,
+  onLoad,
+  onRename,
+  onDelete,
+  onClearAll,
+}: RoutePlanSelectorProps) {
   const [open, setOpen] = useState(false);
   const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; label: string } | null>(null);
+  const [clearConfirmationLoaded, setClearConfirmationLoaded] = useState(false);
+  const [clearRequested, setClearRequested] = useState(false);
   const [renameDraft, setRenameDraft] = useState<{ planId: string; value: string } | null>(null);
   const activePlanSummary = activePlan
     ? catalog.find((plan) => plan.id === activePlan.id)
@@ -122,6 +139,17 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
     setDeleteCandidate(null);
   };
 
+  const requestClearAll = () => {
+    setClearConfirmationLoaded(true);
+    setClearRequested(true);
+  };
+
+  const confirmClearAll = () => {
+    onClearAll();
+    setClearRequested(false);
+    setOpen(false);
+  };
+
   return (
     <section className="plan-selector widget" aria-label="路线方案">
       <button className="plan-selector__trigger" type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
@@ -136,7 +164,12 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
         <div className="plan-selector__menu">
           <div className="plan-selector__menu-head">
             <span>已暂存路线</span>
-            <span>{catalog.length} 条</span>
+            <span className="plan-selector__menu-summary">
+              <span>{catalog.length} 条</span>
+              {catalog.length > 0 ? (
+                <button type="button" onClick={requestClearAll}>一键清除</button>
+              ) : null}
+            </span>
           </div>
           <div className="plan-selector__list">
             {catalog.length === 0 ? <p className="empty-list">还没有路线方案</p> : null}
@@ -186,6 +219,16 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
               if (!nextOpen) setDeleteCandidate(null);
             }}
             onConfirm={confirmDelete}
+          />
+        </Suspense>
+      ) : null}
+      {clearConfirmationLoaded ? (
+        <Suspense fallback={null}>
+          <RoutePlanClearConfirmation
+            open={clearRequested}
+            routeCount={catalog.length}
+            onOpenChange={setClearRequested}
+            onConfirm={confirmClearAll}
           />
         </Suspense>
       ) : null}
