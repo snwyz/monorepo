@@ -762,9 +762,10 @@ export class AmapWebAdapter implements WebMapAdapter {
 
   private async getIpLocation() {
     const response = await requestAmapProxy<AmapServiceResponse & {
-      rectangle?: string;
+      rectangle?: unknown;
     }>("/api/amap/ip-location");
-    const [southwestText, northeastText] = response.rectangle?.split(";") ?? [];
+    if (typeof response.rectangle !== "string") return null;
+    const [southwestText, northeastText] = response.rectangle.split(";");
     const southwest = parseCoordinate(southwestText);
     const northeast = parseCoordinate(northeastText);
     if (!southwest || !northeast) return null;

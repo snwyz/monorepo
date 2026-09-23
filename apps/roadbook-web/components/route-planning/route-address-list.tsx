@@ -102,6 +102,16 @@ function SortableAddressSequence({
           </span>
           <span className="address-row__drag" aria-hidden="true"><GripVerticalIcon /></span>
         </button>
+        <a
+          className="address-row__navigation"
+          href={createMapNavigationUri({ provider, to: point })}
+          aria-label={`使用${provider === "amap" ? "高德" : "腾讯"}地图导航到${point.name}`}
+          title={`在${provider === "amap" ? "高德" : "腾讯"}地图中导航到此点`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => onSelectControlPoint(point.id)}
+        >
+          <NavigationIcon />
+        </a>
         <button
           type="button"
           className="address-row__delete"
@@ -123,17 +133,6 @@ function SortableAddressSequence({
           >
             <span /><small>{index === controlPointCount - 1 ? "返回起点" : `路段 ${index + 1}`}</small>
           </button>
-          <a
-            className="leg-navigation"
-            href={createMapNavigationUri({ provider, from: point, to: nextPoint })}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`使用${provider === "amap" ? "高德" : "腾讯"}地图导航：${point.name}到${nextPoint.name}`}
-            title={`在${provider === "amap" ? "高德" : "腾讯"}地图中导航`}
-            onClick={() => onSelectRouteLeg(legId)}
-          >
-            <NavigationIcon />
-          </a>
         </div>
       ) : null}
     </div>

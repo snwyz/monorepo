@@ -127,7 +127,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .plan-selector__create svg, .workspace-empty button svg { width: 17px; }
 
 .place-search { position: relative; min-height: 56px; padding: 6px; border-radius: 999px; }
-.place-search__input { height: 42px; display: flex; align-items: center; gap: 9px; padding: 0 8px 0 10px; background: var(--rb-color-surface-subtle); border-radius: 999px; }
+.place-search__input { width: 100%; min-width: 0; height: 42px; display: flex; align-items: center; gap: 9px; padding: 0 8px 0 10px; background: var(--rb-color-surface); border-radius: 999px; }
 .place-search__input > svg { width: 18px; color: var(--rb-color-text); }
 .place-search__input input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--rb-color-text-strong); }
 .place-search__input input::placeholder { color: var(--rb-color-muted); }
@@ -236,6 +236,9 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .address-row__delete { display: grid; place-items: center; width: 30px; height: 32px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--rb-color-muted); opacity: .68; transition: color 120ms var(--rb-ease), background 120ms var(--rb-ease), opacity 120ms var(--rb-ease); }
 .address-row__delete:hover { background: var(--rb-color-surface); color: var(--rb-color-danger); opacity: 1; }
 .address-row__delete svg { width: 14px; }
+.address-row__navigation { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 auto; border-radius: 7px; color: var(--rb-color-muted); }
+.address-row__navigation:hover { background: var(--rb-color-surface); color: var(--rb-color-ink); }
+.address-row__navigation svg { width: 16px; height: 16px; }
 .leg-row { width: 100%; min-height: 28px; padding-left: 24px; display: flex; align-items: center; color: var(--rb-color-muted); }
 .leg-link { min-width: 0; height: 28px; flex: 1; padding: 0; border: 0; background: transparent; display: flex; align-items: center; gap: 8px; color: inherit; }
 .leg-link span { width: 2px; height: 24px; margin-left: 0; background: repeating-linear-gradient(to bottom, var(--rb-color-muted) 0 4px, transparent 4px 7px); }
@@ -243,9 +246,6 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .leg-link:hover small, .leg-row.is-selected small { opacity: 1; }
 .leg-row.is-selected { color: var(--rb-color-ink); font-weight: 600; }
 .leg-row.is-selected .leg-link span { width: 3px; background: var(--rb-color-ink); }
-.leg-navigation { display: grid; place-items: center; width: 40px; height: 28px; flex: 0 0 auto; border-radius: 8px; color: var(--rb-color-muted); }
-.leg-navigation:hover { background: var(--rb-color-surface-subtle); color: var(--rb-color-ink); }
-.leg-navigation svg { width: 16px; height: 16px; }
 .address-list__hint { padding: 10px 14px; border-top: 1px solid var(--rb-color-border); color: var(--rb-color-muted); font-size: 10px; line-height: 16px; }
 
 .route-metrics { position: absolute; z-index: 6; right: 16px; bottom: 76px; width: 324px; overflow: hidden; }
@@ -306,7 +306,8 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .planning-workspace { min-height: 100svh; }
   .workspace-topbar { top: 8px; left: 8px; right: 8px; display: block; }
   .plan-selector, .place-search { min-height: 52px; }
-  .place-search { position: fixed; z-index: 12; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }
+  .place-search { position: fixed; z-index: 12; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); width: auto; }
+  .place-search__input kbd { display: none; }
   .place-search__results { top: auto; bottom: calc(100% + 8px); max-height: min(42svh, 340px); }
   .strategy-selector, .workspace-mode { display: none; }
   .plan-selector__menu { width: calc(100vw - 16px); }
@@ -344,7 +345,6 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .map-attribution { left: 8px; right: auto; bottom: calc(66px + env(safe-area-inset-bottom)); }
   .route-plan-welcome { display: none; }
   .leg-link small { opacity: 1; }
-  .leg-navigation { height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

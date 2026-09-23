@@ -49,7 +49,7 @@ export function RouteMetricsPanel({
         <div><TrafficIcon /><span><small>红绿灯</small><strong>{lights === null ? "暂无数据" : `${lights} 个`}</strong></span></div>
       </div>
       {from && to ? (
-        <a className="external-navigation" href={createMapNavigationUri({ provider, from, to })} target="_blank" rel="noreferrer">
+        <a className="external-navigation" href={createMapNavigationUri({ provider, from, to })}>
           <span><small>外部导航</small><strong>{from.name} → {to.name}</strong></span><ExternalIcon />
         </a>
       ) : <p className="metrics-hint">选择右侧连接线，可查看路段数据并在当前地图中打开。</p>}
