@@ -19,9 +19,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { WebMapProvider } from "@roadbook/map/web";
 import { GripVerticalIcon } from "lucide-react";
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 
 import { ChevronDownIcon, CloseIcon, NavigationIcon } from "@/components/ui/icons";
+import { useMobileControlPointSwipeRemoval } from "@/components/route-planning/use-mobile-control-point-swipe-removal";
 import type { ControlPoint } from "@/domain/route-planning/model";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
@@ -75,6 +76,22 @@ function SortableAddressSequence({
   const legId = nextPoint ? `${point.id}:${nextPoint.id}` : null;
   const isUnresolved = point.address === "未识别地址" || point.address === "地址解析中…";
   const verticalTransform = transform ? { ...transform, x: 0 } : null;
+  const {
+    swipeOffset,
+    isSwipeDeleteReady,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    shouldSuppressClick,
+  } = useMobileControlPointSwipeRemoval({
+    onRequestRemoval: () => onRemove(point.id),
+  });
+
+  const handleSelectClick = () => {
+    if (shouldSuppressClick()) return;
+    onSelectControlPoint(point.id);
+  };
 
   return (
     <div
@@ -85,13 +102,26 @@ function SortableAddressSequence({
         transition,
       }}
     >
-      <div className={`address-row ${isSelected ? "is-selected" : ""} ${isUnresolved ? "is-unresolved" : ""}`}>
+      <div
+        className={`address-row__swipe-action${isSwipeDeleteReady ? " is-ready" : ""}`}
+        aria-hidden="true"
+      >
+        {isSwipeDeleteReady ? "松开删除" : "左滑删除"}
+      </div>
+      <div
+        className={`address-row ${isSelected ? "is-selected" : ""} ${isUnresolved ? "is-unresolved" : ""}${swipeOffset < 0 ? " is-swiping" : ""}`}
+        style={{ "--address-swipe-offset": `${swipeOffset}px` } as CSSProperties}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
         <button
           type="button"
           className="address-row__select"
           {...attributes}
           {...listeners}
-          onClick={() => onSelectControlPoint(point.id)}
+          onClick={handleSelectClick}
           aria-pressed={isSelected}
           title="点击定位，长按拖拽排序"
         >

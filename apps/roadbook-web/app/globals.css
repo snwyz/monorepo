@@ -220,6 +220,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .address-list__body { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 6px 0; }
 .address-sequence { position: relative; width: 100%; max-width: 100%; background: var(--rb-color-surface); }
 .address-sequence.is-dragging { z-index: 2; opacity: .72; box-shadow: var(--rb-shadow-float); }
+.address-row__swipe-action { display: none; }
 .address-row { position: relative; width: 100%; min-height: 58px; padding: 0 7px 0 0; background: transparent; display: flex; align-items: center; text-align: left; }
 .address-row:hover, .address-row.is-selected { background: var(--rb-color-surface-subtle); }
 .address-row.is-selected::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--rb-color-ink); }
@@ -327,6 +328,12 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .address-list__toggle-summary { display: flex; align-items: center; gap: 6px; }
   .address-list__toggle-summary > svg { width: 16px; color: var(--rb-color-muted); transition: transform 180ms var(--rb-ease); }
   .address-list__body { padding: 2px 0; }
+  .address-sequence { overflow: hidden; }
+  .address-row__swipe-action { position: absolute; z-index: 0; top: 0; right: 0; width: 96px; height: 58px; padding-right: 12px; display: flex; align-items: center; justify-content: flex-end; background: var(--rb-color-surface-subtle); color: var(--rb-color-danger); font-size: 11px; font-weight: 600; }
+  .address-row__swipe-action.is-ready { background: var(--rb-color-danger); color: var(--rb-color-surface); }
+  .address-row { z-index: 1; background: var(--rb-color-surface); touch-action: pan-y; transform: translate3d(var(--address-swipe-offset, 0), 0, 0); transition: transform 180ms var(--rb-ease), background 120ms var(--rb-ease); }
+  .address-row.is-swiping { transition: none; }
+  .address-row__drag, .address-row__delete { display: none; }
   .route-metrics { display: none; }
   .address-list__hint { display: none; }
   .elevation-panel { display: none; }
