@@ -257,7 +257,10 @@ export function useRoutePlanningWorkspace() {
 
   const addPlaceCandidate = useCallback((candidate: PlaceCandidate) => {
     setPendingControlPointId(null);
-    addControlPoint(candidate);
+    const controlPointId = addControlPoint(candidate);
+    setSelectedControlPointId(controlPointId);
+    mapFocusSequence.current += 1;
+    setMapFocusRequest({ id: controlPointId, sequence: mapFocusSequence.current });
   }, [addControlPoint]);
 
   const searchPlaces = useCallback((keyword: string): Promise<PlaceCandidate[]> => {

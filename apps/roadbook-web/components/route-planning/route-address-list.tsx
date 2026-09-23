@@ -175,9 +175,9 @@ export function RouteAddressList({
   };
 
   return (
-    <aside className={`address-list widget${collapsed ? " is-collapsed" : ""}`} aria-label="路线控制点">
+    <aside className={`address-list widget${collapsed ? " is-collapsed" : ""}`} aria-label="路线顺序">
       <header className="widget-title address-list__header address-list__header--desktop">
-        <div><small>路线顺序</small><h2>控制点</h2></div>
+        <div><small>路线顺序</small></div>
         <span className="count-badge">{controlPoints.length}/20</span>
       </header>
       <button
@@ -187,7 +187,7 @@ export function RouteAddressList({
         aria-label={`${collapsed ? "展开" : "收起"}路线顺序`}
         onClick={() => setCollapsed((value) => !value)}
       >
-        <span><small>路线顺序</small><strong>控制点</strong></span>
+        <span><small>路线顺序</small></span>
         <span className="address-list__toggle-summary">
           <span className="count-badge">{controlPoints.length}/20</span>
           <ChevronDownIcon className={collapsed ? undefined : "is-rotated"} />
