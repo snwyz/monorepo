@@ -24,6 +24,7 @@ export interface WebMapOptions {
   center?: MapCoordinate;
   zoom?: number;
   onDoubleClick?: (coordinate: MapCoordinate) => void;
+  onMapBackgroundSelect?: () => void;
   onMarkerSelect?: (controlPointId: string) => void;
   onRouteLegSelect?: (routeLegId: string) => void;
   onRouteLegInsert?: (routeLegId: string, coordinate: MapCoordinate) => void;

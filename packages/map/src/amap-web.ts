@@ -239,6 +239,7 @@ class AmapCanvasImpl implements WebMapCanvas {
   }> = [];
   private userLocationOverlay: AmapOverlay | null = null;
   private readonly onDoubleClick?: (coordinate: MapCoordinate) => void;
+  private readonly onMapBackgroundSelect?: () => void;
   private readonly onMarkerSelect?: (controlPointId: string) => void;
   private readonly onRouteLegSelect?: (routeLegId: string) => void;
   private readonly onRouteLegInsert?: (
@@ -258,6 +259,10 @@ class AmapCanvasImpl implements WebMapCanvas {
     if (event.lnglat) this.onDoubleClick?.(toCoordinate(event.lnglat));
   };
 
+  private readonly mapClickHandler = () => {
+    this.onMapBackgroundSelect?.();
+  };
+
   private releaseDragState() {
     if (this.dragResetFrame !== null) cancelAnimationFrame(this.dragResetFrame);
     this.map.setStatus({ dragEnable: false, doubleClickZoom: false });
@@ -275,6 +280,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     options: WebMapOptions,
   ) {
     this.onDoubleClick = options.onDoubleClick;
+    this.onMapBackgroundSelect = options.onMapBackgroundSelect;
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
     this.onRouteLegInsert = options.onRouteLegInsert;
@@ -282,6 +288,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     options.onLoading?.();
     map.setStatus({ doubleClickZoom: false });
     map.on("dblclick", this.doubleClickHandler);
+    map.on("click", this.mapClickHandler);
     map.on("complete", this.mapReadyHandler);
   }
 
@@ -295,6 +302,7 @@ class AmapCanvasImpl implements WebMapCanvas {
         anchor: "top-left",
         offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
         zIndex: point.selected ? 130 : 120,
+        bubble: false,
       });
       const handler = () => this.onMarkerSelect?.(point.id);
       marker.on("click", handler);
@@ -331,6 +339,7 @@ class AmapCanvasImpl implements WebMapCanvas {
         lineJoin: "round",
         lineCap: "round",
         zIndex: leg.selected ? 70 : 60,
+        bubble: false,
       });
       const handler = () => this.onRouteLegSelect?.(leg.id);
       route.on("click", handler);
@@ -352,6 +361,7 @@ class AmapCanvasImpl implements WebMapCanvas {
       lineJoin: "round",
       lineCap: "round",
       zIndex: 80,
+      bubble: true,
     });
     this.routeLegInsertionGuide = new this.amap.Polyline({
       path,
@@ -363,6 +373,7 @@ class AmapCanvasImpl implements WebMapCanvas {
       lineJoin: "round",
       lineCap: "round",
       zIndex: 90,
+      bubble: true,
     });
     const handle = new this.amap.Marker({
       position: toPosition(insertion.coordinate),
@@ -371,6 +382,7 @@ class AmapCanvasImpl implements WebMapCanvas {
       cursor: "grab",
       draggable: true,
       zIndex: 140,
+      bubble: false,
     });
     const updateGuide = (event: AmapMapEvent) => {
       if (!event.lnglat) return;
@@ -479,6 +491,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     if (this.dragResetFrame !== null) cancelAnimationFrame(this.dragResetFrame);
     this.dragResetFrame = null;
     this.map.off("dblclick", this.doubleClickHandler);
+    this.map.off("click", this.mapClickHandler);
     this.map.off("complete", this.mapReadyHandler);
     this.clearInteractiveOverlays(this.controlPointOverlays);
     this.clearOverlays(this.routeOutlineOverlays);

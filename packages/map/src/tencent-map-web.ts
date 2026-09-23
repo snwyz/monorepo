@@ -195,6 +195,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   private readonly routeLegInsertionGuideLayer: TencentOverlay;
   private readonly routeLegInsertionHandleLayer: TencentOverlay;
   private readonly onDoubleClick?: (coordinate: MapCoordinate) => void;
+  private readonly onMapBackgroundSelect?: () => void;
   private readonly onMarkerSelect?: (controlPointId: string) => void;
   private readonly onRouteLegSelect?: (routeLegId: string) => void;
   private readonly onRouteLegInsert?: (
@@ -223,6 +224,10 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     event.originalEvent?.preventDefault?.();
     event.originalEvent?.stopPropagation?.();
     if (event.latLng) this.onDoubleClick?.(toCoordinate(event.latLng));
+  };
+
+  private readonly mapClickHandler = () => {
+    this.onMapBackgroundSelect?.();
   };
 
   private readonly markerClickHandler = (event: TencentMapEvent) => {
@@ -267,15 +272,22 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     options: WebMapOptions,
   ) {
     this.onDoubleClick = options.onDoubleClick;
+    this.onMapBackgroundSelect = options.onMapBackgroundSelect;
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
     this.onRouteLegInsert = options.onRouteLegInsert;
     this.onLoading = options.onLoading;
     this.onReady = options.onReady;
     this.beginVisualUpdate();
-    this.controlPointLayer = new tmap.MultiMarker({ map, styles: {}, geometries: [] });
+    this.controlPointLayer = new tmap.MultiMarker({
+      map,
+      isStopPropagation: true,
+      styles: {},
+      geometries: [],
+    });
     this.routeOutlineLayer = new tmap.MultiPolyline({
       map,
+      disableInteractive: true,
       styles: {
         outline: new tmap.PolylineStyle({
           color: "#ffffff",
@@ -292,6 +304,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     });
     this.routeLayer = new tmap.MultiPolyline({
       map,
+      isStopPropagation: true,
       styles: {
         normal: new tmap.PolylineStyle({
           color: "#0a0a0a",
@@ -359,6 +372,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     });
     this.userLocationLayer = new tmap.MultiMarker({
       map,
+      disableInteractive: true,
       styles: {
         loc_icon: new tmap.MarkerStyle({
           width: 32,
@@ -370,6 +384,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       geometries: [],
     });
     map.on("dblclick", this.doubleClickHandler);
+    map.on("click", this.mapClickHandler);
     map.on("tilesloaded", this.mapReadyHandler);
     this.controlPointLayer.on?.("click", this.markerClickHandler);
     this.routeLayer.on?.("click", this.routeClickHandler);
@@ -605,6 +620,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   destroy() {
     if (this.isRouteLegInsertionDragging) this.map.setDraggable(true);
     this.map.off("dblclick", this.doubleClickHandler);
+    this.map.off("click", this.mapClickHandler);
     this.map.off("tilesloaded", this.mapReadyHandler);
     this.controlPointLayer.off?.("click", this.markerClickHandler);
     this.routeLayer.off?.("click", this.routeClickHandler);

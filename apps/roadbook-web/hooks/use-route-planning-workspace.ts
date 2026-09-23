@@ -539,9 +539,13 @@ export function useRoutePlanningWorkspace() {
   }, []);
 
   const selectRouteLeg = useCallback((id: string) => {
-    setSelectedRouteLegId(id);
+    setSelectedRouteLegId((current) => current === id ? null : id);
     setSelectedControlPointId(null);
     setPendingControlPointId(null);
+  }, []);
+
+  const clearRouteLegSelection = useCallback(() => {
+    setSelectedRouteLegId(null);
   }, []);
 
   return {
@@ -580,5 +584,6 @@ export function useRoutePlanningWorkspace() {
     undo,
     selectControlPoint,
     selectRouteLeg,
+    clearRouteLegSelection,
   };
 }

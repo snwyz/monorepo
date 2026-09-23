@@ -32,6 +32,7 @@ interface RouteMapProps {
   focusControlPointRequest: { id: string; sequence: number } | null;
   fitRoutePlanRequest: { planId: string; sequence: number } | null;
   onDoubleClick: (coordinate: { latitude: number; longitude: number }) => void;
+  onClearRouteLegSelection: () => void;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
   onInsertRouteLegControlPoint: (
@@ -105,6 +106,7 @@ export function RouteMap({
   focusControlPointRequest,
   fitRoutePlanRequest,
   onDoubleClick,
+  onClearRouteLegSelection,
   onSelectControlPoint,
   onSelectRouteLeg,
   onInsertRouteLegControlPoint,
@@ -174,6 +176,7 @@ export function RouteMap({
         center: coordinate ?? undefined,
         zoom: 11,
         onDoubleClick,
+        onMapBackgroundSelect: onClearRouteLegSelection,
         onMarkerSelect: onSelectControlPoint,
         onRouteLegSelect: onSelectRouteLeg,
         onRouteLegInsert: onInsertRouteLegControlPoint,
@@ -237,6 +240,7 @@ export function RouteMap({
     fitPendingRoutePlan,
     fitRouteGeometryIfNeeded,
     onDoubleClick,
+    onClearRouteLegSelection,
     onSelectControlPoint,
     onSelectRouteLeg,
     onInsertRouteLegControlPoint,

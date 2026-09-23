@@ -33,6 +33,7 @@ export function RoutePlanningWorkspace() {
         : "搜索地点，继续添加控制点";
   const {
     addCoordinate: addCoordinateToPlan,
+    clearRouteLegSelection,
     removeControlPoint: removeControlPointFromPlan,
     selectControlPoint,
   } = workspace;
@@ -84,6 +85,23 @@ export function RoutePlanningWorkspace() {
     workspace.selectedControlPointId,
   ]);
 
+  useEffect(() => {
+    if (!workspace.selectedRouteLegId) return;
+    const clearRouteSelectionWithKeyboard = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isEditing = target?.isContentEditable
+        || target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement;
+      const isDialogOpen = Boolean(target?.closest('[role="alertdialog"], [role="dialog"]'));
+      if (isEditing || isDialogOpen || event.key !== "Escape") return;
+      event.preventDefault();
+      clearRouteLegSelection();
+    };
+    window.addEventListener("keydown", clearRouteSelectionWithKeyboard);
+    return () => window.removeEventListener("keydown", clearRouteSelectionWithKeyboard);
+  }, [clearRouteLegSelection, workspace.selectedRouteLegId]);
+
   return (
     <main className="planning-workspace">
       <RouteMap
@@ -97,6 +115,7 @@ export function RoutePlanningWorkspace() {
         focusControlPointRequest={workspace.mapFocusRequest}
         fitRoutePlanRequest={workspace.fitRoutePlanRequest}
         onDoubleClick={addCoordinate}
+        onClearRouteLegSelection={clearRouteLegSelection}
         onSelectControlPoint={selectMapControlPoint}
         onSelectRouteLeg={workspace.selectRouteLeg}
         onInsertRouteLegControlPoint={workspace.insertRouteLegControlPoint}
