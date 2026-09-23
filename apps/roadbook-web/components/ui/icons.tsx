@@ -24,6 +24,17 @@ export const RouteIcon = (props: IconProps) => (
 );
 export const PlusIcon = (props: IconProps) => <IconBase {...props}><path d="M12 5v14M5 12h14"/></IconBase>;
 export const SearchIcon = (props: IconProps) => <IconBase {...props}><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></IconBase>;
+export const FilledLocationIcon = (props: IconProps) => (
+  <IconBase {...props}>
+    <path
+      d="M12 2.25a7.75 7.75 0 0 0-7.75 7.75c0 5.62 6.86 11.2 7.15 11.44a.95.95 0 0 0 1.2 0c.29-.24 7.15-5.82 7.15-11.44A7.75 7.75 0 0 0 12 2.25Zm0 5.2a2.55 2.55 0 1 1 0 5.1 2.55 2.55 0 0 1 0-5.1Z"
+      fill="currentColor"
+      fillRule="evenodd"
+      clipRule="evenodd"
+      stroke="none"
+    />
+  </IconBase>
+);
 export const ChevronDownIcon = (props: IconProps) => <IconBase {...props}><path d="m7 9.5 5 5 5-5"/></IconBase>;
 export const ChevronUpIcon = (props: IconProps) => <IconBase {...props}><path d="m7 14.5 5-5 5 5"/></IconBase>;
 export const MoreIcon = (props: IconProps) => <IconBase {...props}><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></IconBase>;

@@ -3,7 +3,7 @@
 import type { PlaceCandidate } from "@roadbook/map/web";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { CloseIcon, SearchIcon } from "@/components/ui/icons";
+import { CloseIcon, FilledLocationIcon, SearchIcon } from "@/components/ui/icons";
 
 interface PlaceSearchProps {
   disabled?: boolean;
@@ -106,7 +106,7 @@ export function PlaceSearch({ disabled, onSearch, onSelect }: PlaceSearchProps) 
           ) : null}
           {items.map((item) => (
             <button type="button" role="option" aria-selected="false" key={item.id} onClick={() => choose(item)}>
-              <span className="candidate-pin" />
+              <FilledLocationIcon className="candidate-pin" />
               <span><strong>{item.name}</strong><small>{item.address}</small></span>
             </button>
           ))}
