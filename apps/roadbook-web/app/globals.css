@@ -307,6 +307,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .workspace-topbar { top: 8px; left: 8px; right: 8px; display: block; }
   .plan-selector, .place-search { min-height: 52px; }
   .place-search { position: fixed; z-index: 12; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); width: auto; }
+  .place-search__input input { font-size: 16px; }
   .place-search__input kbd { display: none; }
   .place-search__results { top: auto; bottom: calc(100% + 8px); max-height: min(42svh, 340px); }
   .strategy-selector, .workspace-mode { display: none; }
