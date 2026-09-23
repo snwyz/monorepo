@@ -7,10 +7,14 @@ import type {
   WebMapCanvas,
   WebMapFitOptions,
   WebMapProvider,
+  WebMapRouteLegInsertion,
 } from "@roadbook/map/web";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ControlPoint } from "@/domain/route-planning/model";
+import {
+  ROUTE_PLAN_CONTROL_POINT_LIMIT,
+  type ControlPoint,
+} from "@/domain/route-planning/model";
 import {
   LocateIcon,
   MinusIcon,
@@ -30,6 +34,10 @@ interface RouteMapProps {
   onDoubleClick: (coordinate: { latitude: number; longitude: number }) => void;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
+  onInsertRouteLegControlPoint: (
+    routeLegId: string,
+    coordinate: MapCoordinate,
+  ) => void;
 }
 
 const MOBILE_DISTANCE_FALLBACK_METERS = 2_000;
@@ -60,6 +68,32 @@ function getRouteCoordinates(route: ClosedDrivingRoute) {
   return route.legs.flatMap((leg) => leg.path);
 }
 
+function getRouteLegInsertion(
+  route: ClosedDrivingRoute | null,
+  controlPoints: ControlPoint[],
+  selectedRouteLegId: string | null,
+): WebMapRouteLegInsertion | null {
+  if (
+    !route
+    || !selectedRouteLegId
+    || controlPoints.length >= ROUTE_PLAN_CONTROL_POINT_LIMIT
+  ) return null;
+  const leg = route.legs.find((item) => item.id === selectedRouteLegId);
+  if (!leg) return null;
+  const from = controlPoints.find((point) => point.id === leg.fromControlPointId);
+  const to = controlPoints.find((point) => point.id === leg.toControlPointId);
+  if (!from || !to) return null;
+  return {
+    routeLegId: leg.id,
+    from,
+    to,
+    coordinate: {
+      latitude: (from.latitude + to.latitude) / 2,
+      longitude: (from.longitude + to.longitude) / 2,
+    },
+  };
+}
+
 export function RouteMap({
   adapter,
   provider,
@@ -73,6 +107,7 @@ export function RouteMap({
   onDoubleClick,
   onSelectControlPoint,
   onSelectRouteLeg,
+  onInsertRouteLegControlPoint,
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<WebMapCanvas | null>(null);
@@ -141,6 +176,7 @@ export function RouteMap({
         onDoubleClick,
         onMarkerSelect: onSelectControlPoint,
         onRouteLegSelect: onSelectRouteLeg,
+        onRouteLegInsert: onInsertRouteLegControlPoint,
         onLoading: () => setMapVisualReady(false),
         onReady: () => setMapVisualReady(true),
       });
@@ -169,6 +205,11 @@ export function RouteMap({
           stale: routeUpdatingRef.current,
         })),
       );
+      nextCanvas.setRouteLegInsertion(getRouteLegInsertion(
+        routeRef.current,
+        controlPointsRef.current,
+        selectedRouteLegIdRef.current,
+      ));
       fitRouteGeometryIfNeeded(nextCanvas, routeRef.current);
       checkedRouteViewportRef.current = routeRef.current;
       void adapter.resolveAuthorizedLocation().then((preciseCoordinate) => {
@@ -198,6 +239,7 @@ export function RouteMap({
     onDoubleClick,
     onSelectControlPoint,
     onSelectRouteLeg,
+    onInsertRouteLegControlPoint,
   ]);
 
   useEffect(() => {
@@ -264,6 +306,14 @@ export function RouteMap({
     fitRouteGeometryIfNeeded(canvasRef.current, route);
     checkedRouteViewportRef.current = route;
   }, [fitRouteGeometryIfNeeded, route, routeUpdating, selectedRouteLegId]);
+
+  useEffect(() => {
+    canvasRef.current?.setRouteLegInsertion(getRouteLegInsertion(
+      route,
+      controlPoints,
+      selectedRouteLegId,
+    ));
+  }, [controlPoints, route, selectedRouteLegId]);
 
   const locate = async () => {
     try {

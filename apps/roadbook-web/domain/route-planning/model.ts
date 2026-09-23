@@ -34,6 +34,8 @@ export type RouteCalculationStatus =
 
 export type DraftStatus = "idle" | "saving" | "saved" | "failed";
 
+export const ROUTE_PLAN_CONTROL_POINT_LIMIT = 20;
+
 export function createRoutePlan(id: string, now = new Date()): RoutePlan {
   return {
     id,
@@ -56,6 +58,25 @@ export function reviseRoutePlan(
     revision: plan.revision + 1,
     updatedAt: new Date().toISOString(),
   };
+}
+
+export function insertControlPointIntoRouteLeg(
+  controlPoints: ControlPoint[],
+  fromControlPointId: string,
+  toControlPointId: string,
+  controlPoint: ControlPoint,
+) {
+  if (controlPoints.length >= ROUTE_PLAN_CONTROL_POINT_LIMIT) return null;
+  const fromIndex = controlPoints.findIndex((point) => point.id === fromControlPointId);
+  if (fromIndex < 0 || controlPoints.length === 0) return null;
+  const expectedToIndex = (fromIndex + 1) % controlPoints.length;
+  if (controlPoints[expectedToIndex]?.id !== toControlPointId) return null;
+  const insertionIndex = fromIndex + 1;
+  return [
+    ...controlPoints.slice(0, insertionIndex),
+    controlPoint,
+    ...controlPoints.slice(insertionIndex),
+  ];
 }
 
 export function formatPlanUpdatedAt(value: string) {

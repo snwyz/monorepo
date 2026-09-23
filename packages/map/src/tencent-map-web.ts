@@ -11,6 +11,7 @@ import type {
   WebMapLocation,
   WebMapOptions,
   WebMapRouteLeg,
+  WebMapRouteLegInsertion,
   WebMapViewportPadding,
 } from "./web-types";
 import { TencentMapWebError } from "./web-types";
@@ -32,6 +33,7 @@ interface TencentMapInstance {
   off(event: string, handler: (event: TencentMapEvent) => void): void;
   setCenter(center: TencentLatLng): void;
   setDoubleClickZoom(enabled: boolean): void;
+  setDraggable(draggable: boolean): void;
   setZoom(zoom: number): void;
   getZoom(): number;
   getCenter(): TencentLatLng;
@@ -179,16 +181,31 @@ function locationMarkerSvg() {
   return `data:image/svg+xml,${svg}`;
 }
 
+function routeLegInsertionHandleSvg() {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="%23ffffff" stroke="%230a0a0a" stroke-width="2"/><path d="M16 8v16M8 16h16M16 8l-3 3m3-3 3 3M24 16l-3-3m3 3-3 3M16 24l-3-3m3 3 3-3M8 16l3-3m-3 3 3 3" fill="none" stroke="%230a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return `data:image/svg+xml,${svg}`;
+}
+
 class TencentMapCanvasImpl implements WebMapCanvas {
   private readonly controlPointLayer: TencentOverlay;
   private readonly userLocationLayer: TencentOverlay;
   private readonly routeOutlineLayer: TencentOverlay;
   private readonly routeLayer: TencentOverlay;
+  private readonly routeLegInsertionOutlineLayer: TencentOverlay;
+  private readonly routeLegInsertionGuideLayer: TencentOverlay;
+  private readonly routeLegInsertionHandleLayer: TencentOverlay;
   private readonly onDoubleClick?: (coordinate: MapCoordinate) => void;
   private readonly onMarkerSelect?: (controlPointId: string) => void;
   private readonly onRouteLegSelect?: (routeLegId: string) => void;
+  private readonly onRouteLegInsert?: (
+    routeLegId: string,
+    coordinate: MapCoordinate,
+  ) => void;
   private readonly onLoading?: () => void;
   private readonly onReady?: () => void;
+  private routeLegInsertion: WebMapRouteLegInsertion | null = null;
+  private routeLegInsertionCoordinate: MapCoordinate | null = null;
+  private isRouteLegInsertionDragging = false;
 
   private readonly mapReadyHandler = () => {
     locationDebug("info", "map:tilesloaded", {
@@ -216,6 +233,32 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     if (event.geometry?.id) this.onRouteLegSelect?.(event.geometry.id);
   };
 
+  private readonly routeLegInsertionDragStartHandler = (event: TencentMapEvent) => {
+    if (!this.routeLegInsertion || event.geometry?.id !== "route-leg-insertion-handle") return;
+    event.originalEvent?.preventDefault?.();
+    event.originalEvent?.stopPropagation?.();
+    this.isRouteLegInsertionDragging = true;
+    this.map.setDraggable(false);
+    if (event.latLng) this.updateRouteLegInsertion(toCoordinate(event.latLng));
+  };
+
+  private readonly routeLegInsertionDragMoveHandler = (event: TencentMapEvent) => {
+    if (!this.isRouteLegInsertionDragging || !event.latLng) return;
+    event.originalEvent?.preventDefault?.();
+    event.originalEvent?.stopPropagation?.();
+    this.updateRouteLegInsertion(toCoordinate(event.latLng));
+  };
+
+  private readonly routeLegInsertionDragEndHandler = (event: TencentMapEvent) => {
+    if (!this.isRouteLegInsertionDragging || !this.routeLegInsertion) return;
+    if (event.latLng) this.updateRouteLegInsertion(toCoordinate(event.latLng));
+    const insertion = this.routeLegInsertion;
+    const coordinate = this.routeLegInsertionCoordinate;
+    this.isRouteLegInsertionDragging = false;
+    this.map.setDraggable(true);
+    if (coordinate) this.onRouteLegInsert?.(insertion.routeLegId, coordinate);
+  };
+
   constructor(
     private readonly tmap: TencentMapNamespace,
     private readonly map: TencentMapInstance,
@@ -226,6 +269,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.onDoubleClick = options.onDoubleClick;
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
+    this.onRouteLegInsert = options.onRouteLegInsert;
     this.onLoading = options.onLoading;
     this.onReady = options.onReady;
     this.beginVisualUpdate();
@@ -272,6 +316,47 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       },
       geometries: [],
     });
+    this.routeLegInsertionOutlineLayer = new tmap.MultiPolyline({
+      map,
+      zIndex: 80,
+      disableInteractive: true,
+      styles: {
+        insertionOutline: new tmap.PolylineStyle({
+          color: "#ffffff",
+          width: 7,
+          lineCap: "round",
+        }),
+      },
+      geometries: [],
+    });
+    this.routeLegInsertionGuideLayer = new tmap.MultiPolyline({
+      map,
+      zIndex: 90,
+      disableInteractive: true,
+      styles: {
+        insertionGuide: new tmap.PolylineStyle({
+          color: "#8a8a8a",
+          width: 3,
+          lineCap: "round",
+          dashArray: [6, 6],
+        }),
+      },
+      geometries: [],
+    });
+    this.routeLegInsertionHandleLayer = new tmap.MultiMarker({
+      map,
+      zIndex: 140,
+      isStopPropagation: true,
+      styles: {
+        insertionHandle: new tmap.MarkerStyle({
+          width: 32,
+          height: 32,
+          anchor: { x: 16, y: 16 },
+          src: routeLegInsertionHandleSvg(),
+        }),
+      },
+      geometries: [],
+    });
     this.userLocationLayer = new tmap.MultiMarker({
       map,
       styles: {
@@ -288,6 +373,34 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     map.on("tilesloaded", this.mapReadyHandler);
     this.controlPointLayer.on?.("click", this.markerClickHandler);
     this.routeLayer.on?.("click", this.routeClickHandler);
+    this.routeLegInsertionHandleLayer.on?.(
+      "mousedown",
+      this.routeLegInsertionDragStartHandler,
+    );
+    this.routeLegInsertionHandleLayer.on?.(
+      "touchstart",
+      this.routeLegInsertionDragStartHandler,
+    );
+    this.routeLegInsertionHandleLayer.on?.(
+      "mousemove",
+      this.routeLegInsertionDragMoveHandler,
+    );
+    this.routeLegInsertionHandleLayer.on?.(
+      "touchmove",
+      this.routeLegInsertionDragMoveHandler,
+    );
+    this.routeLegInsertionHandleLayer.on?.(
+      "mouseup",
+      this.routeLegInsertionDragEndHandler,
+    );
+    this.routeLegInsertionHandleLayer.on?.(
+      "touchend",
+      this.routeLegInsertionDragEndHandler,
+    );
+    map.on("mousemove", this.routeLegInsertionDragMoveHandler);
+    map.on("touchmove", this.routeLegInsertionDragMoveHandler);
+    map.on("mouseup", this.routeLegInsertionDragEndHandler);
+    map.on("touchend", this.routeLegInsertionDragEndHandler);
   }
 
   setControlPoints(controlPoints: WebMapControlPoint[]) {
@@ -338,6 +451,20 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       }));
     this.routeOutlineLayer.setGeometries(outline);
     this.routeLayer.setGeometries(routes);
+  }
+
+  setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null) {
+    if (this.isRouteLegInsertionDragging) this.map.setDraggable(true);
+    this.isRouteLegInsertionDragging = false;
+    this.routeLegInsertion = insertion;
+    this.routeLegInsertionCoordinate = insertion?.coordinate ?? null;
+    if (!insertion) {
+      this.routeLegInsertionOutlineLayer.setGeometries([]);
+      this.routeLegInsertionGuideLayer.setGeometries([]);
+      this.routeLegInsertionHandleLayer.setGeometries([]);
+      return;
+    }
+    this.updateRouteLegInsertion(insertion.coordinate);
   }
 
   setUserLocation(location: WebMapLocation | null) {
@@ -476,15 +603,71 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   destroy() {
+    if (this.isRouteLegInsertionDragging) this.map.setDraggable(true);
     this.map.off("dblclick", this.doubleClickHandler);
     this.map.off("tilesloaded", this.mapReadyHandler);
     this.controlPointLayer.off?.("click", this.markerClickHandler);
     this.routeLayer.off?.("click", this.routeClickHandler);
+    this.routeLegInsertionHandleLayer.off?.(
+      "mousedown",
+      this.routeLegInsertionDragStartHandler,
+    );
+    this.routeLegInsertionHandleLayer.off?.(
+      "touchstart",
+      this.routeLegInsertionDragStartHandler,
+    );
+    this.routeLegInsertionHandleLayer.off?.(
+      "mousemove",
+      this.routeLegInsertionDragMoveHandler,
+    );
+    this.routeLegInsertionHandleLayer.off?.(
+      "touchmove",
+      this.routeLegInsertionDragMoveHandler,
+    );
+    this.routeLegInsertionHandleLayer.off?.(
+      "mouseup",
+      this.routeLegInsertionDragEndHandler,
+    );
+    this.routeLegInsertionHandleLayer.off?.(
+      "touchend",
+      this.routeLegInsertionDragEndHandler,
+    );
+    this.map.off("mousemove", this.routeLegInsertionDragMoveHandler);
+    this.map.off("touchmove", this.routeLegInsertionDragMoveHandler);
+    this.map.off("mouseup", this.routeLegInsertionDragEndHandler);
+    this.map.off("touchend", this.routeLegInsertionDragEndHandler);
     this.controlPointLayer.setMap?.(null);
     this.userLocationLayer.setMap?.(null);
     this.routeOutlineLayer.setMap?.(null);
     this.routeLayer.setMap?.(null);
+    this.routeLegInsertionOutlineLayer.setMap?.(null);
+    this.routeLegInsertionGuideLayer.setMap?.(null);
+    this.routeLegInsertionHandleLayer.setMap?.(null);
     this.map.destroy();
+  }
+
+  private updateRouteLegInsertion(coordinate: MapCoordinate) {
+    const insertion = this.routeLegInsertion;
+    if (!insertion || !isValidCoordinate(coordinate)) return;
+    this.routeLegInsertionCoordinate = coordinate;
+    const paths = [insertion.from, coordinate, insertion.to].map(
+      (point) => new this.tmap.LatLng(point.latitude, point.longitude),
+    );
+    const geometry = [{
+      id: "route-leg-insertion-guide",
+      styleId: "insertionGuide",
+      paths,
+    }];
+    this.routeLegInsertionOutlineLayer.setGeometries([{
+      ...geometry[0],
+      styleId: "insertionOutline",
+    }]);
+    this.routeLegInsertionGuideLayer.setGeometries(geometry);
+    this.routeLegInsertionHandleLayer.setGeometries([{
+      id: "route-leg-insertion-handle",
+      styleId: "insertionHandle",
+      position: new this.tmap.LatLng(coordinate.latitude, coordinate.longitude),
+    }]);
   }
 }
 

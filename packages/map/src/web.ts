@@ -15,6 +15,7 @@ export type {
   WebMapFitOptions,
   WebMapOptions,
   WebMapRouteLeg,
+  WebMapRouteLegInsertion,
   WebMapProvider,
   WebMapViewportPadding,
 } from "./web-types";

@@ -26,6 +26,7 @@ export interface WebMapOptions {
   onDoubleClick?: (coordinate: MapCoordinate) => void;
   onMarkerSelect?: (controlPointId: string) => void;
   onRouteLegSelect?: (routeLegId: string) => void;
+  onRouteLegInsert?: (routeLegId: string, coordinate: MapCoordinate) => void;
   onLoading?: () => void;
   onReady?: () => void;
 }
@@ -43,6 +44,13 @@ export interface WebMapRouteLeg {
   selected?: boolean;
   stale?: boolean;
   failed?: boolean;
+}
+
+export interface WebMapRouteLegInsertion {
+  routeLegId: string;
+  from: MapCoordinate;
+  to: MapCoordinate;
+  coordinate: MapCoordinate;
 }
 
 export interface PlaceCandidate {
@@ -77,6 +85,7 @@ export interface ClosedDrivingRoute {
 export interface WebMapCanvas {
   setControlPoints(controlPoints: WebMapControlPoint[]): void;
   setRouteLegs(routeLegs: WebMapRouteLeg[]): void;
+  setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null): void;
   setUserLocation(location: WebMapLocation | null): void;
   setCenter(center: MapCoordinate): void;
   setView(center: MapCoordinate, zoom: number): void;

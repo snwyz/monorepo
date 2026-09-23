@@ -99,6 +99,7 @@ export function RoutePlanningWorkspace() {
         onDoubleClick={addCoordinate}
         onSelectControlPoint={selectMapControlPoint}
         onSelectRouteLeg={workspace.selectRouteLeg}
+        onInsertRouteLegControlPoint={workspace.insertRouteLegControlPoint}
       />
 
       <MapProviderSwitch

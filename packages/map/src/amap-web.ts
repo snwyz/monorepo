@@ -11,6 +11,7 @@ import type {
   WebMapLocation,
   WebMapOptions,
   WebMapRouteLeg,
+  WebMapRouteLegInsertion,
   WebMapViewportPadding,
 } from "./web-types";
 import { AmapWebError } from "./web-types";
@@ -35,6 +36,7 @@ interface AmapEventTarget {
 
 interface AmapOverlay extends AmapEventTarget {
   setMap(map: AmapMapInstance | null): void;
+  setPath?(path: AmapPosition[]): void;
 }
 
 interface AmapMapInstance extends AmapEventTarget {
@@ -193,6 +195,11 @@ function locationMarkerSvg() {
   return `data:image/svg+xml,${svg}`;
 }
 
+function routeLegInsertionHandleSvg() {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="%23ffffff" stroke="%230a0a0a" stroke-width="2"/><path d="M16 8v16M8 16h16M16 8l-3 3m3-3 3 3M24 16l-3-3m3 3-3 3M16 24l-3-3m3 3 3-3M8 16l3-3m-3 3 3 3" fill="none" stroke="%230a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return `data:image/svg+xml,${svg}`;
+}
+
 function markerContent(source: string, width: number, height = width) {
   const container = document.createElement("div");
   container.style.width = `${width}px`;
@@ -223,10 +230,21 @@ class AmapCanvasImpl implements WebMapCanvas {
   private controlPointOverlays: InteractiveOverlay[] = [];
   private routeOutlineOverlays: AmapOverlay[] = [];
   private routeOverlays: InteractiveOverlay[] = [];
+  private routeLegInsertionOutline: AmapOverlay | null = null;
+  private routeLegInsertionGuide: AmapOverlay | null = null;
+  private routeLegInsertionHandle: AmapOverlay | null = null;
+  private routeLegInsertionHandlers: Array<{
+    event: string;
+    handler: (event: AmapMapEvent) => void;
+  }> = [];
   private userLocationOverlay: AmapOverlay | null = null;
   private readonly onDoubleClick?: (coordinate: MapCoordinate) => void;
   private readonly onMarkerSelect?: (controlPointId: string) => void;
   private readonly onRouteLegSelect?: (routeLegId: string) => void;
+  private readonly onRouteLegInsert?: (
+    routeLegId: string,
+    coordinate: MapCoordinate,
+  ) => void;
   private readonly onReady?: () => void;
   private dragResetFrame: number | null = null;
 
@@ -259,6 +277,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.onDoubleClick = options.onDoubleClick;
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
+    this.onRouteLegInsert = options.onRouteLegInsert;
     this.onReady = options.onReady;
     options.onLoading?.();
     map.setStatus({ doubleClickZoom: false });
@@ -318,6 +337,66 @@ class AmapCanvasImpl implements WebMapCanvas {
       this.map.add(route);
       return { overlay: route, handler };
     });
+  }
+
+  setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null) {
+    this.clearRouteLegInsertion();
+    if (!insertion || !isValidCoordinate(insertion.coordinate)) return;
+
+    const path = [insertion.from, insertion.coordinate, insertion.to].map(toPosition);
+    this.routeLegInsertionOutline = new this.amap.Polyline({
+      path,
+      strokeColor: "#ffffff",
+      strokeWeight: 7,
+      strokeOpacity: 1,
+      lineJoin: "round",
+      lineCap: "round",
+      zIndex: 80,
+    });
+    this.routeLegInsertionGuide = new this.amap.Polyline({
+      path,
+      strokeColor: "#8a8a8a",
+      strokeWeight: 3,
+      strokeStyle: "dashed",
+      strokeDasharray: [6, 6],
+      strokeOpacity: 1,
+      lineJoin: "round",
+      lineCap: "round",
+      zIndex: 90,
+    });
+    const handle = new this.amap.Marker({
+      position: toPosition(insertion.coordinate),
+      content: markerContent(routeLegInsertionHandleSvg(), 32),
+      anchor: "center",
+      cursor: "grab",
+      draggable: true,
+      zIndex: 140,
+    });
+    const updateGuide = (event: AmapMapEvent) => {
+      if (!event.lnglat) return;
+      const coordinate = toCoordinate(event.lnglat);
+      const nextPath = [insertion.from, coordinate, insertion.to].map(toPosition);
+      this.routeLegInsertionOutline?.setPath?.(nextPath);
+      this.routeLegInsertionGuide?.setPath?.(nextPath);
+    };
+    const commitInsertion = (event: AmapMapEvent) => {
+      if (!event.lnglat) return;
+      const coordinate = toCoordinate(event.lnglat);
+      updateGuide(event);
+      this.onRouteLegInsert?.(insertion.routeLegId, coordinate);
+    };
+    handle.on("dragging", updateGuide);
+    handle.on("dragend", commitInsertion);
+    this.routeLegInsertionHandlers = [
+      { event: "dragging", handler: updateGuide },
+      { event: "dragend", handler: commitInsertion },
+    ];
+    this.map.add([
+      this.routeLegInsertionOutline,
+      this.routeLegInsertionGuide,
+      handle,
+    ]);
+    this.routeLegInsertionHandle = handle;
   }
 
   setUserLocation(location: WebMapLocation | null) {
@@ -404,6 +483,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.clearInteractiveOverlays(this.controlPointOverlays);
     this.clearOverlays(this.routeOutlineOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
+    this.clearRouteLegInsertion();
     this.userLocationOverlay?.setMap(null);
     this.userLocationOverlay = null;
     this.map.destroy();
@@ -418,6 +498,19 @@ class AmapCanvasImpl implements WebMapCanvas {
       overlay.off("click", handler);
       overlay.setMap(null);
     }
+  }
+
+  private clearRouteLegInsertion() {
+    for (const { event, handler } of this.routeLegInsertionHandlers) {
+      this.routeLegInsertionHandle?.off(event, handler);
+    }
+    this.routeLegInsertionHandlers = [];
+    this.routeLegInsertionHandle?.setMap(null);
+    this.routeLegInsertionGuide?.setMap(null);
+    this.routeLegInsertionOutline?.setMap(null);
+    this.routeLegInsertionHandle = null;
+    this.routeLegInsertionGuide = null;
+    this.routeLegInsertionOutline = null;
   }
 }
 

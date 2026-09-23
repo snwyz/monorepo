@@ -14,7 +14,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createRoutePlan,
+  insertControlPointIntoRouteLeg,
   reviseRoutePlan,
+  ROUTE_PLAN_CONTROL_POINT_LIMIT,
   type ControlPoint,
   type DraftStatus,
   type RouteCalculationStatus,
@@ -54,6 +56,8 @@ export function useRoutePlanningWorkspace() {
   const [startPointStatus, setStartPointStatus] = useState<RouteStartPointStatus>("idle");
   const [startPointMessage, setStartPointMessage] = useState<string | null>(null);
   const activePlanRef = useRef<RoutePlan | null>(null);
+  const routeRef = useRef<ClosedDrivingRoute | null>(null);
+  const adapterRef = useRef<WebMapAdapter | null>(null);
   const pendingStartPointRef = useRef<{
     planId: string;
     promise: Promise<boolean>;
@@ -84,6 +88,14 @@ export function useRoutePlanningWorkspace() {
   useEffect(() => {
     activePlanRef.current = activePlan;
   }, [activePlan]);
+
+  useEffect(() => {
+    routeRef.current = route;
+  }, [route]);
+
+  useEffect(() => {
+    adapterRef.current = adapter;
+  }, [adapter]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -205,7 +217,11 @@ export function useRoutePlanningWorkspace() {
     recordHistory = true,
   ) => {
     const current = activePlanRef.current;
-    if (!current || current.id !== planId || current.controlPoints.length >= 20) return null;
+    if (
+      !current
+      || current.id !== planId
+      || current.controlPoints.length >= ROUTE_PLAN_CONTROL_POINT_LIMIT
+    ) return null;
     const controlPoint: ControlPoint = {
       id: createId("point"),
       name: candidate.name,
@@ -385,6 +401,57 @@ export function useRoutePlanningWorkspace() {
     setMapFocusRequest({ id: controlPointId, sequence: mapFocusSequence.current });
   }, [appendControlPoint, ensurePlanReadyForControlPoint]);
 
+  const insertRouteLegControlPoint = useCallback(async (
+    routeLegId: string,
+    coordinate: MapCoordinate,
+  ) => {
+    const current = activePlanRef.current;
+    const leg = routeRef.current?.legs.find((item) => item.id === routeLegId);
+    if (!current || !leg) return;
+
+    const controlPoint: ControlPoint = {
+      id: createId("point"),
+      name: "路线调整点",
+      address: "地址解析中…",
+      ...coordinate,
+    };
+    const nextControlPoints = insertControlPointIntoRouteLeg(
+      current.controlPoints,
+      leg.fromControlPointId,
+      leg.toControlPointId,
+      controlPoint,
+    );
+    if (!nextControlPoints) return;
+    setHistory((items) => [...items.slice(-19), current]);
+    const nextPlan = reviseRoutePlan(current, (plan) => ({
+      ...plan,
+      controlPoints: nextControlPoints,
+    }));
+    activePlanRef.current = nextPlan;
+    setActivePlan(nextPlan);
+    setSelectedControlPointId(controlPoint.id);
+    setSelectedRouteLegId(null);
+    setPendingControlPointId(controlPoint.id);
+    setDraftStatus("saving");
+
+    const addressAdapter = adapterRef.current;
+    const address = addressAdapter
+      ? await addressAdapter.reverseGeocode(coordinate)
+      : { name: "路线调整点", address: "未识别地址" };
+    setActivePlan((plan) => {
+      if (!plan || plan.id !== nextPlan.id) return plan;
+      if (!plan.controlPoints.some((point) => point.id === controlPoint.id)) return plan;
+      const resolvedPlan = reviseRoutePlan(plan, (draft) => ({
+        ...draft,
+        controlPoints: draft.controlPoints.map((point) => point.id === controlPoint.id
+          ? { ...point, ...address }
+          : point),
+      }));
+      activePlanRef.current = resolvedPlan;
+      return resolvedPlan;
+    });
+  }, []);
+
   const searchPlaces = useCallback((keyword: string): Promise<PlaceCandidate[]> => {
     if (!adapter) return Promise.reject(new Error(mapMessage));
     return adapter.searchPlaces(keyword);
@@ -455,6 +522,12 @@ export function useRoutePlanningWorkspace() {
     setMapFocusRequest({ id, sequence: mapFocusSequence.current });
   }, []);
 
+  const selectRouteLeg = useCallback((id: string) => {
+    setSelectedRouteLegId(id);
+    setSelectedControlPointId(null);
+    setPendingControlPointId(null);
+  }, []);
+
   return {
     adapter,
     mapProvider,
@@ -482,12 +555,13 @@ export function useRoutePlanningWorkspace() {
     deletePlan,
     addPlaceCandidate,
     addCoordinate,
+    insertRouteLegControlPoint,
     searchPlaces,
     removeControlPoint,
     reorderControlPoint,
     setStrategy,
     undo,
     selectControlPoint,
-    selectRouteLeg: setSelectedRouteLegId,
+    selectRouteLeg,
   };
 }
