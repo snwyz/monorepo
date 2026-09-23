@@ -68,3 +68,12 @@ export function formatPlanUpdatedAt(value: string) {
   const minute = String(date.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day} ${hour}:${minute}`;
 }
+
+export function formatPlanDisplayName(
+  plan: Pick<RoutePlan, "name" | "updatedAt">,
+) {
+  const name = plan.name.trim();
+  return name && name !== "未命名路线"
+    ? name
+    : `${formatPlanUpdatedAt(plan.updatedAt)} 规划路线`;
+}

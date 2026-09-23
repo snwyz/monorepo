@@ -12,7 +12,9 @@ export type {
   WebMapAdapter,
   WebMapCanvas,
   WebMapControlPoint,
+  WebMapFitOptions,
   WebMapOptions,
   WebMapRouteLeg,
   WebMapProvider,
+  WebMapViewportPadding,
 } from "./web-types";

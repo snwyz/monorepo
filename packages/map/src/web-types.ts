@@ -8,6 +8,18 @@ export interface WebMapLocation {
   approximate: boolean;
 }
 
+export interface WebMapViewportPadding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export interface WebMapFitOptions {
+  padding?: WebMapViewportPadding;
+  animated?: boolean;
+}
+
 export interface WebMapOptions {
   center?: MapCoordinate;
   zoom?: number;
@@ -68,7 +80,11 @@ export interface WebMapCanvas {
   setUserLocation(location: WebMapLocation | null): void;
   setCenter(center: MapCoordinate): void;
   setView(center: MapCoordinate, zoom: number): void;
-  fitCoordinates(coordinates: MapCoordinate[]): void;
+  containsCoordinates(
+    coordinates: MapCoordinate[],
+    padding: WebMapViewportPadding,
+  ): boolean;
+  fitCoordinates(coordinates: MapCoordinate[], options?: WebMapFitOptions): void;
   zoomBy(delta: number): void;
   locate(): Promise<WebMapLocation>;
   destroy(): void;
@@ -79,6 +95,7 @@ export interface WebMapAdapter {
   createMap(container: HTMLElement, options?: WebMapOptions): WebMapCanvas;
   resolveInitialLocation(): Promise<MapCoordinate | null>;
   resolveAuthorizedLocation(): Promise<MapCoordinate | null>;
+  resolveCurrentLocation(): Promise<WebMapLocation>;
   searchPlaces(keyword: string): Promise<PlaceCandidate[]>;
   reverseGeocode(coordinate: MapCoordinate): Promise<{
     name: string;

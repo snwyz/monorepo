@@ -11,9 +11,11 @@ import type {
   WebMapLocation,
   WebMapOptions,
   WebMapRouteLeg,
+  WebMapViewportPadding,
 } from "./web-types";
 import { AmapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
+import { areCoordinatesInsideViewport } from "./web-viewport";
 
 type AmapPosition = [number, number];
 
@@ -24,10 +26,6 @@ interface AmapLngLat {
 
 interface AmapMapEvent {
   lnglat?: AmapLngLat;
-  originEvent?: {
-    preventDefault?(): void;
-    stopPropagation?(): void;
-  };
 }
 
 interface AmapEventTarget {
@@ -44,7 +42,8 @@ interface AmapMapInstance extends AmapEventTarget {
   setCenter(center: AmapPosition): void;
   setZoom(zoom: number): void;
   getZoom(): number;
-  setBounds(bounds: unknown): void;
+  getCenter(): AmapLngLat;
+  setBounds(bounds: unknown, immediately?: boolean, avoid?: number[]): void;
   setStatus(status: Record<string, boolean>): void;
   destroy(): void;
 }
@@ -229,6 +228,7 @@ class AmapCanvasImpl implements WebMapCanvas {
   private readonly onMarkerSelect?: (controlPointId: string) => void;
   private readonly onRouteLegSelect?: (routeLegId: string) => void;
   private readonly onReady?: () => void;
+  private dragResetFrame: number | null = null;
 
   private readonly mapReadyHandler = () => {
     locationDebug("info", "map:complete", { zoom: this.map.getZoom() });
@@ -236,14 +236,23 @@ class AmapCanvasImpl implements WebMapCanvas {
   };
 
   private readonly doubleClickHandler = (event: AmapMapEvent) => {
-    event.originEvent?.preventDefault?.();
-    event.originEvent?.stopPropagation?.();
+    this.releaseDragState();
     if (event.lnglat) this.onDoubleClick?.(toCoordinate(event.lnglat));
   };
+
+  private releaseDragState() {
+    if (this.dragResetFrame !== null) cancelAnimationFrame(this.dragResetFrame);
+    this.map.setStatus({ dragEnable: false, doubleClickZoom: false });
+    this.dragResetFrame = requestAnimationFrame(() => {
+      this.dragResetFrame = null;
+      this.map.setStatus({ dragEnable: true, doubleClickZoom: false });
+    });
+  }
 
   constructor(
     private readonly amap: AmapNamespace,
     private readonly map: AmapMapInstance,
+    private readonly container: HTMLElement,
     private readonly resolveCurrentLocation: () => Promise<WebMapLocation>,
     options: WebMapOptions,
   ) {
@@ -335,7 +344,24 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.map.setZoom(zoom);
   }
 
-  fitCoordinates(coordinates: MapCoordinate[]) {
+  containsCoordinates(
+    coordinates: MapCoordinate[],
+    padding: WebMapViewportPadding,
+  ) {
+    const validCoordinates = coordinates.filter(isValidCoordinate);
+    const center = this.map.getCenter();
+    return areCoordinatesInsideViewport(validCoordinates, {
+      center: toCoordinate(center),
+      zoom: this.map.getZoom(),
+      width: this.container.clientWidth,
+      height: this.container.clientHeight,
+    }, padding);
+  }
+
+  fitCoordinates(
+    coordinates: MapCoordinate[],
+    options: Parameters<WebMapCanvas["fitCoordinates"]>[1] = {},
+  ) {
     const validCoordinates = coordinates.filter(isValidCoordinate);
     if (validCoordinates.length === 0) return;
     if (validCoordinates.length === 1) {
@@ -344,10 +370,16 @@ class AmapCanvasImpl implements WebMapCanvas {
     }
     const latitudes = validCoordinates.map((point) => point.latitude);
     const longitudes = validCoordinates.map((point) => point.longitude);
+    const padding = options.padding ?? { top: 48, right: 48, bottom: 48, left: 48 };
     this.map.setBounds(new this.amap.Bounds(
       [Math.min(...longitudes), Math.min(...latitudes)],
       [Math.max(...longitudes), Math.max(...latitudes)],
-    ));
+    ), options.animated === false, [
+      padding.top,
+      padding.bottom,
+      padding.left,
+      padding.right,
+    ]);
   }
 
   zoomBy(delta: number) {
@@ -365,6 +397,8 @@ class AmapCanvasImpl implements WebMapCanvas {
   }
 
   destroy() {
+    if (this.dragResetFrame !== null) cancelAnimationFrame(this.dragResetFrame);
+    this.dragResetFrame = null;
     this.map.off("dblclick", this.doubleClickHandler);
     this.map.off("complete", this.mapReadyHandler);
     this.clearInteractiveOverlays(this.controlPointOverlays);
@@ -462,6 +496,7 @@ export class AmapWebAdapter implements WebMapAdapter {
     return new AmapCanvasImpl(
       this.amap,
       map,
+      container,
       () => this.resolveCurrentLocation(),
       options,
     );
@@ -631,7 +666,7 @@ export class AmapWebAdapter implements WebMapAdapter {
     }
   }
 
-  private async resolveCurrentLocation(): Promise<WebMapLocation> {
+  async resolveCurrentLocation(): Promise<WebMapLocation> {
     if (this.currentLocation && !this.currentLocation.approximate) {
       return this.currentLocation;
     }

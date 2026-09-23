@@ -11,9 +11,11 @@ import type {
   WebMapLocation,
   WebMapOptions,
   WebMapRouteLeg,
+  WebMapViewportPadding,
 } from "./web-types";
 import { TencentMapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
+import { areCoordinatesInsideViewport } from "./web-viewport";
 
 interface TencentLatLng {
   getLat(): number;
@@ -32,7 +34,8 @@ interface TencentMapInstance {
   setDoubleClickZoom(enabled: boolean): void;
   setZoom(zoom: number): void;
   getZoom(): number;
-  fitBounds(bounds: unknown, options?: { padding?: number }): void;
+  getCenter(): TencentLatLng;
+  fitBounds(bounds: unknown, options?: { padding?: number; duration?: number }): void;
   destroy(): void;
 }
 
@@ -216,6 +219,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   constructor(
     private readonly tmap: TencentMapNamespace,
     private readonly map: TencentMapInstance,
+    private readonly container: HTMLElement,
     private readonly resolveCurrentLocation: () => Promise<WebMapLocation>,
     options: WebMapOptions,
   ) {
@@ -389,7 +393,23 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     }
   }
 
-  fitCoordinates(coordinates: MapCoordinate[]) {
+  containsCoordinates(
+    coordinates: MapCoordinate[],
+    padding: WebMapViewportPadding,
+  ) {
+    const center = this.map.getCenter();
+    return areCoordinatesInsideViewport(coordinates, {
+      center: toCoordinate(center),
+      zoom: this.map.getZoom(),
+      width: this.container.clientWidth,
+      height: this.container.clientHeight,
+    }, padding);
+  }
+
+  fitCoordinates(
+    coordinates: MapCoordinate[],
+    options: Parameters<WebMapCanvas["fitCoordinates"]>[1] = {},
+  ) {
     if (coordinates.length === 0) return;
     if (coordinates.length === 1) {
       this.map.setCenter(
@@ -408,8 +428,13 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       Math.max(...latitudes),
       Math.max(...longitudes),
     );
+    const padding = options.padding ?? { top: 48, right: 48, bottom: 48, left: 48 };
     this.map.fitBounds(new this.tmap.LatLngBounds(southwest, northeast), {
-      padding: 96,
+      padding: Math.min(
+        96,
+        Math.max(padding.top, padding.right, padding.bottom, padding.left),
+      ),
+      duration: options.animated === false ? 0 : 360,
     });
   }
 
@@ -536,6 +561,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
     return new TencentMapCanvasImpl(
       this.tmap,
       map,
+      container,
       () => this.resolveCurrentLocation(),
       options,
     );
@@ -704,7 +730,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
     }
   }
 
-  private async resolveCurrentLocation(): Promise<WebMapLocation> {
+  async resolveCurrentLocation(): Promise<WebMapLocation> {
     if (this.currentLocation && !this.currentLocation.approximate) {
       locationDebug("info", "locate:cache-hit-precise", this.currentLocation);
       return this.currentLocation;

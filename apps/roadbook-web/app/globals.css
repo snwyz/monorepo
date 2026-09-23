@@ -100,7 +100,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .plan-selector__trigger { width: 100%; min-height: 54px; padding: 7px 10px; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; color: var(--rb-color-ink); text-align: left; }
 .plan-selector__brand { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--rb-color-surface); background: var(--rb-color-ink); }
 .plan-selector__copy { min-width: 0; flex: 1; display: flex; flex-direction: column; }
-.plan-selector__copy small, .widget-title small, .elevation-panel small, .workspace-guide small, .map-unavailable small { color: var(--rb-color-muted); font-size: 11px; line-height: 16px; }
+.plan-selector__copy small, .widget-title small, .elevation-panel small, .map-unavailable small { color: var(--rb-color-muted); font-size: 11px; line-height: 16px; }
 .plan-selector__copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 20px; }
 .plan-selector__trigger > svg, .elevation-panel__trigger > svg { width: 16px; transition: transform 180ms var(--rb-ease); }
 .is-rotated { transform: rotate(180deg); }
@@ -189,11 +189,9 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .route-plan-welcome > button { width: 100%; }
 .route-plan-welcome > button svg { width: 17px; }
 .route-plan-welcome footer { margin-top: 10px; text-align: center; }
-.workspace-guide, .map-unavailable { position: absolute; z-index: 5; left: 50%; top: 88px; min-width: 290px; min-height: 54px; padding: 8px 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
-.guide-step { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--rb-color-ink); color: var(--rb-color-surface); font-weight: 700; }
-.workspace-guide > span:last-child, .map-unavailable > span { display: flex; flex-direction: column; }
-.workspace-guide strong, .map-unavailable strong { color: var(--rb-color-text-strong); font-size: 13px; }
-.map-unavailable { top: auto; bottom: 76px; color: var(--rb-color-warning); }
+.map-unavailable { position: absolute; z-index: 5; left: 50%; bottom: 76px; min-width: 290px; min-height: 54px; padding: 8px 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; color: var(--rb-color-warning); }
+.map-unavailable > span { display: flex; flex-direction: column; }
+.map-unavailable strong { color: var(--rb-color-text-strong); font-size: 13px; }
 .map-unavailable svg { width: 18px; }
 .route-calculation-feedback { position: absolute; z-index: 9; left: 50%; top: 50%; min-width: 260px; min-height: 68px; padding: 10px 14px; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 11px; pointer-events: none; }
 .route-calculation-feedback__icon { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%; background: var(--rb-color-surface-subtle); color: var(--rb-color-ink); }
@@ -307,8 +305,6 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .plan-row__action { display: none; }
   .workspace-empty { top: 55%; padding: 22px; }
   .workspace-empty h1 { font-size: 21px; line-height: 29px; }
-  .workspace-guide { top: 72px; left: 8px; right: 8px; width: auto; transform: none; }
-  .workspace-guide.has-control-points { top: 196px; }
   .map-unavailable { left: 8px; right: 8px; bottom: 76px; transform: none; }
   .address-list { top: 72px; left: 8px; right: 8px; bottom: auto; width: auto; max-height: min(46svh, 420px); border-radius: 16px; }
   .address-list.is-collapsed { max-height: 58px; }

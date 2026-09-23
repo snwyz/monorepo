@@ -2,8 +2,10 @@
 
 import type {
   ClosedDrivingRoute,
+  MapCoordinate,
   WebMapAdapter,
   WebMapCanvas,
+  WebMapFitOptions,
   WebMapProvider,
 } from "@roadbook/map/web";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -30,6 +32,34 @@ interface RouteMapProps {
   onSelectRouteLeg: (id: string) => void;
 }
 
+const MOBILE_DISTANCE_FALLBACK_METERS = 2_000;
+const EARTH_RADIUS_METERS = 6_371_000;
+
+function getMapFitOptions(): WebMapFitOptions {
+  const isMobile = window.matchMedia("(max-width: 760px)").matches;
+  return {
+    animated: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    padding: isMobile
+      ? { top: 148, right: 24, bottom: 96, left: 62 }
+      : { top: 96, right: 356, bottom: 96, left: 24 },
+  };
+}
+
+function getCoordinateDistanceMeters(from: MapCoordinate, to: MapCoordinate) {
+  const latitudeDelta = (to.latitude - from.latitude) * Math.PI / 180;
+  const longitudeDelta = (to.longitude - from.longitude) * Math.PI / 180;
+  const fromLatitude = from.latitude * Math.PI / 180;
+  const toLatitude = to.latitude * Math.PI / 180;
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(fromLatitude) * Math.cos(toLatitude)
+    * Math.sin(longitudeDelta / 2) ** 2;
+  return 2 * EARTH_RADIUS_METERS * Math.asin(Math.min(1, Math.sqrt(haversine)));
+}
+
+function getRouteCoordinates(route: ClosedDrivingRoute) {
+  return route.legs.flatMap((leg) => leg.path);
+}
+
 export function RouteMap({
   adapter,
   provider,
@@ -53,6 +83,8 @@ export function RouteMap({
   const selectedRouteLegIdRef = useRef(selectedRouteLegId);
   const fitRoutePlanRequestRef = useRef(fitRoutePlanRequest);
   const appliedFitRoutePlanSequenceRef = useRef<number | null>(null);
+  const previousControlPointIdsRef = useRef<string[]>([]);
+  const checkedRouteViewportRef = useRef<ClosedDrivingRoute | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [mapVisualReady, setMapVisualReady] = useState(false);
   useEffect(() => {
@@ -74,8 +106,21 @@ export function RouteMap({
       || appliedFitRoutePlanSequenceRef.current === request.sequence
       || controlPointsRef.current.length === 0
     ) return;
-    canvas.fitCoordinates(controlPointsRef.current);
+    canvas.fitCoordinates(controlPointsRef.current, getMapFitOptions());
     appliedFitRoutePlanSequenceRef.current = request.sequence;
+  }, []);
+
+  const fitRouteGeometryIfNeeded = useCallback((
+    canvas: WebMapCanvas | null,
+    nextRoute: ClosedDrivingRoute | null,
+  ) => {
+    if (!canvas || !nextRoute) return;
+    const coordinates = getRouteCoordinates(nextRoute);
+    if (coordinates.length === 0) return;
+    const options = getMapFitOptions();
+    if (!canvas.containsCoordinates(coordinates, options.padding!)) {
+      canvas.fitCoordinates(coordinates, options);
+    }
   }, []);
 
   useEffect(() => {
@@ -124,6 +169,8 @@ export function RouteMap({
           stale: routeUpdatingRef.current,
         })),
       );
+      fitRouteGeometryIfNeeded(nextCanvas, routeRef.current);
+      checkedRouteViewportRef.current = routeRef.current;
       void adapter.resolveAuthorizedLocation().then((preciseCoordinate) => {
         if (
           preciseCoordinate &&
@@ -144,7 +191,14 @@ export function RouteMap({
       canvasRef.current = null;
       canvas?.destroy();
     };
-  }, [adapter, fitPendingRoutePlan, onDoubleClick, onSelectControlPoint, onSelectRouteLeg]);
+  }, [
+    adapter,
+    fitPendingRoutePlan,
+    fitRouteGeometryIfNeeded,
+    onDoubleClick,
+    onSelectControlPoint,
+    onSelectRouteLeg,
+  ]);
 
   useEffect(() => {
     canvasRef.current?.setControlPoints(
@@ -166,6 +220,34 @@ export function RouteMap({
   }, [focusControlPointRequest]);
 
   useEffect(() => {
+    const previousIds = previousControlPointIdsRef.current;
+    const currentIds = controlPoints.map((point) => point.id);
+    previousControlPointIdsRef.current = currentIds;
+    if (controlPoints.length < 2 || currentIds.length <= previousIds.length) return;
+    if (
+      fitRoutePlanRequest
+      && appliedFitRoutePlanSequenceRef.current === fitRoutePlanRequest.sequence
+    ) return;
+
+    const addedPoint = controlPoints.find((point) => !previousIds.includes(point.id));
+    if (!addedPoint) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const options = getMapFitOptions();
+    const exceedsMobileDistanceFallback = window.matchMedia("(max-width: 760px)").matches
+      && controlPoints.some((point) => (
+        point.id !== addedPoint.id
+        && getCoordinateDistanceMeters(point, addedPoint) > MOBILE_DISTANCE_FALLBACK_METERS
+      ));
+    if (
+      exceedsMobileDistanceFallback
+      || !canvas.containsCoordinates(controlPoints, options.padding!)
+    ) {
+      canvas.fitCoordinates(controlPoints, options);
+    }
+  }, [controlPoints, fitRoutePlanRequest]);
+
+  useEffect(() => {
     canvasRef.current?.setRouteLegs(
       (route?.legs ?? []).map((leg) => ({
         id: leg.id,
@@ -174,7 +256,14 @@ export function RouteMap({
         stale: routeUpdating,
       })),
     );
-  }, [route, routeUpdating, selectedRouteLegId]);
+    if (!route) {
+      checkedRouteViewportRef.current = null;
+      return;
+    }
+    if (routeUpdating || checkedRouteViewportRef.current === route) return;
+    fitRouteGeometryIfNeeded(canvasRef.current, route);
+    checkedRouteViewportRef.current = route;
+  }, [fitRouteGeometryIfNeeded, route, routeUpdating, selectedRouteLegId]);
 
   const locate = async () => {
     try {

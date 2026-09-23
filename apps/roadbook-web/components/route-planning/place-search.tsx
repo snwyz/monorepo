@@ -7,11 +7,17 @@ import { CloseIcon, FilledLocationIcon, SearchIcon } from "@/components/ui/icons
 
 interface PlaceSearchProps {
   disabled?: boolean;
+  placeholder?: string;
   onSearch: (keyword: string) => Promise<PlaceCandidate[]>;
   onSelect: (candidate: PlaceCandidate) => void;
 }
 
-export function PlaceSearch({ disabled, onSearch, onSelect }: PlaceSearchProps) {
+export function PlaceSearch({
+  disabled,
+  placeholder = "搜索地点，添加路线控制点",
+  onSearch,
+  onSelect,
+}: PlaceSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const requestIdRef = useRef(0);
   const [query, setQuery] = useState("");
@@ -87,7 +93,7 @@ export function PlaceSearch({ disabled, onSearch, onSelect }: PlaceSearchProps) 
               setErrorMessage("");
             }
           }}
-          placeholder={disabled ? "地图服务连接后可搜索" : "搜索地点，添加路线控制点"}
+          placeholder={disabled ? "地图服务连接后可搜索" : placeholder}
           aria-label="搜索地点"
           aria-autocomplete="list"
         />

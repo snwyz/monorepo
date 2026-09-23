@@ -24,6 +24,13 @@ const ControlPointDeleteConfirmation = lazy(() =>
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
   const points = workspace.activePlan?.controlPoints ?? [];
+  const searchPlaceholder = workspace.startPointStatus === "locating"
+    ? workspace.startPointMessage ?? "正在获取当前位置作为起点…"
+    : workspace.startPointStatus === "manual-required" && points.length === 0
+      ? workspace.startPointMessage ?? "定位失败，请搜索地点添加起点"
+      : points.length === 0
+        ? "搜索地点，规划当前位置出发路线"
+        : "搜索地点，继续添加控制点";
   const {
     addCoordinate: addCoordinateToPlan,
     removeControlPoint: removeControlPointFromPlan,
@@ -115,6 +122,7 @@ export function RoutePlanningWorkspace() {
         />
         <PlaceSearch
           disabled={workspace.mapStatus !== "ready"}
+          placeholder={searchPlaceholder}
           onSearch={workspace.searchPlaces}
           onSelect={workspace.addPlaceCandidate}
         />
@@ -135,16 +143,6 @@ export function RoutePlanningWorkspace() {
         <RoutePlanWelcomePanel
           onCreate={workspace.createPlan}
         />
-      ) : null}
-
-      {workspace.activePlan && points.length < 2 ? (
-        <section
-          className={`workspace-guide widget${points.length ? " has-control-points" : ""}`}
-          aria-live="polite"
-        >
-          <span className="guide-step">{points.length + 1}</span>
-          <span><strong>{points.length === 0 ? "添加环线起点" : "继续添加控制点"}</strong><small>{workspace.mapStatus === "ready" ? `搜索地点，或双击${workspace.mapProvider === "amap" ? "高德" : "腾讯"}地图选点` : workspace.mapMessage}</small></span>
-        </section>
       ) : null}
 
       {workspace.mapStatus === "unavailable" ? (

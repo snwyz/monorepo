@@ -30,6 +30,8 @@ function createId(prefix: string) {
   return `${prefix}-${value}`;
 }
 
+type RouteStartPointStatus = "idle" | "locating" | "ready" | "manual-required";
+
 export function useRoutePlanningWorkspace() {
   const repository = useMemo(() => new LocalRoutePlanRepository(), []);
   const [catalog, setCatalog] = useState<RoutePlanSummary[]>([]);
@@ -49,6 +51,13 @@ export function useRoutePlanningWorkspace() {
   const [mapFocusRequest, setMapFocusRequest] = useState<{ id: string; sequence: number } | null>(null);
   const [fitRoutePlanRequest, setFitRoutePlanRequest] = useState<{ planId: string; sequence: number } | null>(null);
   const [history, setHistory] = useState<RoutePlan[]>([]);
+  const [startPointStatus, setStartPointStatus] = useState<RouteStartPointStatus>("idle");
+  const [startPointMessage, setStartPointMessage] = useState<string | null>(null);
+  const activePlanRef = useRef<RoutePlan | null>(null);
+  const pendingStartPointRef = useRef<{
+    planId: string;
+    promise: Promise<boolean>;
+  } | null>(null);
   const calculationToken = useRef(0);
   const mapFocusSequence = useRef(0);
   const fitRoutePlanSequence = useRef(0);
@@ -71,6 +80,10 @@ export function useRoutePlanningWorkspace() {
       longitude,
     })) ?? [],
   );
+
+  useEffect(() => {
+    activePlanRef.current = activePlan;
+  }, [activePlan]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -166,8 +179,9 @@ export function useRoutePlanningWorkspace() {
     return () => window.clearTimeout(timer);
   }, [adapter, calculationPlanId, calculationPointsJson, calculationStrategy, mapProvider, mapStatus]);
 
-  const createPlan = useCallback(() => {
+  const initializePlan = useCallback(() => {
     const plan = createRoutePlan(createId("plan"));
+    activePlanRef.current = plan;
     setActivePlan(plan);
     setRoute(null);
     setSelectedControlPointId(null);
@@ -181,6 +195,95 @@ export function useRoutePlanningWorkspace() {
     return plan;
   }, []);
 
+  const appendControlPoint = useCallback((
+    planId: string,
+    candidate: {
+      name: string;
+      address: string;
+      coordinate: MapCoordinate;
+    },
+    recordHistory = true,
+  ) => {
+    const current = activePlanRef.current;
+    if (!current || current.id !== planId || current.controlPoints.length >= 20) return null;
+    const controlPoint: ControlPoint = {
+      id: createId("point"),
+      name: candidate.name,
+      address: candidate.address,
+      ...candidate.coordinate,
+    };
+    if (recordHistory) {
+      setHistory((items) => [...items.slice(-19), current]);
+    }
+    const nextPlan = reviseRoutePlan(current, (plan) => ({
+      ...plan,
+      controlPoints: [...plan.controlPoints, controlPoint],
+    }));
+    activePlanRef.current = nextPlan;
+    setActivePlan(nextPlan);
+    setDraftStatus("saving");
+    return controlPoint.id;
+  }, []);
+
+  const startPlanAtCurrentLocation = useCallback((planId: string) => {
+    if (!adapter) {
+      setStartPointStatus("manual-required");
+      setStartPointMessage("地图服务尚未连接，请搜索地点添加起点");
+      return Promise.resolve(false);
+    }
+    setStartPointStatus("locating");
+    setStartPointMessage("正在获取当前位置作为起点…");
+    const promise = (async () => {
+      try {
+        const location = await adapter.resolveCurrentLocation();
+        if (location.approximate) {
+          throw new Error("无法获取精确位置，请搜索地点添加起点");
+        }
+        let address = "当前位置";
+        try {
+          const resolvedAddress = await adapter.reverseGeocode(location.coordinate);
+          address = resolvedAddress.address || resolvedAddress.name || address;
+        } catch {
+          // 精确坐标已可用时，逆地址失败不应阻断起点创建。
+        }
+        const controlPointId = appendControlPoint(planId, {
+          name: "当前位置",
+          address,
+          coordinate: location.coordinate,
+        }, false);
+        if (!controlPointId) return false;
+        setSelectedControlPointId(controlPointId);
+        mapFocusSequence.current += 1;
+        setMapFocusRequest({ id: controlPointId, sequence: mapFocusSequence.current });
+        setStartPointStatus("ready");
+        setStartPointMessage(null);
+        return true;
+      } catch (error) {
+        if (activePlanRef.current?.id === planId) {
+          const reason = error instanceof Error ? error.message : "无法获取精确位置";
+          setStartPointStatus("manual-required");
+          setStartPointMessage(
+            reason.includes("添加起点") ? reason : `${reason}，请搜索地点添加起点`,
+          );
+        }
+        return false;
+      }
+    })();
+    pendingStartPointRef.current = { planId, promise };
+    void promise.finally(() => {
+      if (pendingStartPointRef.current?.planId === planId) {
+        pendingStartPointRef.current = null;
+      }
+    });
+    return promise;
+  }, [adapter, appendControlPoint]);
+
+  const createPlan = useCallback(() => {
+    const plan = initializePlan();
+    void startPlanAtCurrentLocation(plan.id);
+    return plan;
+  }, [initializePlan, startPlanAtCurrentLocation]);
+
   const loadPlan = useCallback((id: string) => {
     const plan = repository.load(id);
     if (!plan) {
@@ -190,6 +293,7 @@ export function useRoutePlanningWorkspace() {
       return false;
     }
     calculationToken.current += 1;
+    activePlanRef.current = plan;
     setRoute(null);
     setRouteStatus("updating");
     setActivePlan(plan);
@@ -204,49 +308,54 @@ export function useRoutePlanningWorkspace() {
     });
     setHistory([]);
     setDraftStatus("saved");
+    if (plan.controlPoints.length === 0) {
+      void startPlanAtCurrentLocation(plan.id);
+    } else {
+      setStartPointStatus("ready");
+      setStartPointMessage(null);
+    }
     return true;
-  }, [repository]);
+  }, [repository, startPlanAtCurrentLocation]);
 
   const mutatePlan = useCallback((change: (plan: RoutePlan) => RoutePlan) => {
     setDraftStatus("saving");
     setActivePlan((current) => {
       if (!current) return current;
       setHistory((items) => [...items.slice(-19), current]);
-      return reviseRoutePlan(current, change);
+      const nextPlan = reviseRoutePlan(current, change);
+      activePlanRef.current = nextPlan;
+      return nextPlan;
     });
   }, []);
 
-  const addControlPoint = useCallback((candidate: {
-    name: string;
-    address: string;
-    coordinate: MapCoordinate;
-  }) => {
-    const controlPoint: ControlPoint = {
-      id: createId("point"),
-      name: candidate.name,
-      address: candidate.address,
-      ...candidate.coordinate,
-    };
-    setDraftStatus("saving");
-    setActivePlan((current) => {
-      const base = current ?? createRoutePlan(createId("plan"));
-      if (base.controlPoints.length >= 20) return base;
-      if (current) setHistory((items) => [...items.slice(-19), current]);
-      return reviseRoutePlan(base, (plan) => ({
-        ...plan,
-        controlPoints: [...plan.controlPoints, controlPoint],
-      }));
-    });
-    setSelectedControlPointId(controlPoint.id);
-    return controlPoint.id;
-  }, []);
+  const ensurePlanReadyForControlPoint = useCallback(async () => {
+    let plan = activePlanRef.current;
+    if (!plan) plan = createPlan();
+    let pendingStartPoint = pendingStartPointRef.current;
+    if (
+      !pendingStartPoint
+      && plan.controlPoints.length === 0
+      && startPointStatus !== "manual-required"
+    ) {
+      const promise = startPlanAtCurrentLocation(plan.id);
+      pendingStartPoint = { planId: plan.id, promise };
+    }
+    if (pendingStartPoint?.planId === plan.id) {
+      await pendingStartPoint.promise;
+    }
+    return activePlanRef.current?.id === plan.id ? plan.id : null;
+  }, [createPlan, startPlanAtCurrentLocation, startPointStatus]);
 
   const addCoordinate = useCallback(async (coordinate: MapCoordinate) => {
-    const controlPointId = addControlPoint({
+    const planId = await ensurePlanReadyForControlPoint();
+    if (!planId) return;
+    const controlPointId = appendControlPoint(planId, {
       name: "地图选点",
       address: "地址解析中…",
       coordinate,
     });
+    if (!controlPointId) return;
+    setSelectedControlPointId(controlPointId);
     setPendingControlPointId(controlPointId);
     const address = adapter
       ? await adapter.reverseGeocode(coordinate)
@@ -254,22 +363,27 @@ export function useRoutePlanningWorkspace() {
     setDraftStatus("saving");
     setActivePlan((current) => {
       if (!current || !current.controlPoints.some((point) => point.id === controlPointId)) return current;
-      return reviseRoutePlan(current, (plan) => ({
+      const nextPlan = reviseRoutePlan(current, (plan) => ({
         ...plan,
         controlPoints: plan.controlPoints.map((point) => point.id === controlPointId
           ? { ...point, ...address }
           : point),
       }));
+      activePlanRef.current = nextPlan;
+      return nextPlan;
     });
-  }, [adapter, addControlPoint]);
+  }, [adapter, appendControlPoint, ensurePlanReadyForControlPoint]);
 
-  const addPlaceCandidate = useCallback((candidate: PlaceCandidate) => {
+  const addPlaceCandidate = useCallback(async (candidate: PlaceCandidate) => {
+    const planId = await ensurePlanReadyForControlPoint();
+    if (!planId) return;
     setPendingControlPointId(null);
-    const controlPointId = addControlPoint(candidate);
+    const controlPointId = appendControlPoint(planId, candidate);
+    if (!controlPointId) return;
     setSelectedControlPointId(controlPointId);
     mapFocusSequence.current += 1;
     setMapFocusRequest({ id: controlPointId, sequence: mapFocusSequence.current });
-  }, [addControlPoint]);
+  }, [appendControlPoint, ensurePlanReadyForControlPoint]);
 
   const searchPlaces = useCallback((keyword: string): Promise<PlaceCandidate[]> => {
     if (!adapter) return Promise.reject(new Error(mapMessage));
@@ -311,6 +425,7 @@ export function useRoutePlanningWorkspace() {
     setCatalog(repository.list());
     if (activePlan?.id === id) {
       calculationToken.current += 1;
+      activePlanRef.current = null;
       setActivePlan(null);
       setRoute(null);
       setRouteStatus("idle");
@@ -318,13 +433,17 @@ export function useRoutePlanningWorkspace() {
       setPendingControlPointId(null);
       setMapFocusRequest(null);
       setFitRoutePlanRequest(null);
+      setStartPointStatus("idle");
+      setStartPointMessage(null);
     }
   }, [activePlan?.id, repository]);
 
   const undo = useCallback(() => {
     const previous = history.at(-1);
     if (!previous) return;
-    setActivePlan(reviseRoutePlan(previous, (plan) => plan));
+    const nextPlan = reviseRoutePlan(previous, (plan) => plan);
+    activePlanRef.current = nextPlan;
+    setActivePlan(nextPlan);
     setHistory((items) => items.slice(0, -1));
   }, [history]);
 
@@ -354,6 +473,8 @@ export function useRoutePlanningWorkspace() {
     pendingControlPointId,
     mapFocusRequest,
     fitRoutePlanRequest,
+    startPointStatus,
+    startPointMessage,
     canUndo: history.length > 0,
     createPlan,
     loadPlan,

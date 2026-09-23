@@ -5,7 +5,7 @@ import { lazy, Suspense, type CSSProperties, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, PlusIcon, RouteIcon, TrashIcon } from "@/components/ui/icons";
 import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
-import { formatPlanUpdatedAt, type RoutePlan, type RoutePlanSummary } from "@/domain/route-planning/model";
+import { formatPlanDisplayName, type RoutePlan, type RoutePlanSummary } from "@/domain/route-planning/model";
 
 const RoutePlanDeleteConfirmation = lazy(() =>
   import("@/components/route-plan-catalog/route-plan-delete-confirmation").then(
@@ -31,7 +31,7 @@ interface RoutePlanRowProps {
 }
 
 function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: RoutePlanRowProps) {
-  const planLabel = `${formatPlanUpdatedAt(plan.updatedAt)} 规划路线`;
+  const planLabel = formatPlanDisplayName(plan);
   const {
     swipeOffset,
     isSwipeDeleteReady,
@@ -100,6 +100,16 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
   const [open, setOpen] = useState(false);
   const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; label: string } | null>(null);
+  const [renameDraft, setRenameDraft] = useState<{ planId: string; value: string } | null>(null);
+  const activePlanSummary = activePlan
+    ? catalog.find((plan) => plan.id === activePlan.id)
+    : undefined;
+  const activePlanLabel = activePlan
+    ? formatPlanDisplayName(activePlanSummary ?? activePlan)
+    : "未选择方案";
+  const visiblePlanName = activePlan && renameDraft?.planId === activePlan.id
+    ? renameDraft.value
+    : activePlanLabel;
 
   const requestDelete = (id: string, label: string) => {
     setDeleteConfirmationLoaded(true);
@@ -118,7 +128,7 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
         <span className="plan-selector__brand"><RouteIcon /></span>
         <span className="plan-selector__copy">
           <small>我的路线 · {catalog.length}</small>
-          <strong>{activePlan?.name ?? "未选择方案"}</strong>
+          <strong>{activePlanLabel}</strong>
         </span>
         <ChevronDownIcon className={open ? "is-rotated" : ""} />
       </button>
@@ -151,8 +161,17 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
           className="plan-selector__name"
           aria-label="方案名称"
           key={activePlan.id}
-          defaultValue={activePlan.name}
-          onBlur={(event) => onRename(event.currentTarget.value)}
+          value={visiblePlanName}
+          onFocus={() => setRenameDraft({ planId: activePlan.id, value: activePlanLabel })}
+          onChange={(event) => setRenameDraft({
+            planId: activePlan.id,
+            value: event.currentTarget.value,
+          })}
+          onBlur={(event) => {
+            const nextName = event.currentTarget.value.trim();
+            setRenameDraft(null);
+            if (nextName !== activePlanLabel) onRename(nextName);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
           }}
