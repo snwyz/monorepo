@@ -42,6 +42,13 @@
 }
 
 * { box-sizing: border-box; }
+@supports (-moz-appearance: none) {
+  * { scrollbar-width: thin; scrollbar-color: var(--rb-color-muted) transparent; }
+}
+*::-webkit-scrollbar { width: 2px; height: 2px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--rb-color-muted); }
+*::-webkit-scrollbar-thumb:hover { background: var(--rb-color-text); }
 html, body { margin: 0; min-height: 100%; }
 body { background: var(--rb-color-canvas); color: var(--rb-color-text); font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; }
@@ -57,11 +64,6 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .route-map__canvas { z-index: 2; opacity: 0; transition: opacity .18s ease; }
 .route-map__canvas.is-ready { opacity: 1; }
 .map-center-location { position: absolute; z-index: 3; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-.map-control-point-delete-action { position: absolute; z-index: 7; top: calc(50% - 24px); left: calc(50% + 2px); display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid var(--rb-color-border); border-radius: 999px; background: var(--rb-color-surface); color: var(--rb-color-danger); box-shadow: var(--rb-shadow-float); cursor: pointer; transform-origin: center; }
-.map-control-point-delete-action::before { position: absolute; inset: -6px; content: ""; }
-.map-control-point-delete-action:hover { border-color: var(--rb-color-danger); background: var(--rb-color-surface-subtle); }
-.map-control-point-delete-action:focus-visible { outline: 3px solid var(--rb-color-danger); outline-offset: 2px; }
-.map-control-point-delete-action svg { width: 10px; height: 10px; }
 .loc_icon { position: relative; display: block; width: 20px; height: 20px; background: #1677ff; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,.15); transition: transform .3s ease, box-shadow .3s ease; }
 .loc_icon::after { content: ""; position: absolute; z-index: -1; top: 50%; left: 50%; width: 100%; height: 100%; border-radius: 50%; background: rgba(22,119,255,.3); transform: translate(-50%,-50%); animation: locationPulse 2s ease-out infinite; }
 .loc_icon:hover { transform: scale(1.2); box-shadow: 0 4px 12px rgba(22,119,255,.4); }
@@ -298,12 +300,13 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .planning-workspace { min-height: 100svh; }
   .workspace-topbar { top: 8px; left: 8px; right: 8px; display: block; }
   .plan-selector, .place-search { min-height: 52px; }
+  .plan-selector { width: 100%; }
   .place-search { position: fixed; z-index: 12; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); width: auto; }
   .place-search__input input { font-size: 16px; }
   .place-search__input kbd { display: none; }
   .place-search__results { top: auto; bottom: calc(100% + 8px); max-height: min(42svh, 340px); }
   .strategy-selector, .workspace-mode { display: none; }
-  .plan-selector__menu { width: calc(100vw - 16px); }
+  .plan-selector__menu { width: 100%; }
   .plan-row-shell { overflow: hidden; }
   .plan-row__swipe-action { position: absolute; z-index: 0; inset: 0 0 auto auto; width: 96px; height: 62px; padding-right: 12px; display: flex; align-items: center; justify-content: flex-end; background: var(--rb-color-surface-subtle); color: var(--rb-color-danger); font-size: 11px; font-weight: 600; }
   .plan-row__swipe-action.is-ready { background: var(--rb-color-danger); color: var(--rb-color-surface); }

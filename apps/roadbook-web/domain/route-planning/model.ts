@@ -61,10 +61,10 @@ export function reviseRoutePlan(
 export function formatPlanUpdatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "时间未知";
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
 }

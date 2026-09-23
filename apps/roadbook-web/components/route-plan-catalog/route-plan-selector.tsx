@@ -1,11 +1,17 @@
 "use client";
 
-import { type CSSProperties, useState } from "react";
+import { lazy, Suspense, type CSSProperties, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, PlusIcon, RouteIcon, TrashIcon } from "@/components/ui/icons";
 import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
 import { formatPlanUpdatedAt, type RoutePlan, type RoutePlanSummary } from "@/domain/route-planning/model";
+
+const RoutePlanDeleteConfirmation = lazy(() =>
+  import("@/components/route-plan-catalog/route-plan-delete-confirmation").then(
+    (module) => ({ default: module.RoutePlanDeleteConfirmation }),
+  ),
+);
 
 interface RoutePlanSelectorProps {
   catalog: RoutePlanSummary[];
@@ -25,6 +31,7 @@ interface RoutePlanRowProps {
 }
 
 function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: RoutePlanRowProps) {
+  const planLabel = `${formatPlanUpdatedAt(plan.updatedAt)} 规划路线`;
   const {
     swipeOffset,
     isSwipeDeleteReady,
@@ -34,7 +41,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
     handlePointerCancel,
     shouldSuppressClick,
   } = useMobileSwipeRemoval({
-    onRequestRemoval: () => onRequestDelete(plan.id, plan.name),
+    onRequestRemoval: () => onRequestDelete(plan.id, planLabel),
     ignoredTargetSelector: ".plan-row__action",
   });
 
@@ -64,8 +71,8 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
       >
         <span className="plan-row__route"><span /><span /><span /></span>
         <span className="plan-row__copy">
-          <strong>{plan.name}</strong>
-          <small>{plan.controlPointCount} 个控制点 · {formatPlanUpdatedAt(plan.updatedAt)}</small>
+          <strong>{planLabel}</strong>
+          <small>{plan.controlPointCount} 个位置信息</small>
         </span>
         <span
           className="plan-row__action"
@@ -73,14 +80,14 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
           tabIndex={0}
           onClick={(event) => {
             event.stopPropagation();
-            onRequestDelete(plan.id, plan.name);
+            onRequestDelete(plan.id, planLabel);
           }}
           onKeyDown={(event) => {
             if (event.key !== "Enter" && event.key !== " ") return;
             event.stopPropagation();
-            onRequestDelete(plan.id, plan.name);
+            onRequestDelete(plan.id, planLabel);
           }}
-          aria-label={`删除${plan.name}`}
+          aria-label={`删除${planLabel}`}
         >
           <TrashIcon />
         </span>
@@ -91,9 +98,18 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
 
 export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRename, onDelete }: RoutePlanSelectorProps) {
   const [open, setOpen] = useState(false);
+  const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; label: string } | null>(null);
 
   const requestDelete = (id: string, label: string) => {
-    if (window.confirm(`确认删除“${label}”吗？此操作只删除当前浏览器中的方案。`)) onDelete(id);
+    setDeleteConfirmationLoaded(true);
+    setDeleteCandidate({ id, label });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteCandidate) return;
+    onDelete(deleteCandidate.id);
+    setDeleteCandidate(null);
   };
 
   return (
@@ -141,6 +157,18 @@ export function RoutePlanSelector({ catalog, activePlan, onCreate, onLoad, onRen
             if (event.key === "Enter") event.currentTarget.blur();
           }}
         />
+      ) : null}
+      {deleteConfirmationLoaded ? (
+        <Suspense fallback={null}>
+          <RoutePlanDeleteConfirmation
+            open={Boolean(deleteCandidate)}
+            planLabel={deleteCandidate?.label ?? null}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) setDeleteCandidate(null);
+            }}
+            onConfirm={confirmDelete}
+          />
+        </Suspense>
       ) : null}
     </section>
   );

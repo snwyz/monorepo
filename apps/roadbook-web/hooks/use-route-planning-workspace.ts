@@ -47,9 +47,11 @@ export function useRoutePlanningWorkspace() {
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [pendingControlPointId, setPendingControlPointId] = useState<string | null>(null);
   const [mapFocusRequest, setMapFocusRequest] = useState<{ id: string; sequence: number } | null>(null);
+  const [fitRoutePlanRequest, setFitRoutePlanRequest] = useState<{ planId: string; sequence: number } | null>(null);
   const [history, setHistory] = useState<RoutePlan[]>([]);
   const calculationToken = useRef(0);
   const mapFocusSequence = useRef(0);
+  const fitRoutePlanSequence = useRef(0);
   const changeMapProvider = useCallback((provider: WebMapProvider) => {
     calculationToken.current += 1;
     setAdapter(null);
@@ -172,6 +174,7 @@ export function useRoutePlanningWorkspace() {
     setSelectedRouteLegId(null);
     setPendingControlPointId(null);
     setMapFocusRequest(null);
+    setFitRoutePlanRequest(null);
     setHistory([]);
     setDraftStatus("saving");
     setRouteStatus("waiting-for-points");
@@ -194,6 +197,11 @@ export function useRoutePlanningWorkspace() {
     setSelectedRouteLegId(null);
     setPendingControlPointId(null);
     setMapFocusRequest(null);
+    fitRoutePlanSequence.current += 1;
+    setFitRoutePlanRequest({
+      planId: plan.id,
+      sequence: fitRoutePlanSequence.current,
+    });
     setHistory([]);
     setDraftStatus("saved");
     return true;
@@ -309,6 +317,7 @@ export function useRoutePlanningWorkspace() {
       setHistory([]);
       setPendingControlPointId(null);
       setMapFocusRequest(null);
+      setFitRoutePlanRequest(null);
     }
   }, [activePlan?.id, repository]);
 
@@ -343,6 +352,7 @@ export function useRoutePlanningWorkspace() {
     selectedRouteLegId,
     pendingControlPointId,
     mapFocusRequest,
+    fitRoutePlanRequest,
     canUndo: history.length > 0,
     createPlan,
     loadPlan,

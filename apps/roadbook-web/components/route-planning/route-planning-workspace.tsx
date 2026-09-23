@@ -29,25 +29,15 @@ export function RoutePlanningWorkspace() {
     removeControlPoint: removeControlPointFromPlan,
     selectControlPoint,
   } = workspace;
-  const [mapControlPointActionId, setMapControlPointActionId] = useState<string | null>(null);
-  const [mapControlPointActionLoaded, setMapControlPointActionLoaded] = useState(false);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
   const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
   const deleteCandidate = points.find((point) => point.id === deleteCandidateId);
 
   const addCoordinate = useCallback((coordinate: { latitude: number; longitude: number }) => {
-    setMapControlPointActionId(null);
     void addCoordinateToPlan(coordinate);
   }, [addCoordinateToPlan]);
 
   const selectMapControlPoint = useCallback((id: string) => {
-    setMapControlPointActionLoaded(true);
-    setMapControlPointActionId(id);
-    selectControlPoint(id);
-  }, [selectControlPoint]);
-
-  const selectAddressControlPoint = useCallback((id: string) => {
-    setMapControlPointActionId(null);
     selectControlPoint(id);
   }, [selectControlPoint]);
 
@@ -58,7 +48,6 @@ export function RoutePlanningWorkspace() {
 
   const confirmControlPointRemoval = useCallback(() => {
     if (!deleteCandidateId) return;
-    setMapControlPointActionId(null);
     removeControlPointFromPlan(deleteCandidateId);
     setDeleteCandidateId(null);
   }, [deleteCandidateId, removeControlPointFromPlan]);
@@ -99,13 +88,10 @@ export function RoutePlanningWorkspace() {
         selectedRouteLegId={workspace.selectedRouteLegId}
         routeUpdating={workspace.routeStatus === "updating"}
         focusControlPointRequest={workspace.mapFocusRequest}
-        controlPointDeleteActionId={mapControlPointActionId}
-        controlPointDeleteActionLoaded={mapControlPointActionLoaded}
+        fitRoutePlanRequest={workspace.fitRoutePlanRequest}
         onDoubleClick={addCoordinate}
         onSelectControlPoint={selectMapControlPoint}
         onSelectRouteLeg={workspace.selectRouteLeg}
-        onDismissControlPointDeleteAction={() => setMapControlPointActionId(null)}
-        onRemoveControlPoint={requestControlPointRemoval}
       />
 
       <MapProviderSwitch
@@ -171,7 +157,7 @@ export function RoutePlanningWorkspace() {
           selectedControlPointId={workspace.selectedControlPointId}
           selectedRouteLegId={workspace.selectedRouteLegId}
           pendingControlPointId={workspace.pendingControlPointId}
-          onSelectControlPoint={selectAddressControlPoint}
+          onSelectControlPoint={selectControlPoint}
           onSelectRouteLeg={workspace.selectRouteLeg}
           onReorder={workspace.reorderControlPoint}
           onRemove={requestControlPointRemoval}

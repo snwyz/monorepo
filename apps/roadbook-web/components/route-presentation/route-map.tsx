@@ -6,7 +6,7 @@ import type {
   WebMapCanvas,
   WebMapProvider,
 } from "@roadbook/map/web";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ControlPoint } from "@/domain/route-planning/model";
 import {
@@ -14,12 +14,6 @@ import {
   MinusIcon,
   PlusIcon,
 } from "@/components/route-presentation/tool-icons";
-
-const MapControlPointDeleteAction = lazy(() =>
-  import("@/components/route-presentation/map-control-point-delete-action").then(
-    (module) => ({ default: module.MapControlPointDeleteAction }),
-  ),
-);
 
 interface RouteMapProps {
   adapter: WebMapAdapter | null;
@@ -30,13 +24,10 @@ interface RouteMapProps {
   selectedRouteLegId: string | null;
   routeUpdating: boolean;
   focusControlPointRequest: { id: string; sequence: number } | null;
-  controlPointDeleteActionId: string | null;
-  controlPointDeleteActionLoaded: boolean;
+  fitRoutePlanRequest: { planId: string; sequence: number } | null;
   onDoubleClick: (coordinate: { latitude: number; longitude: number }) => void;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
-  onDismissControlPointDeleteAction: () => void;
-  onRemoveControlPoint: (id: string) => void;
 }
 
 export function RouteMap({
@@ -48,13 +39,10 @@ export function RouteMap({
   selectedRouteLegId,
   routeUpdating,
   focusControlPointRequest,
-  controlPointDeleteActionId,
-  controlPointDeleteActionLoaded,
+  fitRoutePlanRequest,
   onDoubleClick,
   onSelectControlPoint,
   onSelectRouteLeg,
-  onDismissControlPointDeleteAction,
-  onRemoveControlPoint,
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<WebMapCanvas | null>(null);
@@ -63,12 +51,10 @@ export function RouteMap({
   const routeUpdatingRef = useRef(routeUpdating);
   const selectedControlPointIdRef = useRef(selectedControlPointId);
   const selectedRouteLegIdRef = useRef(selectedRouteLegId);
+  const fitRoutePlanRequestRef = useRef(fitRoutePlanRequest);
+  const appliedFitRoutePlanSequenceRef = useRef<number | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [mapVisualReady, setMapVisualReady] = useState(false);
-  const deleteActionPoint = controlPoints.find(
-    (point) => point.id === controlPointDeleteActionId,
-  );
-
   useEffect(() => {
     controlPointsRef.current = controlPoints;
   }, [controlPoints]);
@@ -79,6 +65,23 @@ export function RouteMap({
     selectedControlPointIdRef.current = selectedControlPointId;
     selectedRouteLegIdRef.current = selectedRouteLegId;
   }, [route, routeUpdating, selectedControlPointId, selectedRouteLegId]);
+
+  const fitPendingRoutePlan = useCallback((canvas: WebMapCanvas | null) => {
+    const request = fitRoutePlanRequestRef.current;
+    if (
+      !canvas
+      || !request
+      || appliedFitRoutePlanSequenceRef.current === request.sequence
+      || controlPointsRef.current.length === 0
+    ) return;
+    canvas.fitCoordinates(controlPointsRef.current);
+    appliedFitRoutePlanSequenceRef.current = request.sequence;
+  }, []);
+
+  useEffect(() => {
+    fitRoutePlanRequestRef.current = fitRoutePlanRequest;
+    fitPendingRoutePlan(canvasRef.current);
+  }, [fitRoutePlanRequest, fitPendingRoutePlan]);
 
   useEffect(() => {
     if (!adapter || !containerRef.current) return;
@@ -98,6 +101,7 @@ export function RouteMap({
       });
       canvas = nextCanvas;
       canvasRef.current = nextCanvas;
+      appliedFitRoutePlanSequenceRef.current = null;
       if (coordinate) {
         nextCanvas.setUserLocation({
           coordinate,
@@ -111,6 +115,7 @@ export function RouteMap({
           selected: point.id === selectedControlPointIdRef.current,
         })),
       );
+      fitPendingRoutePlan(nextCanvas);
       nextCanvas.setRouteLegs(
         (routeRef.current?.legs ?? []).map((leg) => ({
           id: leg.id,
@@ -139,7 +144,7 @@ export function RouteMap({
       canvasRef.current = null;
       canvas?.destroy();
     };
-  }, [adapter, onDoubleClick, onSelectControlPoint, onSelectRouteLeg]);
+  }, [adapter, fitPendingRoutePlan, onDoubleClick, onSelectControlPoint, onSelectRouteLeg]);
 
   useEffect(() => {
     canvasRef.current?.setControlPoints(
@@ -192,12 +197,6 @@ export function RouteMap({
     <div
       className="route-map"
       aria-label={`${provider === "amap" ? "高德" : "腾讯"}地图路线工作区`}
-      onPointerDownCapture={(event) => {
-        const target = event.target as HTMLElement;
-        if (!target.closest(".map-control-point-delete-action")) {
-          onDismissControlPointDeleteAction();
-        }
-      }}
     >
       <div className="route-map__fallback" aria-hidden="true">
         <span className="route-map__road route-map__road--one" />
@@ -213,16 +212,6 @@ export function RouteMap({
         <div className="map-center-location" aria-hidden="true">
           <span className="loc_icon center_icon" />
         </div>
-      ) : null}
-      {controlPointDeleteActionLoaded ? (
-        <Suspense fallback={null}>
-          <MapControlPointDeleteAction
-            pointName={deleteActionPoint?.name ?? null}
-            onDelete={() => {
-              if (deleteActionPoint) onRemoveControlPoint(deleteActionPoint.id);
-            }}
-          />
-        </Suspense>
       ) : null}
       <div className="map-attribution">{provider === "amap" ? "高德地图" : "腾讯地图"}</div>
       <div className="map-controls" aria-label="地图工具">
