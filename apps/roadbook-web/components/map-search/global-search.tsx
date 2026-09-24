@@ -275,11 +275,12 @@ export function GlobalSearch({
         data-state={state}
         aria-label="全局搜索"
       >
-        {state === "discovering" ? (
+        {isSearchOpen ? (
           <button
             type="button"
             className={`global-search-overlay${isClosing ? " is-closing" : ""}`}
             aria-label="关闭全局搜索"
+            tabIndex={-1}
             onClick={() => closeSearch()}
           />
         ) : null}
@@ -327,14 +328,12 @@ export function GlobalSearch({
 
         {state === "discovering" ? (
           <div className="global-search__panel global-search__discover-panel">
-            <section className="search-discovery-section">
-              <header className="search-discovery-heading">
-                <h2>最近搜索</h2>
-                {recentQueries.length ? (
-                  <button type="button" onClick={clearHistory}>Clear</button>
-                ) : null}
-              </header>
-              {recentQueries.length ? (
+            {recentQueries.length ? (
+              <section className="search-discovery-section">
+                <header className="search-discovery-heading">
+                  <h2>最近搜索</h2>
+                  <button type="button" onClick={clearHistory}>清除</button>
+                </header>
                 <div className="search-history-row">
                   {recentQueries.map((item) => (
                     <button key={item} type="button" onClick={() => applyQuery(item)}>
@@ -342,10 +341,8 @@ export function GlobalSearch({
                     </button>
                   ))}
                 </div>
-              ) : (
-                <p className="search-discovery-empty">搜索过的地点与路线会保存在这里。</p>
-              )}
-            </section>
+              </section>
+            ) : null}
 
             <section className="search-discovery-section">
               <header className="search-discovery-heading"><h2>分类浏览</h2></header>
@@ -357,7 +354,7 @@ export function GlobalSearch({
                     onClick={() => applyQuery(category.query)}
                   >
                     <span>{category.label}</span>
-                    <small>{category.count}</small>
+                    {category.count > 1 ? <small>{category.count}</small> : null}
                   </button>
                 ))}
               </div>
