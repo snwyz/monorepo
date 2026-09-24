@@ -20,6 +20,8 @@ export interface RoutePlanSummary {
   id: string;
   name: string;
   controlPointCount: number;
+  startPointName?: string;
+  lastControlPointName?: string;
   updatedAt: string;
   schemaVersion: 1;
   loadable: boolean;
@@ -91,10 +93,45 @@ export function formatPlanUpdatedAt(value: string) {
 }
 
 export function formatPlanDisplayName(
-  plan: Pick<RoutePlan, "name" | "updatedAt">,
+  plan: Pick<RoutePlan, "name" | "updatedAt"> &
+    Partial<Pick<RoutePlanSummary, "startPointName" | "lastControlPointName">>,
 ) {
   const name = plan.name.trim();
-  return name && name !== "未命名路线"
-    ? name
-    : `${formatPlanUpdatedAt(plan.updatedAt)} 规划路线`;
+  if (name && name !== "未命名路线") return name;
+
+  const startPointName = plan.startPointName?.trim();
+  const lastControlPointName = plan.lastControlPointName?.trim();
+  if (startPointName && lastControlPointName && startPointName !== lastControlPointName) {
+    return `${startPointName} → ${lastControlPointName}`;
+  }
+  return startPointName || "未命名路线";
+}
+
+export function formatPlanUpdatedTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "时间未知";
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
+export function getPlanUpdatedDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+export function formatPlanUpdatedDateHeading(value: string, now = new Date()) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "日期未知";
+
+  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const calendarLabel = `${date.getMonth() + 1}月${date.getDate()}日`;
+
+  if (dateStart.getTime() === todayStart.getTime()) return `今天 · ${calendarLabel}`;
+  if (dateStart.getTime() === yesterdayStart.getTime()) return `昨天 · ${calendarLabel}`;
+  if (date.getFullYear() === now.getFullYear()) return calendarLabel;
+  return `${date.getFullYear()}年${calendarLabel}`;
 }

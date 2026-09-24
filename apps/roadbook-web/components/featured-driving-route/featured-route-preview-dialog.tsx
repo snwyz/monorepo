@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
-import { CloseIcon, RouteIcon } from "@/components/ui/icons";
+import { RoadbookMark } from "@/components/branding/roadbook-mark";
+import { CloseIcon } from "@/components/ui/icons";
 import type { FeaturedDrivingRoute } from "@/domain/featured-driving-route/model";
 
 interface FeaturedRoutePreviewDialogProps {
@@ -100,7 +101,7 @@ export function FeaturedRoutePreviewDialog({
         </div>
         <div className="featured-preview-dialog__body">
           <span className="featured-preview-dialog__eyebrow">
-            <RouteIcon />
+            <RoadbookMark />
             {route.eyebrow}
           </span>
           <h2 id="featured-preview-title">{route.name}</h2>

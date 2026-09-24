@@ -25,6 +25,7 @@ import {
   createFeaturedRoadLabelVisual,
   featuredRoadColor,
 } from "./featured-route-label";
+import { mapOverlayColors, plannedRouteStrokeWidths } from "./map-overlay-style";
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
@@ -193,8 +194,8 @@ async function requestAmapProxy<T extends AmapServiceResponse>(url: string) {
 }
 
 function locationMarkerSvg() {
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%231677ff" fill-opacity=".3"/><circle cx="16" cy="16" r="10" fill="%231677ff" stroke="%23ffffff" stroke-width="2"/></svg>';
-  return `data:image/svg+xml,${svg}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${mapOverlayColors.location}" fill-opacity=".18"/><circle cx="16" cy="16" r="8" fill="${mapOverlayColors.location}" stroke="${mapOverlayColors.surface}" stroke-width="3"/></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function routeLegInsertionHandleSvg() {
@@ -236,6 +237,7 @@ class AmapCanvasImpl implements WebMapCanvas {
   private featuredMarkerOverlays: InteractiveOverlay[] = [];
   private controlPointOverlays: InteractiveOverlay[] = [];
   private routeOutlineOverlays: AmapOverlay[] = [];
+  private routeCoreOverlays: InteractiveOverlay[] = [];
   private routeOverlays: InteractiveOverlay[] = [];
   private routeLegInsertionOutline: AmapOverlay | null = null;
   private routeLegInsertionGuide: AmapOverlay | null = null;
@@ -414,13 +416,21 @@ class AmapCanvasImpl implements WebMapCanvas {
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
     this.clearOverlays(this.routeOutlineOverlays);
+    this.clearInteractiveOverlays(this.routeCoreOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
     const validLegs = routeLegs.filter((leg) => leg.path.length > 1);
     this.routeOutlineOverlays = validLegs.map((leg) => {
+      const statusWidth = leg.failed
+        ? plannedRouteStrokeWidths.failed.outline
+        : plannedRouteStrokeWidths.stale.outline;
       const outline = new this.amap.Polyline({
         path: leg.path.map(toPosition),
-        strokeColor: "#ffffff",
-        strokeWeight: leg.selected ? 12 : 9,
+        strokeColor: mapOverlayColors.surface,
+        strokeWeight: leg.failed || leg.stale
+          ? statusWidth
+          : leg.selected
+            ? plannedRouteStrokeWidths.selected.outline
+            : plannedRouteStrokeWidths.normal.outline,
         strokeOpacity: 1,
         lineJoin: "round",
         lineCap: "round",
@@ -432,8 +442,18 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.routeOverlays = validLegs.map((leg) => {
       const route = new this.amap.Polyline({
         path: leg.path.map(toPosition),
-        strokeColor: leg.failed ? "#b42318" : leg.stale ? "#8a8a8a" : "#0a0a0a",
-        strokeWeight: leg.selected ? 8 : leg.stale ? 4 : 5,
+        strokeColor: leg.failed
+          ? mapOverlayColors.failedRoute
+          : leg.stale
+            ? mapOverlayColors.staleRoute
+            : mapOverlayColors.routeBoundary,
+        strokeWeight: leg.failed
+          ? plannedRouteStrokeWidths.failed.route
+          : leg.stale
+            ? plannedRouteStrokeWidths.stale.route
+            : leg.selected
+              ? plannedRouteStrokeWidths.selected.boundary
+              : plannedRouteStrokeWidths.normal.boundary,
         strokeStyle: leg.failed || leg.stale ? "dashed" : "solid",
         strokeDasharray: leg.failed ? [5, 5] : [8, 6],
         strokeOpacity: 1,
@@ -446,6 +466,25 @@ class AmapCanvasImpl implements WebMapCanvas {
       route.on("click", handler);
       this.map.add(route);
       return { overlay: route, handler };
+    });
+    this.routeCoreOverlays = validLegs.flatMap((leg) => {
+      if (leg.failed || leg.stale) return [];
+      const route = new this.amap.Polyline({
+        path: leg.path.map(toPosition),
+        strokeColor: mapOverlayColors.routeCore,
+        strokeWeight: leg.selected
+          ? plannedRouteStrokeWidths.selected.core
+          : plannedRouteStrokeWidths.normal.core,
+        strokeOpacity: 1,
+        lineJoin: "round",
+        lineCap: "round",
+        zIndex: leg.selected ? 75 : 65,
+        bubble: false,
+      });
+      const handler = () => this.onRouteLegSelect?.(leg.id);
+      route.on("click", handler);
+      this.map.add(route);
+      return [{ overlay: route, handler }];
     });
   }
 
@@ -598,6 +637,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.clearInteractiveOverlays(this.featuredControlPointOverlays);
     this.clearInteractiveOverlays(this.featuredMarkerOverlays);
     this.clearOverlays(this.routeOutlineOverlays);
+    this.clearInteractiveOverlays(this.routeCoreOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
     this.clearRouteLegInsertion();
     this.userLocationOverlay?.setMap(null);

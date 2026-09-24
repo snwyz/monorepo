@@ -13,10 +13,10 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 
+import { RoadbookMark } from "@/components/branding/roadbook-mark";
 import {
   CloseIcon,
   FilledLocationIcon,
-  RouteIcon,
   SearchIcon,
 } from "@/components/ui/icons";
 import type {
@@ -407,7 +407,7 @@ export function GlobalSearch({
                 onClick={() => openPreview(route)}
                 onKeyDown={handleOptionKeyDown}
               >
-                <span className="search-route-result__icon"><RouteIcon /></span>
+                <span className="search-route-result__icon"><RoadbookMark /></span>
                 <span><strong>{route.name}</strong><small>{route.roadCodes.join(" · ")}</small></span>
               </button>
             ))}

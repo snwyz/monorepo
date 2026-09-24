@@ -1,4 +1,5 @@
 import type { WebMapControlPoint } from "./web-types";
+import { mapOverlayColors } from "./map-overlay-style";
 
 export interface ControlPointLabelVisual {
   source: string;
@@ -67,16 +68,18 @@ export function createControlPointLabelVisual(
   const badgeX = labelX + 17;
   const nameX = labelX + LABEL_NAME_OFFSET;
   const selected = Boolean(point.selected);
-  const labelFill = selected ? "#0a0a0a" : "#ffffff";
-  const labelText = selected ? "#ffffff" : "#1c1c1c";
-  const badgeFill = selected ? "#ffffff" : "#0a0a0a";
-  const badgeText = selected ? "#0a0a0a" : "#ffffff";
+  const labelFill = selected ? mapOverlayColors.controlPointAccent : mapOverlayColors.surface;
+  const labelText = selected ? mapOverlayColors.surface : mapOverlayColors.textStrong;
+  const badgeFill = selected ? mapOverlayColors.surface : mapOverlayColors.controlPointAccent;
+  const badgeText = selected ? mapOverlayColors.controlPointAccent : mapOverlayColors.surface;
+  const borderColor = selected ? mapOverlayColors.surface : mapOverlayColors.controlPointAccent;
   const name = escapeSvgText(displayName);
   const borderWidth = selected ? 2.5 : 1.5;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${visualWidth}" height="${VISUAL_HEIGHT}" viewBox="0 0 ${visualWidth} ${VISUAL_HEIGHT}">
+    <defs><filter id="shadow" x="-20%" y="-35%" width="150%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#1c1c1e" flood-opacity=".18"/></filter></defs>
     <line x1="${anchorX}" y1="${ANCHOR_Y}" x2="${labelEdgeX}" y2="36" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
-    <line x1="${anchorX}" y1="${ANCHOR_Y}" x2="${labelEdgeX}" y2="36" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round"/>
-    <rect x="${labelX}" y="4" width="${labelWidth}" height="${LABEL_HEIGHT}" rx="14" fill="${labelFill}" stroke="#0a0a0a" stroke-width="${borderWidth}"/>
+    <line x1="${anchorX}" y1="${ANCHOR_Y}" x2="${labelEdgeX}" y2="36" stroke="${mapOverlayColors.controlPointAccent}" stroke-width="2" stroke-linecap="round"/>
+    <rect x="${labelX}" y="4" width="${labelWidth}" height="${LABEL_HEIGHT}" rx="14" fill="${labelFill}" fill-opacity=".96" stroke="${borderColor}" stroke-width="${borderWidth}" filter="url(#shadow)"/>
     <circle cx="${badgeX}" cy="22" r="11" fill="${badgeFill}"/>
     <text x="${badgeX}" y="22.5" dominant-baseline="middle" text-anchor="middle" fill="${badgeText}" font-family="Arial,sans-serif" font-size="11" font-weight="700">${point.order}</text>
     <text x="${nameX}" y="22.5" dominant-baseline="middle" fill="${labelText}" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif" font-size="11" font-weight="700">${name}</text>

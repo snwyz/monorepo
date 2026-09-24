@@ -3,11 +3,11 @@
 import type { WebMapProvider } from "@roadbook/map/web";
 import { useState } from "react";
 
+import { RoadbookMark } from "@/components/branding/roadbook-mark";
 import {
   ChevronDownIcon,
   CloseIcon,
   NavigationIcon,
-  RouteIcon,
   TrashIcon,
 } from "@/components/ui/icons";
 import {
@@ -69,7 +69,7 @@ export function FeaturedRoutePanel({
           aria-expanded={!collapsed}
           onClick={() => setCollapsed((value) => !value)}
         >
-          <span className="featured-route-panel__icon"><RouteIcon /></span>
+          <span className="featured-route-panel__icon"><RoadbookMark /></span>
           <span><small>{route.eyebrow}</small><strong>{route.name}</strong></span>
           <ChevronDownIcon className={collapsed ? undefined : "is-rotated"} />
         </button>

@@ -126,7 +126,7 @@ function SortableAddressSequence({
           aria-pressed={isSelected}
           title="点击定位，长按拖拽排序"
         >
-          <span className={`point-number ${index === 0 ? "is-start" : ""}`}>{index + 1}</span>
+          <span className="point-number">{index + 1}</span>
           <span className="address-row__copy">
             <span className="address-row__title"><strong>{point.name}</strong></span>
             <small>{point.address}</small>

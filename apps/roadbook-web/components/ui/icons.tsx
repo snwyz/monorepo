@@ -38,6 +38,7 @@ export const FilledLocationIcon = (props: IconProps) => (
 export const ChevronDownIcon = (props: IconProps) => <IconBase {...props}><path d="m7 9.5 5 5 5-5"/></IconBase>;
 export const ChevronUpIcon = (props: IconProps) => <IconBase {...props}><path d="m7 14.5 5-5 5 5"/></IconBase>;
 export const MoreIcon = (props: IconProps) => <IconBase {...props}><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></IconBase>;
+export const EditIcon = (props: IconProps) => <IconBase {...props}><path d="m4 20 4.2-1 10.5-10.5a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z"/><path d="m14.5 6.5 3 3"/></IconBase>;
 export const CloseIcon = (props: IconProps) => <IconBase {...props}><path d="m6 6 12 12M18 6 6 18"/></IconBase>;
 export const TrashIcon = (props: IconProps) => <IconBase {...props}><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></IconBase>;
 export const LocateIcon = (props: IconProps) => <IconBase {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></IconBase>;

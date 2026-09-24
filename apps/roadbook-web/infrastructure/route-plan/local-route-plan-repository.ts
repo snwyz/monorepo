@@ -25,7 +25,10 @@ function isSummary(value: unknown): value is RoutePlanSummary {
     summary.schemaVersion === 1 &&
     typeof summary.id === "string" &&
     typeof summary.name === "string" &&
-    typeof summary.controlPointCount === "number"
+    typeof summary.controlPointCount === "number" &&
+    typeof summary.updatedAt === "string" &&
+    (summary.startPointName === undefined || typeof summary.startPointName === "string") &&
+    (summary.lastControlPointName === undefined || typeof summary.lastControlPointName === "string")
   );
 }
 
@@ -62,6 +65,10 @@ export class LocalRoutePlanRepository {
       id: plan.id,
       name: plan.name,
       controlPointCount: plan.controlPoints.length,
+      startPointName: plan.controlPoints[0]?.name.trim() || undefined,
+      lastControlPointName: plan.controlPoints.length > 1
+        ? plan.controlPoints[plan.controlPoints.length - 1]?.name.trim() || undefined
+        : undefined,
       updatedAt: plan.updatedAt,
       schemaVersion: 1,
       loadable: true,

@@ -1,7 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { PlusIcon, RouteIcon } from "@/components/ui/icons";
+import { RoadbookMark } from "@/components/branding/roadbook-mark";
+import { PlusIcon } from "@/components/ui/icons";
 
 interface RoutePlanWelcomePanelProps {
   onCreate: () => void;
@@ -11,7 +12,7 @@ export function RoutePlanWelcomePanel({ onCreate }: RoutePlanWelcomePanelProps) 
   return (
     <aside className="route-plan-welcome widget" aria-labelledby="route-plan-welcome-title">
       <header>
-        <span className="route-plan-welcome__icon"><RouteIcon /></span>
+        <span className="route-plan-welcome__icon"><RoadbookMark /></span>
         <span>
           <small>从地图开始</small>
           <h1 id="route-plan-welcome-title">规划自驾环线</h1>

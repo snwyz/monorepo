@@ -25,6 +25,7 @@ import {
   createFeaturedRoadLabelVisual,
   featuredRoadColor,
 } from "./featured-route-label";
+import { mapOverlayColors, plannedRouteStrokeWidths } from "./map-overlay-style";
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
@@ -179,8 +180,8 @@ function describeTencentServiceError(error: unknown) {
 }
 
 function locationMarkerSvg() {
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%231677ff" fill-opacity=".3"/><circle cx="16" cy="16" r="10" fill="%231677ff" stroke="%23ffffff" stroke-width="2"/></svg>';
-  return `data:image/svg+xml,${svg}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${mapOverlayColors.location}" fill-opacity=".18"/><circle cx="16" cy="16" r="8" fill="${mapOverlayColors.location}" stroke="${mapOverlayColors.surface}" stroke-width="3"/></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function routeLegInsertionHandleSvg() {
@@ -197,6 +198,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   private readonly controlPointLayer: TencentOverlay;
   private readonly userLocationLayer: TencentOverlay;
   private readonly routeOutlineLayer: TencentOverlay;
+  private readonly routeCoreLayer: TencentOverlay;
   private readonly routeLayer: TencentOverlay;
   private readonly routeLegInsertionOutlineLayer: TencentOverlay;
   private readonly routeLegInsertionGuideLayer: TencentOverlay;
@@ -367,16 +369,22 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     });
     this.routeOutlineLayer = new tmap.MultiPolyline({
       map,
+      zIndex: 40,
       disableInteractive: true,
       styles: {
         outline: new tmap.PolylineStyle({
-          color: "#ffffff",
-          width: 9,
+          color: mapOverlayColors.surface,
+          width: plannedRouteStrokeWidths.normal.outline,
           borderWidth: 0,
         }),
         outlineSelected: new tmap.PolylineStyle({
-          color: "#ffffff",
-          width: 12,
+          color: mapOverlayColors.surface,
+          width: plannedRouteStrokeWidths.selected.outline,
+          borderWidth: 0,
+        }),
+        outlineStatus: new tmap.PolylineStyle({
+          color: mapOverlayColors.surface,
+          width: plannedRouteStrokeWidths.stale.outline,
           borderWidth: 0,
         }),
       },
@@ -384,27 +392,46 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     });
     this.routeLayer = new tmap.MultiPolyline({
       map,
+      zIndex: 60,
       isStopPropagation: true,
       styles: {
         normal: new tmap.PolylineStyle({
-          color: "#0a0a0a",
-          width: 5,
+          color: mapOverlayColors.routeBoundary,
+          width: plannedRouteStrokeWidths.normal.boundary,
           lineCap: "round",
         }),
         selected: new tmap.PolylineStyle({
-          color: "#0a0a0a",
-          width: 8,
+          color: mapOverlayColors.routeBoundary,
+          width: plannedRouteStrokeWidths.selected.boundary,
           lineCap: "round",
         }),
         stale: new tmap.PolylineStyle({
-          color: "#8a8a8a",
-          width: 4,
+          color: mapOverlayColors.staleRoute,
+          width: plannedRouteStrokeWidths.stale.route,
           dashArray: [8, 6],
         }),
         failed: new tmap.PolylineStyle({
-          color: "#b42318",
-          width: 5,
+          color: mapOverlayColors.failedRoute,
+          width: plannedRouteStrokeWidths.failed.route,
           dashArray: [5, 5],
+        }),
+      },
+      geometries: [],
+    });
+    this.routeCoreLayer = new tmap.MultiPolyline({
+      map,
+      zIndex: 65,
+      disableInteractive: true,
+      styles: {
+        normal: new tmap.PolylineStyle({
+          color: mapOverlayColors.routeCore,
+          width: plannedRouteStrokeWidths.normal.core,
+          lineCap: "round",
+        }),
+        selected: new tmap.PolylineStyle({
+          color: mapOverlayColors.routeCore,
+          width: plannedRouteStrokeWidths.selected.core,
+          lineCap: "round",
         }),
       },
       geometries: [],
@@ -604,7 +631,11 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       .filter((leg) => leg.path.length > 1)
       .map((leg) => ({
         id: leg.id,
-        styleId: leg.selected ? "outlineSelected" : "outline",
+        styleId: leg.failed || leg.stale
+          ? "outlineStatus"
+          : leg.selected
+            ? "outlineSelected"
+            : "outline",
         paths: leg.path.map(
           (point) => new this.tmap.LatLng(point.latitude, point.longitude),
         ),
@@ -626,6 +657,15 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       }));
     this.routeOutlineLayer.setGeometries(outline);
     this.routeLayer.setGeometries(routes);
+    this.routeCoreLayer.setGeometries(routeLegs
+      .filter((leg) => leg.path.length > 1 && !leg.failed && !leg.stale)
+      .map((leg) => ({
+        id: `${leg.id}-core`,
+        styleId: leg.selected ? "selected" : "normal",
+        paths: leg.path.map(
+          (point) => new this.tmap.LatLng(point.latitude, point.longitude),
+        ),
+      })));
   }
 
   setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null) {
@@ -821,6 +861,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.featuredMarkerLayer.setMap?.(null);
     this.userLocationLayer.setMap?.(null);
     this.routeOutlineLayer.setMap?.(null);
+    this.routeCoreLayer.setMap?.(null);
     this.routeLayer.setMap?.(null);
     this.routeLegInsertionOutlineLayer.setMap?.(null);
     this.routeLegInsertionGuideLayer.setMap?.(null);
