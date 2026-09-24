@@ -7,6 +7,9 @@ import type {
   TencentMapWebAdapterOptions,
   WebMapCanvas,
   WebMapControlPoint,
+  WebMapFeaturedRoad,
+  WebMapFeaturedRouteControlPoint,
+  WebMapFeaturedRouteMarker,
   WebMapAdapter,
   WebMapLocation,
   WebMapOptions,
@@ -16,6 +19,12 @@ import type {
 } from "./web-types";
 import { TencentMapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
+import {
+  createFeaturedControlPointLabelVisual,
+  createFeaturedMarkerVisual,
+  createFeaturedRoadLabelVisual,
+  featuredRoadColor,
+} from "./featured-route-label";
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
@@ -180,6 +189,11 @@ function routeLegInsertionHandleSvg() {
 }
 
 class TencentMapCanvasImpl implements WebMapCanvas {
+  private readonly featuredRoadOutlineLayer: TencentOverlay;
+  private readonly featuredRoadLayer: TencentOverlay;
+  private readonly featuredRoadLabelLayer: TencentOverlay;
+  private readonly featuredControlPointLayer: TencentOverlay;
+  private readonly featuredMarkerLayer: TencentOverlay;
   private readonly controlPointLayer: TencentOverlay;
   private readonly userLocationLayer: TencentOverlay;
   private readonly routeOutlineLayer: TencentOverlay;
@@ -195,6 +209,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     routeLegId: string,
     coordinate: MapCoordinate,
   ) => void;
+  private readonly onFeaturedRouteControlPointSelect?: (controlPointId: string) => void;
+  private readonly onFeaturedRouteMarkerSelect?: (markerId: string) => void;
   private readonly onLoading?: () => void;
   private readonly onReady?: () => void;
   private routeLegInsertion: WebMapRouteLegInsertion | null = null;
@@ -229,6 +245,14 @@ class TencentMapCanvasImpl implements WebMapCanvas {
 
   private readonly routeClickHandler = (event: TencentMapEvent) => {
     if (event.geometry?.id) this.onRouteLegSelect?.(event.geometry.id);
+  };
+
+  private readonly featuredControlPointClickHandler = (event: TencentMapEvent) => {
+    if (event.geometry?.id) this.onFeaturedRouteControlPointSelect?.(event.geometry.id);
+  };
+
+  private readonly featuredMarkerClickHandler = (event: TencentMapEvent) => {
+    if (event.geometry?.id) this.onFeaturedRouteMarkerSelect?.(event.geometry.id);
   };
 
   private readonly routeLegInsertionDragStartHandler = (event: TencentMapEvent) => {
@@ -269,9 +293,72 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
     this.onRouteLegInsert = options.onRouteLegInsert;
+    this.onFeaturedRouteControlPointSelect = options.onFeaturedRouteControlPointSelect;
+    this.onFeaturedRouteMarkerSelect = options.onFeaturedRouteMarkerSelect;
     this.onLoading = options.onLoading;
     this.onReady = options.onReady;
     this.beginVisualUpdate();
+    this.featuredRoadOutlineLayer = new tmap.MultiPolyline({
+      map,
+      zIndex: 24,
+      disableInteractive: true,
+      styles: {
+        outline: new tmap.PolylineStyle({
+          color: "#ffffff",
+          width: 10,
+          lineCap: "round",
+        }),
+      },
+      geometries: [],
+    });
+    this.featuredRoadLayer = new tmap.MultiPolyline({
+      map,
+      zIndex: 28,
+      disableInteractive: true,
+      styles: {
+        g219: new tmap.PolylineStyle({
+          color: featuredRoadColor("g219"),
+          width: 6,
+          lineCap: "round",
+        }),
+        g331: new tmap.PolylineStyle({
+          color: featuredRoadColor("g331"),
+          width: 6,
+          lineCap: "round",
+        }),
+        g228: new tmap.PolylineStyle({
+          color: featuredRoadColor("g228"),
+          width: 6,
+          lineCap: "round",
+        }),
+      },
+      geometries: [],
+    });
+    this.featuredRoadLabelLayer = new tmap.MultiMarker({
+      map,
+      zIndex: 106,
+      minZoom: 2,
+      maxZoom: 6.99,
+      disableInteractive: true,
+      styles: {},
+      geometries: [],
+    });
+    this.featuredControlPointLayer = new tmap.MultiMarker({
+      map,
+      zIndex: 108,
+      minZoom: 7,
+      maxZoom: 20,
+      isStopPropagation: true,
+      styles: {},
+      geometries: [],
+    });
+    this.featuredMarkerLayer = new tmap.MultiMarker({
+      map,
+      zIndex: 112,
+      isStopPropagation: true,
+      styles: {},
+      geometries: [],
+    });
     this.controlPointLayer = new tmap.MultiMarker({
       map,
       isStopPropagation: true,
@@ -380,6 +467,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     map.on("click", this.mapClickHandler);
     map.on("tilesloaded", this.mapReadyHandler);
     this.controlPointLayer.on?.("click", this.markerClickHandler);
+    this.featuredControlPointLayer.on?.("click", this.featuredControlPointClickHandler);
+    this.featuredMarkerLayer.on?.("click", this.featuredMarkerClickHandler);
     this.routeLayer.on?.("click", this.routeClickHandler);
     this.routeLegInsertionHandleLayer.on?.(
       "mousedown",
@@ -430,6 +519,84 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     });
     this.controlPointLayer.setStyles?.(styles);
     this.controlPointLayer.setGeometries(geometries);
+  }
+
+  setFeaturedRoads(roads: WebMapFeaturedRoad[]) {
+    const validRoads = roads.filter((road) => road.path.length > 1);
+    this.featuredRoadOutlineLayer.setGeometries(validRoads.map((road) => ({
+      id: `${road.id}-outline`,
+      styleId: "outline",
+      paths: road.path.map(
+        (point) => new this.tmap.LatLng(point.latitude, point.longitude),
+      ),
+    })));
+    this.featuredRoadLayer.setGeometries(validRoads.map((road) => ({
+      id: road.id,
+      styleId: road.style,
+      paths: road.path.map(
+        (point) => new this.tmap.LatLng(point.latitude, point.longitude),
+      ),
+    })));
+    const styles: Record<string, unknown> = {};
+    const labelGeometries = validRoads.flatMap((road) => {
+      const styleId = `featured-road-label-${road.code}`;
+      const visual = createFeaturedRoadLabelVisual(road);
+      styles[styleId] = new this.tmap.MarkerStyle({
+        width: visual.width,
+        height: visual.height,
+        anchor: visual.anchor,
+        src: visual.source,
+      });
+      return road.labelPoints.map((point, index) => ({
+        id: `${road.id}-label-${index + 1}`,
+        styleId,
+        position: new this.tmap.LatLng(point.latitude, point.longitude),
+      }));
+    });
+    this.featuredRoadLabelLayer.setStyles?.(styles);
+    this.featuredRoadLabelLayer.setGeometries(labelGeometries);
+  }
+
+  setFeaturedRouteControlPoints(controlPoints: WebMapFeaturedRouteControlPoint[]) {
+    const styles: Record<string, unknown> = {};
+    const geometries = controlPoints.map((point) => {
+      const styleId = `featured-control-${point.id}-${point.selected ? "selected" : "normal"}`;
+      const visual = createFeaturedControlPointLabelVisual(point);
+      styles[styleId] = new this.tmap.MarkerStyle({
+        width: visual.width,
+        height: visual.height,
+        anchor: visual.anchor,
+        src: visual.source,
+      });
+      return {
+        id: point.id,
+        styleId,
+        position: new this.tmap.LatLng(point.latitude, point.longitude),
+      };
+    });
+    this.featuredControlPointLayer.setStyles?.(styles);
+    this.featuredControlPointLayer.setGeometries(geometries);
+  }
+
+  setFeaturedRouteMarkers(markers: WebMapFeaturedRouteMarker[]) {
+    const styles: Record<string, unknown> = {};
+    const geometries = markers.map((marker) => {
+      const styleId = `featured-marker-${marker.id}-${marker.selected ? "selected" : "normal"}`;
+      const visual = createFeaturedMarkerVisual(marker);
+      styles[styleId] = new this.tmap.MarkerStyle({
+        width: visual.width,
+        height: visual.height,
+        anchor: visual.anchor,
+        src: visual.source,
+      });
+      return {
+        id: marker.id,
+        styleId,
+        position: new this.tmap.LatLng(marker.latitude, marker.longitude),
+      };
+    });
+    this.featuredMarkerLayer.setStyles?.(styles);
+    this.featuredMarkerLayer.setGeometries(geometries);
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
@@ -615,6 +782,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.map.off("click", this.mapClickHandler);
     this.map.off("tilesloaded", this.mapReadyHandler);
     this.controlPointLayer.off?.("click", this.markerClickHandler);
+    this.featuredControlPointLayer.off?.("click", this.featuredControlPointClickHandler);
+    this.featuredMarkerLayer.off?.("click", this.featuredMarkerClickHandler);
     this.routeLayer.off?.("click", this.routeClickHandler);
     this.routeLegInsertionHandleLayer.off?.(
       "mousedown",
@@ -645,6 +814,11 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.map.off("mouseup", this.routeLegInsertionDragEndHandler);
     this.map.off("touchend", this.routeLegInsertionDragEndHandler);
     this.controlPointLayer.setMap?.(null);
+    this.featuredRoadOutlineLayer.setMap?.(null);
+    this.featuredRoadLayer.setMap?.(null);
+    this.featuredRoadLabelLayer.setMap?.(null);
+    this.featuredControlPointLayer.setMap?.(null);
+    this.featuredMarkerLayer.setMap?.(null);
     this.userLocationLayer.setMap?.(null);
     this.routeOutlineLayer.setMap?.(null);
     this.routeLayer.setMap?.(null);

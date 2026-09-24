@@ -26,8 +26,9 @@ function escapeSvgText(value: string) {
     .replace(/'/g, "&apos;");
 }
 
-function truncateLabel(value: string, limit = 10) {
-  const characters = Array.from(value.trim() || "未命名地点");
+function truncateLabel(value: unknown, limit = 10) {
+  const normalizedValue = typeof value === "string" ? value.trim() : "";
+  const characters = Array.from(normalizedValue || "未命名地点");
   return characters.length > limit
     ? `${characters.slice(0, limit).join("")}…`
     : characters.join("");

@@ -5,24 +5,31 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import type { PlaceCandidate } from "@roadbook/map/web";
 
 import { ElevationPanel } from "@/components/elevation-analysis/elevation-panel";
+import { FeaturedRouteModeBadge } from "@/components/featured-driving-route/featured-route-mode-badge";
+import { FeaturedRoutePanel } from "@/components/featured-driving-route/featured-route-panel";
 import { MapProviderSwitch } from "@/components/map-provider/map-provider-switch";
+import { GlobalSearch } from "@/components/map-search/global-search";
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
 import { RoutePlanWelcomePanel } from "@/components/route-plan-catalog/route-plan-welcome-panel";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
 import { RouteMap } from "@/components/route-presentation/route-map";
-import { PlaceSearch } from "@/components/route-planning/place-search";
 import { RouteAddressList } from "@/components/route-planning/route-address-list";
 import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
 import { RouteStrategySelector } from "@/components/route-planning/route-strategy-selector";
 import { AlertIcon, LayersIcon } from "@/components/ui/icons";
 import { appToast } from "@/components/ui/toast-store";
+import type { FeaturedDrivingRoute } from "@/domain/featured-driving-route/model";
 import { ROUTE_PLAN_CONTROL_POINT_LIMIT } from "@/domain/route-planning/model";
+import { useFeaturedDrivingRouteAtlas } from "@/hooks/use-featured-driving-route-atlas";
 import { useRoutePlanningWorkspace } from "@/hooks/use-route-planning-workspace";
+import { StaticFeaturedDrivingRouteRepository } from "@/infrastructure/featured-driving-route/static-featured-driving-route-repository";
 
 const ControlPointDeleteConfirmation = lazy(() =>
   import("@/components/route-planning/control-point-delete-confirmation").then(
@@ -30,19 +37,49 @@ const ControlPointDeleteConfirmation = lazy(() =>
   ),
 );
 
+const featuredRouteRepository = new StaticFeaturedDrivingRouteRepository();
+
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
+  const featuredAtlas = useFeaturedDrivingRouteAtlas(workspace.adapter);
+  const {
+    activeRoute: activeFeaturedRoute,
+    markers: featuredRouteMarkers,
+    selectedControlPointId: featuredSelectedControlPointId,
+    selectedMarkerId: featuredSelectedMarkerId,
+    focusRequest: featuredFocusRequest,
+    markerLimitReached,
+    openRoute: openFeaturedRoute,
+    closeRoute: closeFeaturedRoute,
+    selectControlPoint: selectFeaturedControlPoint,
+    selectMarker: selectFeaturedMarker,
+    clearSelection: clearFeaturedSelection,
+    addPlaceMarker,
+    addCoordinateMarker,
+    removeMarker: removeFeaturedMarker,
+    clearMarkers: clearFeaturedMarkers,
+  } = featuredAtlas;
+  const featuredRoutes = useMemo(() => featuredRouteRepository.list(), []);
+  const featuredCategories = useMemo(
+    () => featuredRouteRepository.categories(),
+    [],
+  );
   const points = workspace.activePlan?.controlPoints ?? [];
+  const isFeaturedMode = Boolean(activeFeaturedRoute);
   const controlPointLimitReached =
     points.length >= ROUTE_PLAN_CONTROL_POINT_LIMIT;
   const controlPointLimitMessage = `当前点位已满（${points.length}/${ROUTE_PLAN_CONTROL_POINT_LIMIT}），请先删除一个点位`;
-  const searchDisabledReason = controlPointLimitReached
-    ? controlPointLimitMessage
+  const searchDisabledReason = isFeaturedMode && markerLimitReached
+    ? `我的标记已满（${featuredRouteMarkers.length}/20），请先删除一个标记`
+    : !isFeaturedMode && controlPointLimitReached
+      ? controlPointLimitMessage
     : workspace.mapStatus !== "ready"
       ? "地图服务连接后可搜索"
       : undefined;
   const searchPlaceholder =
-    workspace.startPointStatus === "locating"
+    isFeaturedMode
+      ? "搜索地点，添加到我的标记"
+      : workspace.startPointStatus === "locating"
       ? (workspace.startPointMessage ?? "正在获取当前位置作为起点…")
       : workspace.startPointStatus === "manual-required" && points.length === 0
         ? (workspace.startPointMessage ?? "定位失败，请搜索地点添加起点")
@@ -64,6 +101,29 @@ export function RoutePlanningWorkspace() {
   const deleteCandidate = points.find(
     (point) => point.id === deleteCandidateId,
   );
+  const featuredRoads = useMemo(
+    () => activeFeaturedRoute?.roads.map((road) => ({ ...road })) ?? [],
+    [activeFeaturedRoute],
+  );
+  const featuredControlPoints = useMemo(
+    () => activeFeaturedRoute?.controlPoints.map((point) => ({
+      ...point,
+      style: point.roadCode === "G219"
+        ? "g219" as const
+        : point.roadCode === "G331"
+          ? "g331" as const
+          : "g228" as const,
+      selected: featuredSelectedControlPointId === point.id,
+    })) ?? [],
+    [activeFeaturedRoute, featuredSelectedControlPointId],
+  );
+  const featuredMarkers = useMemo(
+    () => featuredRouteMarkers.map((marker) => ({
+      ...marker,
+      selected: featuredSelectedMarkerId === marker.id,
+    })),
+    [featuredRouteMarkers, featuredSelectedMarkerId],
+  );
 
   useEffect(() => {
     const activePlanId = workspace.activePlan?.id ?? null;
@@ -82,10 +142,55 @@ export function RoutePlanningWorkspace() {
 
   const addCoordinate = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
+      if (activeFeaturedRoute) {
+        if (markerLimitReached) {
+          appToast.info("我的标记已满，请先删除一个标记");
+          return;
+        }
+        void addCoordinateMarker(coordinate);
+        appToast.info("已添加到我的标记，不会改变黄金大环线");
+        return;
+      }
       void addCoordinateToPlan(coordinate);
     },
-    [addCoordinateToPlan],
+    [
+      addCoordinateToPlan,
+      activeFeaturedRoute,
+      addCoordinateMarker,
+      markerLimitReached,
+    ],
   );
+
+  const selectSearchPlace = useCallback(
+    (candidate: PlaceCandidate) => {
+      if (activeFeaturedRoute) {
+        const markerId = addPlaceMarker(candidate);
+        if (markerId) {
+          appToast.info("已添加到我的标记，不会改变黄金大环线");
+        }
+        return;
+      }
+      void workspace.addPlaceCandidate(candidate);
+    },
+    [activeFeaturedRoute, addPlaceMarker, workspace],
+  );
+
+  const loadFeaturedRoute = useCallback(async (route: FeaturedDrivingRoute) => {
+    const loadedRoute = await featuredRouteRepository.loadById(route.id);
+    if (!loadedRoute) throw new Error("热门路线不存在或已下线");
+    workspace.clearRouteLegSelection();
+    openFeaturedRoute(loadedRoute);
+  }, [openFeaturedRoute, workspace]);
+
+  const createPlan = useCallback(() => {
+    closeFeaturedRoute();
+    return workspace.createPlan();
+  }, [closeFeaturedRoute, workspace]);
+
+  const loadPlan = useCallback((id: string) => {
+    closeFeaturedRoute();
+    return workspace.loadPlan(id);
+  }, [closeFeaturedRoute, workspace]);
 
   const selectMapControlPoint = useCallback(
     (id: string) => {
@@ -159,17 +264,26 @@ export function RoutePlanningWorkspace() {
       <RouteMap
         adapter={workspace.adapter}
         provider={workspace.mapProvider}
-        controlPoints={points}
-        route={workspace.route}
-        selectedControlPointId={workspace.selectedControlPointId}
-        selectedRouteLegId={workspace.selectedRouteLegId}
-        routeUpdating={workspace.routeStatus === "updating"}
-        focusControlPointRequest={workspace.mapFocusRequest}
-        fitRoutePlanRequest={workspace.fitRoutePlanRequest}
+        controlPoints={isFeaturedMode ? [] : points}
+        route={isFeaturedMode ? null : workspace.route}
+        selectedControlPointId={isFeaturedMode ? null : workspace.selectedControlPointId}
+        selectedRouteLegId={isFeaturedMode ? null : workspace.selectedRouteLegId}
+        routeUpdating={!isFeaturedMode && workspace.routeStatus === "updating"}
+        focusControlPointRequest={isFeaturedMode ? null : workspace.mapFocusRequest}
+        fitRoutePlanRequest={isFeaturedMode ? null : workspace.fitRoutePlanRequest}
+        featuredRouteId={activeFeaturedRoute?.id ?? null}
+        featuredRoads={featuredRoads}
+        featuredControlPoints={featuredControlPoints}
+        featuredMarkers={featuredMarkers}
+        featuredFocusRequest={featuredFocusRequest}
         onDoubleClick={addCoordinate}
-        onClearRouteLegSelection={clearRouteLegSelection}
+        onClearRouteLegSelection={isFeaturedMode
+          ? clearFeaturedSelection
+          : clearRouteLegSelection}
         onSelectControlPoint={selectMapControlPoint}
         onSelectRouteLeg={workspace.selectRouteLeg}
+        onSelectFeaturedControlPoint={selectFeaturedControlPoint}
+        onSelectFeaturedMarker={selectFeaturedMarker}
         onInsertRouteLegControlPoint={workspace.insertRouteLegControlPoint}
       />
 
@@ -179,7 +293,7 @@ export function RoutePlanningWorkspace() {
         onProviderChange={workspace.setMapProvider}
       />
 
-      {workspace.routeStatus === "updating" && points.length >= 2 ? (
+      {!isFeaturedMode && workspace.routeStatus === "updating" && points.length >= 2 ? (
         <RouteCalculationFeedback controlPointCount={points.length} />
       ) : null}
 
@@ -187,21 +301,28 @@ export function RoutePlanningWorkspace() {
         <RoutePlanSelector
           catalog={workspace.catalog}
           activePlan={workspace.activePlan}
-          onCreate={workspace.createPlan}
-          onLoad={workspace.loadPlan}
+          onCreate={createPlan}
+          onLoad={loadPlan}
           onRename={workspace.renamePlan}
           onDelete={workspace.deletePlan}
           onClearAll={workspace.clearPlans}
         />
-        <PlaceSearch
-          key={searchDisabledReason ?? "search-enabled"}
-          disabled={Boolean(searchDisabledReason)}
-          disabledReason={searchDisabledReason}
+        <GlobalSearch
           placeholder={searchPlaceholder}
-          onSearch={workspace.searchPlaces}
-          onSelect={workspace.addPlaceCandidate}
+          placeSearchDisabled={Boolean(searchDisabledReason)}
+          placeSearchDisabledReason={searchDisabledReason}
+          featuredRoutes={featuredRoutes}
+          categories={featuredCategories}
+          onSearchPlaces={workspace.searchPlaces}
+          onSelectPlace={selectSearchPlace}
+          onLoadFeaturedRoute={loadFeaturedRoute}
         />
-        {workspace.activePlan ? (
+        {activeFeaturedRoute ? (
+          <FeaturedRouteModeBadge
+            routeName={activeFeaturedRoute.name}
+            onExit={closeFeaturedRoute}
+          />
+        ) : workspace.activePlan ? (
           <RouteStrategySelector
             strategy={workspace.activePlan.strategy}
             routeStatus={workspace.routeStatus}
@@ -220,6 +341,7 @@ export function RoutePlanningWorkspace() {
       </div>
 
       {workspace.catalogReady &&
+      !isFeaturedMode &&
       !workspace.activePlan &&
       workspace.catalog.length === 0 ? (
         <RoutePlanWelcomePanel onCreate={workspace.createPlan} />
@@ -237,7 +359,7 @@ export function RoutePlanningWorkspace() {
         </section>
       ) : null}
 
-      {workspace.activePlan && points.length ? (
+      {!isFeaturedMode && workspace.activePlan && points.length ? (
         <RouteAddressList
           provider={workspace.mapProvider}
           controlPoints={points}
@@ -248,6 +370,21 @@ export function RoutePlanningWorkspace() {
           onSelectRouteLeg={workspace.selectRouteLeg}
           onReorder={workspace.reorderControlPoint}
           onRemove={requestControlPointRemoval}
+        />
+      ) : null}
+
+      {activeFeaturedRoute ? (
+        <FeaturedRoutePanel
+          provider={workspace.mapProvider}
+          route={activeFeaturedRoute}
+          markers={featuredRouteMarkers}
+          selectedControlPointId={featuredSelectedControlPointId}
+          selectedMarkerId={featuredSelectedMarkerId}
+          onSelectControlPoint={selectFeaturedControlPoint}
+          onSelectMarker={selectFeaturedMarker}
+          onRemoveMarker={removeFeaturedMarker}
+          onClearMarkers={clearFeaturedMarkers}
+          onExit={closeFeaturedRoute}
         />
       ) : null}
 
@@ -264,7 +401,7 @@ export function RoutePlanningWorkspace() {
         </Suspense>
       ) : null}
 
-      {workspace.route ? (
+      {!isFeaturedMode && workspace.route ? (
         <RouteMetricsPanel
           route={workspace.route}
           provider={workspace.mapProvider}
@@ -273,7 +410,7 @@ export function RoutePlanningWorkspace() {
         />
       ) : null}
 
-      <ElevationPanel hasRoute={Boolean(workspace.route)} />
+      {!isFeaturedMode ? <ElevationPanel hasRoute={Boolean(workspace.route)} /> : null}
     </main>
   );
 }

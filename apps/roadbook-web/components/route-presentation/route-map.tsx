@@ -5,6 +5,9 @@ import type {
   MapCoordinate,
   WebMapAdapter,
   WebMapCanvas,
+  WebMapFeaturedRoad,
+  WebMapFeaturedRouteControlPoint,
+  WebMapFeaturedRouteMarker,
   WebMapFitOptions,
   WebMapProvider,
   WebMapRouteLegInsertion,
@@ -31,10 +34,17 @@ interface RouteMapProps {
   routeUpdating: boolean;
   focusControlPointRequest: { id: string; sequence: number } | null;
   fitRoutePlanRequest: { planId: string; sequence: number } | null;
+  featuredRouteId: string | null;
+  featuredRoads: WebMapFeaturedRoad[];
+  featuredControlPoints: WebMapFeaturedRouteControlPoint[];
+  featuredMarkers: WebMapFeaturedRouteMarker[];
+  featuredFocusRequest: { coordinate: MapCoordinate; zoom: number; sequence: number } | null;
   onDoubleClick: (coordinate: { latitude: number; longitude: number }) => void;
   onClearRouteLegSelection: () => void;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
+  onSelectFeaturedControlPoint: (id: string) => void;
+  onSelectFeaturedMarker: (id: string) => void;
   onInsertRouteLegControlPoint: (
     routeLegId: string,
     coordinate: MapCoordinate,
@@ -105,10 +115,17 @@ export function RouteMap({
   routeUpdating,
   focusControlPointRequest,
   fitRoutePlanRequest,
+  featuredRouteId,
+  featuredRoads,
+  featuredControlPoints,
+  featuredMarkers,
+  featuredFocusRequest,
   onDoubleClick,
   onClearRouteLegSelection,
   onSelectControlPoint,
   onSelectRouteLeg,
+  onSelectFeaturedControlPoint,
+  onSelectFeaturedMarker,
   onInsertRouteLegControlPoint,
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -119,11 +136,45 @@ export function RouteMap({
   const selectedControlPointIdRef = useRef(selectedControlPointId);
   const selectedRouteLegIdRef = useRef(selectedRouteLegId);
   const fitRoutePlanRequestRef = useRef(fitRoutePlanRequest);
+  const featuredRouteIdRef = useRef(featuredRouteId);
+  const featuredRoadsRef = useRef(featuredRoads);
+  const featuredControlPointsRef = useRef(featuredControlPoints);
+  const featuredMarkersRef = useRef(featuredMarkers);
+  const eventHandlersRef = useRef({
+    onDoubleClick,
+    onClearRouteLegSelection,
+    onSelectControlPoint,
+    onSelectRouteLeg,
+    onSelectFeaturedControlPoint,
+    onSelectFeaturedMarker,
+    onInsertRouteLegControlPoint,
+  });
   const appliedFitRoutePlanSequenceRef = useRef<number | null>(null);
+  const appliedFeaturedRouteIdRef = useRef<string | null>(null);
   const previousControlPointIdsRef = useRef<string[]>([]);
   const checkedRouteViewportRef = useRef<ClosedDrivingRoute | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [mapVisualReady, setMapVisualReady] = useState(false);
+  useEffect(() => {
+    eventHandlersRef.current = {
+      onDoubleClick,
+      onClearRouteLegSelection,
+      onSelectControlPoint,
+      onSelectRouteLeg,
+      onSelectFeaturedControlPoint,
+      onSelectFeaturedMarker,
+      onInsertRouteLegControlPoint,
+    };
+  }, [
+    onClearRouteLegSelection,
+    onDoubleClick,
+    onInsertRouteLegControlPoint,
+    onSelectControlPoint,
+    onSelectFeaturedControlPoint,
+    onSelectFeaturedMarker,
+    onSelectRouteLeg,
+  ]);
+
   useEffect(() => {
     controlPointsRef.current = controlPoints;
   }, [controlPoints]);
@@ -134,6 +185,13 @@ export function RouteMap({
     selectedControlPointIdRef.current = selectedControlPointId;
     selectedRouteLegIdRef.current = selectedRouteLegId;
   }, [route, routeUpdating, selectedControlPointId, selectedRouteLegId]);
+
+  useEffect(() => {
+    featuredRouteIdRef.current = featuredRouteId;
+    featuredRoadsRef.current = featuredRoads;
+    featuredControlPointsRef.current = featuredControlPoints;
+    featuredMarkersRef.current = featuredMarkers;
+  }, [featuredControlPoints, featuredMarkers, featuredRoads, featuredRouteId]);
 
   const fitPendingRoutePlan = useCallback((canvas: WebMapCanvas | null) => {
     const request = fitRoutePlanRequestRef.current;
@@ -160,6 +218,15 @@ export function RouteMap({
     }
   }, []);
 
+  const fitFeaturedRouteIfNeeded = useCallback((canvas: WebMapCanvas | null) => {
+    const routeId = featuredRouteIdRef.current;
+    if (!canvas || !routeId || appliedFeaturedRouteIdRef.current === routeId) return;
+    const coordinates = featuredRoadsRef.current.flatMap((road) => road.path);
+    if (coordinates.length === 0) return;
+    canvas.fitCoordinates(coordinates, getMapFitOptions());
+    appliedFeaturedRouteIdRef.current = routeId;
+  }, []);
+
   useEffect(() => {
     fitRoutePlanRequestRef.current = fitRoutePlanRequest;
     fitPendingRoutePlan(canvasRef.current);
@@ -175,17 +242,28 @@ export function RouteMap({
       const nextCanvas = adapter.createMap(container, {
         center: coordinate ?? undefined,
         zoom: 11,
-        onDoubleClick,
-        onMapBackgroundSelect: onClearRouteLegSelection,
-        onMarkerSelect: onSelectControlPoint,
-        onRouteLegSelect: onSelectRouteLeg,
-        onRouteLegInsert: onInsertRouteLegControlPoint,
+        onDoubleClick: (value) => eventHandlersRef.current.onDoubleClick(value),
+        onMapBackgroundSelect: () => (
+          eventHandlersRef.current.onClearRouteLegSelection()
+        ),
+        onMarkerSelect: (id) => eventHandlersRef.current.onSelectControlPoint(id),
+        onRouteLegSelect: (id) => eventHandlersRef.current.onSelectRouteLeg(id),
+        onRouteLegInsert: (routeLegId, value) => (
+          eventHandlersRef.current.onInsertRouteLegControlPoint(routeLegId, value)
+        ),
+        onFeaturedRouteControlPointSelect: (id) => (
+          eventHandlersRef.current.onSelectFeaturedControlPoint(id)
+        ),
+        onFeaturedRouteMarkerSelect: (id) => (
+          eventHandlersRef.current.onSelectFeaturedMarker(id)
+        ),
         onLoading: () => setMapVisualReady(false),
         onReady: () => setMapVisualReady(true),
       });
       canvas = nextCanvas;
       canvasRef.current = nextCanvas;
       appliedFitRoutePlanSequenceRef.current = null;
+      appliedFeaturedRouteIdRef.current = null;
       if (coordinate) {
         nextCanvas.setUserLocation({
           coordinate,
@@ -199,7 +277,11 @@ export function RouteMap({
           selected: point.id === selectedControlPointIdRef.current,
         })),
       );
+      nextCanvas.setFeaturedRoads(featuredRoadsRef.current);
+      nextCanvas.setFeaturedRouteControlPoints(featuredControlPointsRef.current);
+      nextCanvas.setFeaturedRouteMarkers(featuredMarkersRef.current);
       fitPendingRoutePlan(nextCanvas);
+      fitFeaturedRouteIfNeeded(nextCanvas);
       nextCanvas.setRouteLegs(
         (routeRef.current?.legs ?? []).map((leg) => ({
           id: leg.id,
@@ -220,7 +302,8 @@ export function RouteMap({
           preciseCoordinate &&
           !disposed &&
           canvasRef.current === nextCanvas &&
-          controlPointsRef.current.length === 0
+          controlPointsRef.current.length === 0 &&
+          !featuredRouteIdRef.current
         ) {
           nextCanvas.setUserLocation({
             coordinate: preciseCoordinate,
@@ -239,12 +322,33 @@ export function RouteMap({
     adapter,
     fitPendingRoutePlan,
     fitRouteGeometryIfNeeded,
-    onDoubleClick,
-    onClearRouteLegSelection,
-    onSelectControlPoint,
-    onSelectRouteLeg,
-    onInsertRouteLegControlPoint,
+    fitFeaturedRouteIfNeeded,
   ]);
+
+  useEffect(() => {
+    canvasRef.current?.setFeaturedRoads(featuredRoads);
+    if (!featuredRouteId) {
+      appliedFeaturedRouteIdRef.current = null;
+      return;
+    }
+    fitFeaturedRouteIfNeeded(canvasRef.current);
+  }, [featuredRoads, featuredRouteId, fitFeaturedRouteIfNeeded]);
+
+  useEffect(() => {
+    canvasRef.current?.setFeaturedRouteControlPoints(featuredControlPoints);
+  }, [featuredControlPoints]);
+
+  useEffect(() => {
+    canvasRef.current?.setFeaturedRouteMarkers(featuredMarkers);
+  }, [featuredMarkers]);
+
+  useEffect(() => {
+    if (!featuredFocusRequest) return;
+    canvasRef.current?.setView(
+      featuredFocusRequest.coordinate,
+      featuredFocusRequest.zoom,
+    );
+  }, [featuredFocusRequest]);
 
   useEffect(() => {
     canvasRef.current?.setControlPoints(

@@ -15,6 +15,7 @@
 - 迭代文档至少记录：目标、范围、关键决策、功能变化、问题与根因、降级策略、验证结果、已知边界和后续建议。
 - 代码、UI 规范、组件规范和迭代文档必须保持一致；发现不一致时，在交付前同步修正。
 - 只做诊断而未修改产品行为时，也应在已有迭代文档中补充诊断结论；纯问答或无项目变更的讨论不要求更新。
+- 遵循苹果规范https://developer.apple.com/design/human-interface-guidelines/designing-for-ios
 
 ## 1. 项目一句话定义
 
@@ -28,21 +29,21 @@ Roadbook Web 是一个以全屏地图为工作区、以地图控制点为路线�
 
 ### 2.1 每次迭代必读
 
-| 文档 | 路径 | 负责内容 |
-| --- | --- | --- |
-| AI 上下文入口 | `apps/roadbook-web/AI.md` | 稳定纲要、文档路由、执行门禁 |
-| MVP 产品基线 | `apps/roadbook-web/docs/refel/自驾环线路线规划工具_产品需求文档_V0.3.md` | 产品目标、范围、用户流程、功能需求、验收标准 |
-| UI 设计规范 | `apps/roadbook-web/docs/UI规范/UI设计规范.md` | 视觉 Token、地图布局、状态、动效、无障碍、LCP/CLS |
-| 组件规范 | `apps/roadbook-web/docs/组件规范/组件设计与实现规范.md` | DDD 分层、组件职责、Props、状态、异步、测试规则 |
+| 文档          | 路径                                                                     | 负责内容                                          |
+| ------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| AI 上下文入口 | `apps/roadbook-web/AI.md`                                                | 稳定纲要、文档路由、执行门禁                      |
+| MVP 产品基线  | `apps/roadbook-web/docs/refel/自驾环线路线规划工具_产品需求文档_V0.3.md` | 产品目标、范围、用户流程、功能需求、验收标准      |
+| UI 设计规范   | `apps/roadbook-web/docs/UI规范/UI设计规范.md`                            | 视觉 Token、地图布局、状态、动效、无障碍、LCP/CLS |
+| 组件规范      | `apps/roadbook-web/docs/组件规范/组件设计与实现规范.md`                  | DDD 分层、组件职责、Props、状态、异步、测试规则   |
 
 ### 2.2 根据任务读取
 
-| 场景 | 路径 |
-| --- | --- |
+| 场景                           | 路径                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------- |
 | 了解当前腾讯地图和路线规划实现 | `apps/roadbook-web/docs/迭代文档/2026-09-18-腾讯地图Web适配与路线规划体验迭代.md` |
-| 评估未来完整多日路线能力 | `apps/roadbook-web/docs/refel/多日自驾环线路线规划工具-产品需求文档.md` |
-| 查阅旧版 UI 决策 | `apps/roadbook-web/docs/refel/UI.design.md` |
-| 查阅早期工程脚手架背景 | `apps/roadbook-web/README.md` |
+| 评估未来完整多日路线能力       | `apps/roadbook-web/docs/refel/多日自驾环线路线规划工具-产品需求文档.md`           |
+| 查阅旧版 UI 决策               | `apps/roadbook-web/docs/refel/UI.design.md`                                       |
+| 查阅早期工程脚手架背景         | `apps/roadbook-web/README.md`                                                     |
 
 `docs/refel/` 和 `README.md` 中存在历史内容。它们可用于理解背景，但不能覆盖当前正式 UI 规范、组件规范、最新迭代记录和实际代码。
 
@@ -68,18 +69,21 @@ Roadbook Web 是一个以全屏地图为工作区、以地图控制点为路线�
 - 基础海拔和地形分析。
 - 活动方案在当前浏览器自动暂存。
 - 路段与外部地图导航衔接。
+- 从全局搜索进入只读热门自驾路线专题，按地图层级查看国道编号与完整官方控制点，并创建本机“我的标记”。
 
 ### 3.2 MVP 不负责
 
 - 登录、注册、账户体系、云端同步和跨设备恢复。
 - 自动恢复上次活动方案。
-- 旅游内容、景点、酒店或智能推荐。
+- 景点、酒店或基于用户画像的智能推荐；首版只提供人工维护的热门自驾路线专题。
 - 出行日期、计划天数、逐日路线、每日结束点和日均驾驶目标。
 - 费用估算、收费里程和强度评价。
 - 页面内实时导航、轨迹跟踪、偏航重算和实际驾驶状态。
 - 默认公开路线或多人协作。
 
 当前路线方案保存在浏览器 `localStorage`。本地保存不等于云端保存，也不等于下次启动自动加载。
+
+热门自驾路线与用户路线方案是两个独立上下文。热门路线本体只读，不进入 `RoutePlan`、不触发闭环算路；用户在专题中添加的“我的标记”按专题独立保存在本机，只支持定位、删除和外部导航。
 
 ## 4. 核心用户流程
 
@@ -115,21 +119,28 @@ App Router 页面
 
 关键代码路径：
 
-| 职责 | 路径 |
-| --- | --- |
-| 页面工作台组合 | `apps/roadbook-web/components/route-planning/route-planning-workspace.tsx` |
-| 应用用例编排 | `apps/roadbook-web/hooks/use-route-planning-workspace.ts` |
-| 路线规划领域模型 | `apps/roadbook-web/domain/route-planning/model.ts` |
-| 本地路线仓储 | `apps/roadbook-web/infrastructure/route-plan/local-route-plan-repository.ts` |
-| 地图展示组件 | `apps/roadbook-web/components/route-presentation/route-map.tsx` |
-| 地图供应商切换 | `apps/roadbook-web/components/map-provider/map-provider-switch.tsx` |
-| 高德地图服务端代理基础 | `apps/roadbook-web/lib/amap/amap-web-service.ts` |
-| 腾讯地图服务端代理基础 | `apps/roadbook-web/lib/tencent-map/tencent-map-web-service.ts` |
-| 地图 Web 领域契约 | `packages/map/src/web-types.ts` |
-| 腾讯地图 Web 适配器 | `packages/map/src/tencent-map-web.ts` |
-| 高德地图 Web 适配器 | `packages/map/src/amap-web.ts` |
-| 地图包 Web 出口 | `packages/map/src/web.ts` |
-| 地图包统一出口 | `packages/map/src/index.ts` |
+| 职责                   | 路径                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| 页面工作台组合         | `apps/roadbook-web/components/route-planning/route-planning-workspace.tsx`                            |
+| 应用用例编排           | `apps/roadbook-web/hooks/use-route-planning-workspace.ts`                                             |
+| 路线规划领域模型       | `apps/roadbook-web/domain/route-planning/model.ts`                                                    |
+| 本地路线仓储           | `apps/roadbook-web/infrastructure/route-plan/local-route-plan-repository.ts`                          |
+| 地图展示组件           | `apps/roadbook-web/components/route-presentation/route-map.tsx`                                       |
+| 全局搜索入口           | `apps/roadbook-web/components/map-search/global-search.tsx`                                           |
+| 热门路线专题编排       | `apps/roadbook-web/hooks/use-featured-driving-route-atlas.ts`                                         |
+| 热门路线静态仓储       | `apps/roadbook-web/infrastructure/featured-driving-route/static-featured-driving-route-repository.ts` |
+| 热门路线道路几何       | `apps/roadbook-web/public/featured-routes/golden-grand-loop-geometry.json`                            |
+| 热门路线几何生成       | `apps/roadbook-web/scripts/generate-featured-route-geometry.mjs`                                      |
+| 热门路线几何校验       | `apps/roadbook-web/scripts/validate-featured-route-geometry.mjs`                                      |
+| 黄金大环线维护说明     | `apps/roadbook-web/docs/黄金大环线数据与图层维护说明.md`                                              |
+| 地图供应商切换         | `apps/roadbook-web/components/map-provider/map-provider-switch.tsx`                                   |
+| 高德地图服务端代理基础 | `apps/roadbook-web/lib/amap/amap-web-service.ts`                                                      |
+| 腾讯地图服务端代理基础 | `apps/roadbook-web/lib/tencent-map/tencent-map-web-service.ts`                                        |
+| 地图 Web 领域契约      | `packages/map/src/web-types.ts`                                                                       |
+| 腾讯地图 Web 适配器    | `packages/map/src/tencent-map-web.ts`                                                                 |
+| 高德地图 Web 适配器    | `packages/map/src/amap-web.ts`                                                                        |
+| 地图包 Web 出口        | `packages/map/src/web.ts`                                                                             |
+| 地图包统一出口         | `packages/map/src/index.ts`                                                                           |
 
 约束：
 
@@ -169,6 +180,8 @@ App Router 页面
 - `/api/amap/ip-location`
 - `/api/amap/coordinate-translate`
 - `/_AMapService/*`：高德 JavaScript API 同源安全代理
+
+离线生成热门路线道路几何时，高德 Web API 的账号级并发上限为每秒 `3` 次。生成脚本必须让所有高德请求共享同一节流器，调用间隔不得短于 `400ms`（约每秒 `2.5` 次），不得用并行分段请求突破该上限。
 
 ### 6.3 环境变量
 
@@ -320,13 +333,13 @@ rtk git diff --check
 
 每次迭代完成后按变化类型同步文档：
 
-| 变化类型 | 必须更新 |
-| --- | --- |
-| 产品范围、用户流程、验收标准 | MVP 产品基线或新的正式产品文档 |
-| 全局视觉、Token、布局、地图视觉 | `docs/UI规范/UI设计规范.md` |
-| 组件契约、分层、状态或测试规则 | `docs/组件规范/组件设计与实现规范.md` |
-| 单次功能、问题、决策和验证证据 | `docs/迭代文档/` 下对应迭代文档 |
-| 稳定纲要、权威文档路径或执行门禁 | 本 `AI.md` |
+| 变化类型                         | 必须更新                              |
+| -------------------------------- | ------------------------------------- |
+| 产品范围、用户流程、验收标准     | MVP 产品基线或新的正式产品文档        |
+| 全局视觉、Token、布局、地图视觉  | `docs/UI规范/UI设计规范.md`           |
+| 组件契约、分层、状态或测试规则   | `docs/组件规范/组件设计与实现规范.md` |
+| 单次功能、问题、决策和验证证据   | `docs/迭代文档/` 下对应迭代文档       |
+| 稳定纲要、权威文档路径或执行门禁 | 本 `AI.md`                            |
 
 文档全部使用中文。代码标识、文件路径、API 名称和必要技术术语可保留英文。
 

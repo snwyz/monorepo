@@ -28,8 +28,37 @@ export interface WebMapOptions {
   onMarkerSelect?: (controlPointId: string) => void;
   onRouteLegSelect?: (routeLegId: string) => void;
   onRouteLegInsert?: (routeLegId: string, coordinate: MapCoordinate) => void;
+  onFeaturedRouteControlPointSelect?: (controlPointId: string) => void;
+  onFeaturedRouteMarkerSelect?: (markerId: string) => void;
   onLoading?: () => void;
   onReady?: () => void;
+}
+
+export type WebMapFeaturedRoadStyle = "g219" | "g331" | "g228";
+
+export interface WebMapFeaturedRoad {
+  id: string;
+  code: string;
+  style: WebMapFeaturedRoadStyle;
+  path: MapCoordinate[];
+  labelPoints: MapCoordinate[];
+}
+
+export type WebMapFeaturedRouteControlPointKind = "county-city" | "port" | "scenic";
+
+export interface WebMapFeaturedRouteControlPoint extends MapCoordinate {
+  id: string;
+  name: string;
+  roadCode: string;
+  style: WebMapFeaturedRoadStyle;
+  kind: WebMapFeaturedRouteControlPointKind;
+  selected?: boolean;
+}
+
+export interface WebMapFeaturedRouteMarker extends MapCoordinate {
+  id: string;
+  name: string;
+  selected?: boolean;
 }
 
 export interface WebMapControlPoint extends MapCoordinate {
@@ -87,6 +116,9 @@ export interface WebMapCanvas {
   setControlPoints(controlPoints: WebMapControlPoint[]): void;
   setRouteLegs(routeLegs: WebMapRouteLeg[]): void;
   setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null): void;
+  setFeaturedRoads(roads: WebMapFeaturedRoad[]): void;
+  setFeaturedRouteControlPoints(controlPoints: WebMapFeaturedRouteControlPoint[]): void;
+  setFeaturedRouteMarkers(markers: WebMapFeaturedRouteMarker[]): void;
   setUserLocation(location: WebMapLocation | null): void;
   setCenter(center: MapCoordinate): void;
   setView(center: MapCoordinate, zoom: number): void;

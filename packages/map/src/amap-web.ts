@@ -8,6 +8,9 @@ import type {
   WebMapAdapter,
   WebMapCanvas,
   WebMapControlPoint,
+  WebMapFeaturedRoad,
+  WebMapFeaturedRouteControlPoint,
+  WebMapFeaturedRouteMarker,
   WebMapLocation,
   WebMapOptions,
   WebMapRouteLeg,
@@ -16,6 +19,12 @@ import type {
 } from "./web-types";
 import { AmapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
+import {
+  createFeaturedControlPointLabelVisual,
+  createFeaturedMarkerVisual,
+  createFeaturedRoadLabelVisual,
+  featuredRoadColor,
+} from "./featured-route-label";
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
@@ -220,6 +229,11 @@ interface InteractiveOverlay {
 }
 
 class AmapCanvasImpl implements WebMapCanvas {
+  private featuredRoadOutlineOverlays: AmapOverlay[] = [];
+  private featuredRoadOverlays: AmapOverlay[] = [];
+  private featuredRoadLabelOverlays: AmapOverlay[] = [];
+  private featuredControlPointOverlays: InteractiveOverlay[] = [];
+  private featuredMarkerOverlays: InteractiveOverlay[] = [];
   private controlPointOverlays: InteractiveOverlay[] = [];
   private routeOutlineOverlays: AmapOverlay[] = [];
   private routeOverlays: InteractiveOverlay[] = [];
@@ -239,6 +253,8 @@ class AmapCanvasImpl implements WebMapCanvas {
     routeLegId: string,
     coordinate: MapCoordinate,
   ) => void;
+  private readonly onFeaturedRouteControlPointSelect?: (controlPointId: string) => void;
+  private readonly onFeaturedRouteMarkerSelect?: (markerId: string) => void;
   private readonly onReady?: () => void;
   private dragResetFrame: number | null = null;
 
@@ -277,6 +293,8 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
     this.onRouteLegInsert = options.onRouteLegInsert;
+    this.onFeaturedRouteControlPointSelect = options.onFeaturedRouteControlPointSelect;
+    this.onFeaturedRouteMarkerSelect = options.onFeaturedRouteMarkerSelect;
     this.onReady = options.onReady;
     options.onLoading?.();
     map.setStatus({ doubleClickZoom: false });
@@ -298,6 +316,96 @@ class AmapCanvasImpl implements WebMapCanvas {
         bubble: false,
       });
       const handler = () => this.onMarkerSelect?.(point.id);
+      marker.on("click", handler);
+      this.map.add(marker);
+      return { overlay: marker, handler };
+    });
+  }
+
+  setFeaturedRoads(roads: WebMapFeaturedRoad[]) {
+    this.clearOverlays(this.featuredRoadOutlineOverlays);
+    this.clearOverlays(this.featuredRoadOverlays);
+    const validRoads = roads.filter((road) => road.path.length > 1);
+    this.featuredRoadOutlineOverlays = validRoads.map((road) => {
+      const overlay = new this.amap.Polyline({
+        path: road.path.map(toPosition),
+        strokeColor: "#ffffff",
+        strokeWeight: 10,
+        strokeOpacity: 0.94,
+        lineJoin: "round",
+        lineCap: "round",
+        zIndex: 24,
+        bubble: true,
+      });
+      this.map.add(overlay);
+      return overlay;
+    });
+    this.featuredRoadOverlays = validRoads.map((road) => {
+      const overlay = new this.amap.Polyline({
+        path: road.path.map(toPosition),
+        strokeColor: featuredRoadColor(road.style),
+        strokeWeight: 6,
+        strokeOpacity: 0.92,
+        lineJoin: "round",
+        lineCap: "round",
+        zIndex: 28,
+        bubble: true,
+      });
+      this.map.add(overlay);
+      return overlay;
+    });
+    this.clearOverlays(this.featuredRoadLabelOverlays);
+    this.featuredRoadLabelOverlays = validRoads.flatMap((road) => {
+      const visual = createFeaturedRoadLabelVisual(road);
+      return road.labelPoints.map((point) => {
+        const marker = new this.amap.Marker({
+          position: toPosition(point),
+          content: markerContent(visual.source, visual.width, visual.height),
+          anchor: "top-left",
+          offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
+          zooms: [2, 6.99],
+          zIndex: 106,
+          bubble: true,
+        });
+        this.map.add(marker);
+        return marker;
+      });
+    });
+  }
+
+  setFeaturedRouteControlPoints(controlPoints: WebMapFeaturedRouteControlPoint[]) {
+    this.clearInteractiveOverlays(this.featuredControlPointOverlays);
+    this.featuredControlPointOverlays = controlPoints.map((point) => {
+      const visual = createFeaturedControlPointLabelVisual(point);
+      const marker = new this.amap.Marker({
+        position: toPosition(point),
+        content: markerContent(visual.source, visual.width, visual.height),
+        anchor: "top-left",
+        offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
+        zooms: [7, 20],
+        zIndex: point.selected ? 118 : 108,
+        bubble: false,
+      });
+      const handler = () => this.onFeaturedRouteControlPointSelect?.(point.id);
+      marker.on("click", handler);
+      this.map.add(marker);
+      return { overlay: marker, handler };
+    });
+  }
+
+  setFeaturedRouteMarkers(markers: WebMapFeaturedRouteMarker[]) {
+    this.clearInteractiveOverlays(this.featuredMarkerOverlays);
+    this.featuredMarkerOverlays = markers.map((item) => {
+      const visual = createFeaturedMarkerVisual(item);
+      const marker = new this.amap.Marker({
+        position: toPosition(item),
+        content: markerContent(visual.source, visual.width, visual.height),
+        anchor: "top-left",
+        offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
+        zIndex: item.selected ? 122 : 112,
+        bubble: false,
+      });
+      const handler = () => this.onFeaturedRouteMarkerSelect?.(item.id);
       marker.on("click", handler);
       this.map.add(marker);
       return { overlay: marker, handler };
@@ -484,6 +592,11 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.map.off("click", this.mapClickHandler);
     this.map.off("complete", this.mapReadyHandler);
     this.clearInteractiveOverlays(this.controlPointOverlays);
+    this.clearOverlays(this.featuredRoadOutlineOverlays);
+    this.clearOverlays(this.featuredRoadOverlays);
+    this.clearOverlays(this.featuredRoadLabelOverlays);
+    this.clearInteractiveOverlays(this.featuredControlPointOverlays);
+    this.clearInteractiveOverlays(this.featuredMarkerOverlays);
     this.clearOverlays(this.routeOutlineOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
     this.clearRouteLegInsertion();
