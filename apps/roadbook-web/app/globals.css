@@ -462,7 +462,8 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .search-history-row, .search-category-row, .featured-route-card-row { width: calc(100% + 16px); margin-right: -16px; padding-right: 16px; scroll-padding-right: 16px; -webkit-overflow-scrolling: touch; }
   .strategy-selector, .workspace-mode, .featured-route-mode { display: none; }
   .plan-row-shell { overflow: hidden; }
-  .plan-row__swipe-action { position: absolute; z-index: 0; inset: 0 0 auto auto; width: 96px; height: 68px; padding-right: 12px; display: flex; align-items: center; justify-content: flex-end; background: var(--rb-color-surface-subtle); color: var(--rb-color-danger); font-size: 11px; font-weight: 600; }
+  .plan-row__swipe-action { position: absolute; z-index: 0; inset: 0 0 auto auto; width: 96px; height: 68px; padding-right: 12px; display: flex; visibility: hidden; align-items: center; justify-content: flex-end; background: var(--rb-color-surface-subtle); color: var(--rb-color-danger); font-size: 11px; font-weight: 600; opacity: 0; pointer-events: none; }
+  .plan-row__swipe-action.is-visible { visibility: visible; opacity: 1; }
   .plan-row__swipe-action.is-ready { background: var(--rb-color-danger); color: var(--rb-color-surface); }
   .plan-row { z-index: 1; touch-action: pan-y; transform: translate3d(var(--plan-swipe-offset, 0), 0, 0); transition: transform 180ms var(--rb-ease), background 160ms var(--rb-ease), box-shadow 160ms var(--rb-ease); }
   .plan-row:not(.is-active) { background: var(--rb-color-surface); }
@@ -485,7 +486,8 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .address-list__toggle-summary > svg { width: 16px; color: var(--rb-color-muted); transition: transform 180ms var(--rb-ease); }
   .address-list__body { padding: 2px 0; }
   .address-sequence { overflow: hidden; }
-  .address-row__swipe-action { position: absolute; z-index: 0; top: 0; right: 0; width: 96px; height: 58px; padding-right: 12px; display: flex; align-items: center; justify-content: flex-end; background: var(--rb-color-surface-subtle); color: var(--rb-color-danger); font-size: 11px; font-weight: 600; }
+  .address-row__swipe-action { position: absolute; z-index: 0; top: 0; right: 0; width: 96px; height: 58px; padding-right: 12px; display: flex; visibility: hidden; align-items: center; justify-content: flex-end; background: var(--rb-color-surface-subtle); color: var(--rb-color-danger); font-size: 11px; font-weight: 600; opacity: 0; pointer-events: none; }
+  .address-row__swipe-action.is-visible { visibility: visible; opacity: 1; }
   .address-row__swipe-action.is-ready { background: var(--rb-color-danger); color: var(--rb-color-surface); }
   .address-row { z-index: 1; background: var(--rb-color-surface); touch-action: pan-y; transform: translate3d(var(--address-swipe-offset, 0), 0, 0); transition: transform 180ms var(--rb-ease), background 120ms var(--rb-ease); }
   .address-row.is-swiping { transition: none; }
