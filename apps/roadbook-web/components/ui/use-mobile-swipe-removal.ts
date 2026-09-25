@@ -95,6 +95,7 @@ export function useMobileSwipeRemoval({
   };
 
   const handleLostPointerCapture = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return;
     if (swipeGestureRef.current?.pointerId !== event.pointerId) return;
     suppressClickUntilRef.current = 0;
     resetSwipe();
