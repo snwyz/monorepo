@@ -25,7 +25,10 @@ import {
   createFeaturedRoadLabelVisual,
   featuredRoadColor,
 } from "./featured-route-label";
-import { mapOverlayColors, plannedRouteStrokeWidths } from "./map-overlay-style";
+import {
+  mapOverlayColors,
+  plannedRouteStrokeWidths,
+} from "./map-overlay-style";
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
@@ -65,7 +68,10 @@ interface AmapMapInstance extends AmapEventTarget {
 }
 
 interface AmapNamespace {
-  Map: new (container: HTMLElement, options: Record<string, unknown>) => AmapMapInstance;
+  Map: new (
+    container: HTMLElement,
+    options: Record<string, unknown>,
+  ) => AmapMapInstance;
   Marker: new (options: Record<string, unknown>) => AmapOverlay;
   Polyline: new (options: Record<string, unknown>) => AmapOverlay;
   Bounds: new (southwest: AmapPosition, northeast: AmapPosition) => unknown;
@@ -104,7 +110,10 @@ declare global {
 }
 
 const SDK_ID = "roadbook-amap-web-sdk";
-const DEFAULT_CENTER: MapCoordinate = { latitude: 34.3416, longitude: 108.9398 };
+const DEFAULT_CENTER: MapCoordinate = {
+  latitude: 34.3416,
+  longitude: 108.9398,
+};
 const MAX_PRECISE_LOCATION_ACCURACY_METERS = 50_000;
 let sdkPromise: Promise<AmapNamespace> | null = null;
 
@@ -140,9 +149,9 @@ function combineStepPolylines(steps: AmapDrivingPath["steps"]) {
     for (const coordinate of decodePolyline(step.polyline)) {
       const previous = path[path.length - 1];
       if (
-        previous
-        && previous.latitude === coordinate.latitude
-        && previous.longitude === coordinate.longitude
+        previous &&
+        previous.latitude === coordinate.latitude &&
+        previous.longitude === coordinate.longitude
       ) {
         continue;
       }
@@ -153,7 +162,9 @@ function combineStepPolylines(steps: AmapDrivingPath["steps"]) {
 }
 
 function wait(milliseconds: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+  return new Promise<void>((resolve) =>
+    window.setTimeout(resolve, milliseconds),
+  );
 }
 
 function locationDebug(
@@ -176,7 +187,8 @@ function describeAmapServiceError(error: unknown) {
   if (error instanceof Error) return error.message;
   if (error && typeof error === "object") {
     const result = error as { info?: unknown; infocode?: unknown };
-    const message = typeof result.info === "string" ? result.info : "服务暂不可用";
+    const message =
+      typeof result.info === "string" ? result.info : "服务暂不可用";
     return result.infocode === undefined
       ? message
       : `${message}（状态码 ${String(result.infocode)}）`;
@@ -186,8 +198,11 @@ function describeAmapServiceError(error: unknown) {
 
 async function requestAmapProxy<T extends AmapServiceResponse>(url: string) {
   const response = await fetch(url, { cache: "no-store" });
-  const payload = await response.json() as T;
-  if (!response.ok || (payload.status !== undefined && payload.status !== "1")) {
+  const payload = (await response.json()) as T;
+  if (
+    !response.ok ||
+    (payload.status !== undefined && payload.status !== "1")
+  ) {
     throw payload;
   }
   return payload;
@@ -199,7 +214,8 @@ function locationMarkerSvg() {
 }
 
 function routeLegInsertionHandleSvg() {
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="%23ffffff" stroke="%230a0a0a" stroke-width="2"/><path d="M16 8v16M8 16h16M16 8l-3 3m3-3 3 3M24 16l-3-3m3 3-3 3M16 24l-3-3m3 3 3-3M8 16l3-3m-3 3 3 3" fill="none" stroke="%230a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="%23ffffff" stroke="%230a0a0a" stroke-width="2"/><path d="M16 8v16M8 16h16M16 8l-3 3m3-3 3 3M24 16l-3-3m3 3-3 3M16 24l-3-3m3 3 3-3M8 16l3-3m-3 3 3 3" fill="none" stroke="%230a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   return `data:image/svg+xml,${svg}`;
 }
 
@@ -255,7 +271,9 @@ class AmapCanvasImpl implements WebMapCanvas {
     routeLegId: string,
     coordinate: MapCoordinate,
   ) => void;
-  private readonly onFeaturedRouteControlPointSelect?: (controlPointId: string) => void;
+  private readonly onFeaturedRouteControlPointSelect?: (
+    controlPointId: string,
+  ) => void;
   private readonly onFeaturedRouteMarkerSelect?: (markerId: string) => void;
   private readonly onReady?: () => void;
   private dragResetFrame: number | null = null;
@@ -295,7 +313,8 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
     this.onRouteLegInsert = options.onRouteLegInsert;
-    this.onFeaturedRouteControlPointSelect = options.onFeaturedRouteControlPointSelect;
+    this.onFeaturedRouteControlPointSelect =
+      options.onFeaturedRouteControlPointSelect;
     this.onFeaturedRouteMarkerSelect = options.onFeaturedRouteMarkerSelect;
     this.onReady = options.onReady;
     options.onLoading?.();
@@ -375,7 +394,9 @@ class AmapCanvasImpl implements WebMapCanvas {
     });
   }
 
-  setFeaturedRouteControlPoints(controlPoints: WebMapFeaturedRouteControlPoint[]) {
+  setFeaturedRouteControlPoints(
+    controlPoints: WebMapFeaturedRouteControlPoint[],
+  ) {
     this.clearInteractiveOverlays(this.featuredControlPointOverlays);
     this.featuredControlPointOverlays = controlPoints.map((point) => {
       const visual = createFeaturedControlPointLabelVisual(point);
@@ -426,11 +447,12 @@ class AmapCanvasImpl implements WebMapCanvas {
       const outline = new this.amap.Polyline({
         path: leg.path.map(toPosition),
         strokeColor: mapOverlayColors.surface,
-        strokeWeight: leg.failed || leg.stale
-          ? statusWidth
-          : leg.selected
-            ? plannedRouteStrokeWidths.selected.outline
-            : plannedRouteStrokeWidths.normal.outline,
+        strokeWeight:
+          leg.failed || leg.stale
+            ? statusWidth
+            : leg.selected
+              ? plannedRouteStrokeWidths.selected.outline
+              : plannedRouteStrokeWidths.normal.outline,
         strokeOpacity: 1,
         lineJoin: "round",
         lineCap: "round",
@@ -492,7 +514,9 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.clearRouteLegInsertion();
     if (!insertion || !isValidMapCoordinate(insertion.coordinate)) return;
 
-    const path = [insertion.from, insertion.coordinate, insertion.to].map(toPosition);
+    const path = [insertion.from, insertion.coordinate, insertion.to].map(
+      toPosition,
+    );
     this.routeLegInsertionOutline = new this.amap.Polyline({
       path,
       strokeColor: "#ffffff",
@@ -527,7 +551,9 @@ class AmapCanvasImpl implements WebMapCanvas {
     const updateGuide = (event: AmapMapEvent) => {
       if (!event.lnglat) return;
       const coordinate = toCoordinate(event.lnglat);
-      const nextPath = [insertion.from, coordinate, insertion.to].map(toPosition);
+      const nextPath = [insertion.from, coordinate, insertion.to].map(
+        toPosition,
+      );
       this.routeLegInsertionOutline?.setPath?.(nextPath);
       this.routeLegInsertionGuide?.setPath?.(nextPath);
     };
@@ -580,12 +606,16 @@ class AmapCanvasImpl implements WebMapCanvas {
     padding: WebMapViewportPadding,
   ) {
     const center = this.map.getCenter();
-    return areCoordinatesInsideViewport(coordinates, {
-      center: toCoordinate(center),
-      zoom: this.map.getZoom(),
-      width: this.container.clientWidth,
-      height: this.container.clientHeight,
-    }, padding);
+    return areCoordinatesInsideViewport(
+      coordinates,
+      {
+        center: toCoordinate(center),
+        zoom: this.map.getZoom(),
+        width: this.container.clientWidth,
+        height: this.container.clientHeight,
+      },
+      padding,
+    );
   }
 
   fitCoordinates(
@@ -598,16 +628,20 @@ class AmapCanvasImpl implements WebMapCanvas {
       this.setView(bounds.southwest, 13);
       return;
     }
-    const padding = options.padding ?? { top: 48, right: 48, bottom: 48, left: 48 };
-    this.map.setBounds(new this.amap.Bounds(
-      toPosition(bounds.southwest),
-      toPosition(bounds.northeast),
-    ), options.animated === false, [
-      padding.top,
-      padding.bottom,
-      padding.left,
-      padding.right,
-    ]);
+    const padding = options.padding ?? {
+      top: 48,
+      right: 48,
+      bottom: 48,
+      left: 48,
+    };
+    this.map.setBounds(
+      new this.amap.Bounds(
+        toPosition(bounds.southwest),
+        toPosition(bounds.northeast),
+      ),
+      options.animated === false,
+      [padding.top, padding.bottom, padding.left, padding.right],
+    );
   }
 
   zoomBy(delta: number) {
@@ -680,10 +714,13 @@ function loadAmapSdk(options: AmapWebAdapterOptions) {
   if (sdkPromise) return sdkPromise;
 
   window._AMapSecurityConfig = {
-    serviceHost: options.serviceHost ?? `${window.location.origin}/_AMapService`,
+    serviceHost:
+      options.serviceHost ?? `${window.location.origin}/_AMapService`,
   };
   sdkPromise = new Promise<AmapNamespace>((resolve, reject) => {
-    const existing = document.getElementById(SDK_ID) as HTMLScriptElement | null;
+    const existing = document.getElementById(
+      SDK_ID,
+    ) as HTMLScriptElement | null;
     const script = existing ?? document.createElement("script");
     const handleLoad = () => {
       if (window.AMap) resolve(window.AMap);
@@ -725,10 +762,12 @@ export class AmapWebAdapter implements WebMapAdapter {
         "MISSING_KEY",
       );
     }
-    return new AmapWebAdapter(await loadAmapSdk({
-      ...options,
-      key: options.key.trim(),
-    }));
+    return new AmapWebAdapter(
+      await loadAmapSdk({
+        ...options,
+        key: options.key.trim(),
+      }),
+    );
   }
 
   createMap(container: HTMLElement, options: WebMapOptions = {}): WebMapCanvas {
@@ -741,6 +780,7 @@ export class AmapWebAdapter implements WebMapAdapter {
       rotation: 0,
       doubleClickZoom: false,
       showLabel: true,
+      mapStyle: "amap://styles/macaron",
     });
     return new AmapCanvasImpl(
       this.amap,
@@ -765,13 +805,15 @@ export class AmapWebAdapter implements WebMapAdapter {
   }
 
   async resolveAuthorizedLocation(): Promise<MapCoordinate | null> {
-    if (!await this.hasGrantedLocationPermission()) return null;
+    if (!(await this.hasGrantedLocationPermission())) return null;
     try {
       const coordinate = await this.getPreciseLocation();
       this.currentLocation = { coordinate, approximate: false };
       return coordinate;
     } catch (error) {
-      locationDebug("warn", "authorized:precise-failed", { error: debugError(error) });
+      locationDebug("warn", "authorized:precise-failed", {
+        error: debugError(error),
+      });
       return null;
     }
   }
@@ -787,19 +829,23 @@ export class AmapWebAdapter implements WebMapAdapter {
           `${this.searchLocation.latitude},${this.searchLocation.longitude}`,
         );
       }
-      const response = await requestAmapProxy<AmapServiceResponse & {
-        tips?: AmapInputTip[];
-      }>(`/api/amap/suggestion?${params.toString()}`);
+      const response = await requestAmapProxy<
+        AmapServiceResponse & {
+          tips?: AmapInputTip[];
+        }
+      >(`/api/amap/suggestion?${params.toString()}`);
       return (response.tips ?? []).flatMap((item, index) => {
         const coordinate = parseCoordinate(item.location);
         if (!coordinate) return [];
         const address = typeof item.address === "string" ? item.address : "";
-        return [{
-          id: item.id || `${query}-${index}`,
-          name: item.name || "未命名地点",
-          address: address || item.district || "地址暂缺",
-          coordinate,
-        }];
+        return [
+          {
+            id: item.id || `${query}-${index}`,
+            name: item.name || "未命名地点",
+            address: address || item.district || "地址暂缺",
+            coordinate,
+          },
+        ];
       });
     } catch (error) {
       throw new AmapWebError(
@@ -815,23 +861,28 @@ export class AmapWebAdapter implements WebMapAdapter {
       const params = new URLSearchParams({
         location: `${coordinate.latitude},${coordinate.longitude}`,
       });
-      const response = await requestAmapProxy<AmapServiceResponse & {
-        regeocode?: {
-          formatted_address?: string;
-          addressComponent?: {
-            township?: string;
-            streetNumber?: { street?: string; number?: string };
+      const response = await requestAmapProxy<
+        AmapServiceResponse & {
+          regeocode?: {
+            formatted_address?: string;
+            addressComponent?: {
+              township?: string;
+              streetNumber?: { street?: string; number?: string };
+            };
           };
-        };
-      }>(`/api/amap/reverse-geocode?${params.toString()}`);
+        }
+      >(`/api/amap/reverse-geocode?${params.toString()}`);
       const result = response.regeocode;
       const street = [
         result?.addressComponent?.streetNumber?.street,
         result?.addressComponent?.streetNumber?.number,
-      ].filter(Boolean).join("");
+      ]
+        .filter(Boolean)
+        .join("");
       const address = result?.formatted_address || "未识别地址";
       return {
-        name: street || result?.addressComponent?.township || address || "地图选点",
+        name:
+          street || result?.addressComponent?.township || address || "地图选点",
         address,
       };
     } catch {
@@ -870,9 +921,11 @@ export class AmapWebAdapter implements WebMapAdapter {
           strategy: strategyCode[strategy],
         });
         const response = await this.scheduleDrivingRequest(() =>
-          requestAmapProxy<AmapServiceResponse & {
-            route?: { paths?: AmapDrivingPath[] };
-          }>(`/api/amap/driving?${params.toString()}`),
+          requestAmapProxy<
+            AmapServiceResponse & {
+              route?: { paths?: AmapDrivingPath[] };
+            }
+          >(`/api/amap/driving?${params.toString()}`),
         );
         const route = response.route?.paths?.[0];
         if (!route) throw new Error(`第 ${index + 1} 段没有返回路线`);
@@ -901,7 +954,10 @@ export class AmapWebAdapter implements WebMapAdapter {
         strategy,
         legs,
         distanceMeters: legs.reduce((sum, leg) => sum + leg.distanceMeters, 0),
-        durationMinutes: legs.reduce((sum, leg) => sum + leg.durationMinutes, 0),
+        durationMinutes: legs.reduce(
+          (sum, leg) => sum + leg.durationMinutes,
+          0,
+        ),
         trafficLightCount: lightCounts.every((value) => value !== null)
           ? lightCounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)
           : null,
@@ -948,7 +1004,9 @@ export class AmapWebAdapter implements WebMapAdapter {
   private async hasGrantedLocationPermission() {
     if (!navigator.permissions) return false;
     try {
-      const permission = await navigator.permissions.query({ name: "geolocation" });
+      const permission = await navigator.permissions.query({
+        name: "geolocation",
+      });
       return permission.state === "granted";
     } catch {
       return false;
@@ -959,7 +1017,9 @@ export class AmapWebAdapter implements WebMapAdapter {
     if (this.preciseLocation) return Promise.resolve(this.preciseLocation);
     if (this.preciseLocationRequest) return this.preciseLocationRequest;
     if (!navigator.geolocation) {
-      return Promise.reject(new AmapWebError("当前浏览器不支持定位", "SERVICE_FAILED"));
+      return Promise.reject(
+        new AmapWebError("当前浏览器不支持定位", "SERVICE_FAILED"),
+      );
     }
     const request = new Promise<MapCoordinate>((resolve, reject) => {
       let settled = false;
@@ -982,13 +1042,15 @@ export class AmapWebAdapter implements WebMapAdapter {
             return;
           }
           if (
-            !Number.isFinite(position.coords.accuracy)
-            || position.coords.accuracy > MAX_PRECISE_LOCATION_ACCURACY_METERS
+            !Number.isFinite(position.coords.accuracy) ||
+            position.coords.accuracy > MAX_PRECISE_LOCATION_ACCURACY_METERS
           ) {
-            reject(new AmapWebError(
-              "浏览器定位精度过低，继续使用 IP 定位",
-              "INVALID_RESULT",
-            ));
+            reject(
+              new AmapWebError(
+                "浏览器定位精度过低，继续使用 IP 定位",
+                "INVALID_RESULT",
+              ),
+            );
             return;
           }
           resolve(coordinate);
@@ -997,15 +1059,17 @@ export class AmapWebAdapter implements WebMapAdapter {
           if (settled) return;
           settled = true;
           window.clearTimeout(timeout);
-          reject(new AmapWebError(
-            error.code === error.PERMISSION_DENIED
-              ? "定位权限未授权"
-              : error.code === error.TIMEOUT
-                ? "获取当前位置超时"
-                : "无法获取当前位置",
-            "SERVICE_FAILED",
-            error,
-          ));
+          reject(
+            new AmapWebError(
+              error.code === error.PERMISSION_DENIED
+                ? "定位权限未授权"
+                : error.code === error.TIMEOUT
+                  ? "获取当前位置超时"
+                  : "无法获取当前位置",
+              "SERVICE_FAILED",
+              error,
+            ),
+          );
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
       );
@@ -1015,9 +1079,11 @@ export class AmapWebAdapter implements WebMapAdapter {
           location: `${coordinate.latitude},${coordinate.longitude}`,
         });
         try {
-          const response = await requestAmapProxy<AmapServiceResponse & {
-            locations?: string;
-          }>(`/api/amap/coordinate-translate?${params.toString()}`);
+          const response = await requestAmapProxy<
+            AmapServiceResponse & {
+              locations?: string;
+            }
+          >(`/api/amap/coordinate-translate?${params.toString()}`);
           const translated = parseCoordinate(response.locations) ?? coordinate;
           this.preciseLocation = translated;
           this.searchLocation = translated;
@@ -1039,9 +1105,11 @@ export class AmapWebAdapter implements WebMapAdapter {
   }
 
   private async getIpLocation() {
-    const response = await requestAmapProxy<AmapServiceResponse & {
-      rectangle?: unknown;
-    }>("/api/amap/ip-location");
+    const response = await requestAmapProxy<
+      AmapServiceResponse & {
+        rectangle?: unknown;
+      }
+    >("/api/amap/ip-location");
     if (typeof response.rectangle !== "string") return null;
     const [southwestText, northeastText] = response.rectangle.split(";");
     const southwest = parseCoordinate(southwestText);
@@ -1061,7 +1129,10 @@ export class AmapWebAdapter implements WebMapAdapter {
       this.nextDrivingRequestAt = Date.now() + 650;
       return operation();
     });
-    this.drivingRequestQueue = scheduled.then(() => undefined, () => undefined);
+    this.drivingRequestQueue = scheduled.then(
+      () => undefined,
+      () => undefined,
+    );
     return scheduled;
   }
 }

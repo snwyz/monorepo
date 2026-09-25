@@ -91,6 +91,12 @@ export function useMobileSwipeRemoval({
     resetSwipe();
   };
 
+  const handleLostPointerCapture = (event: ReactPointerEvent<HTMLElement>) => {
+    if (swipeGestureRef.current?.pointerId !== event.pointerId) return;
+    suppressClickUntilRef.current = 0;
+    resetSwipe();
+  };
+
   const shouldSuppressClick = () => Date.now() < suppressClickUntilRef.current;
 
   return {
@@ -100,6 +106,7 @@ export function useMobileSwipeRemoval({
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handleLostPointerCapture,
     shouldSuppressClick,
   };
 }

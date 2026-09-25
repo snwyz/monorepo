@@ -83,6 +83,7 @@ function SortableAddressSequence({
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handleLostPointerCapture,
     shouldSuppressClick,
   } = useMobileSwipeRemoval({
     onRequestRemoval: () => onRemove(point.id),
@@ -116,6 +117,7 @@ function SortableAddressSequence({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={handleLostPointerCapture}
       >
         <button
           type="button"

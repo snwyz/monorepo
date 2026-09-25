@@ -78,6 +78,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handleLostPointerCapture,
     shouldSuppressClick,
   } = useMobileSwipeRemoval({
     onRequestRemoval: () => onRequestDelete(plan.id, planLabel),
@@ -107,6 +108,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={handleLostPointerCapture}
         aria-current={isActive ? "true" : undefined}
         aria-label={`加载路线${planLabel}，${planTime}，${plan.controlPointCount} 个途经点`}
       >
