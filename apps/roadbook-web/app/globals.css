@@ -407,9 +407,9 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .metric-grid__toggle:hover { background: var(--rb-color-surface-subtle); }
 .metric-grid__toggle:focus-visible { position: relative; z-index: 1; outline-offset: -2px; }
 .metric-grid svg { width: 17px; color: var(--rb-color-muted); }
-.metric-grid span { min-width: 0; display: grid; grid-template-rows: 16px 22px; align-content: center; }
-.metric-grid small { color: var(--rb-color-muted); font-size: 10px; line-height: 16px; }
-.metric-grid strong { color: var(--rb-color-text-strong); font-size: 15px; line-height: 22px; font-variant-numeric: tabular-nums; }
+.metric-grid span { display: flex; flex-direction: column; }
+.metric-grid small { color: var(--rb-color-muted); font-size: 10px; }
+.metric-grid strong { color: var(--rb-color-text-strong); font-size: 15px; font-variant-numeric: tabular-nums; }
 .route-metrics footer { padding: 7px 14px; border-top: 1px solid var(--rb-color-border); color: var(--rb-color-muted); font-size: 9px; }
 
 .elevation-panel { position: absolute; z-index: 7; left: 50%; bottom: 16px; width: min(610px, calc(100vw - 720px)); min-width: 390px; height: 48px; transform: translateX(-50%); overflow: hidden; transition: height 240ms var(--rb-ease), transform 240ms var(--rb-ease); }
@@ -490,7 +490,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .address-row.is-swiping { transition: none; }
   .address-row__drag, .address-row__delete { display: none; }
   .route-metrics { display: none; }
-  .route-metrics.is-leg-selected { display: block; z-index: 7; top: auto; right: 8px; bottom: calc(68px + env(safe-area-inset-bottom)); left: 62px; width: auto; max-height: calc(100svh - 220px); overflow-y: auto; border-radius: 16px; }
+  .route-metrics.is-leg-selected { display: block; z-index: 7; top: auto; right: 8px; bottom: calc(16px + env(safe-area-inset-bottom)); left: 62px; width: auto; max-height: calc(100svh - 220px); overflow-y: auto; border-radius: 16px; }
   .address-list__hint { display: none; }
   .featured-route-panel { top: 72px; left: 8px; right: 8px; width: auto; max-height: 50dvh; border-radius: 16px; }
   .featured-route-panel.is-collapsed { max-height: 66px; }
