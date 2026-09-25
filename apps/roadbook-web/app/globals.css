@@ -473,6 +473,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .workspace-empty h1 { font-size: 21px; line-height: 29px; }
   .map-unavailable { left: 8px; right: 8px; bottom: 76px; transform: none; }
   .address-list { top: 72px; left: 8px; right: 8px; bottom: auto; width: auto; max-height: 50dvh; border-radius: 16px; }
+  .planning-workspace.is-weather-forecast-open .address-list { display: none; }
   .address-list.is-collapsed { max-height: 58px; }
   .address-list.is-collapsed .address-list__body { display: none; }
   .address-list__header--desktop { display: none; }

@@ -30,10 +30,17 @@ import { ROUTE_PLAN_CONTROL_POINT_LIMIT } from "@/domain/route-planning/model";
 import { useFeaturedDrivingRouteAtlas } from "@/hooks/use-featured-driving-route-atlas";
 import { useRoutePlanningWorkspace } from "@/hooks/use-route-planning-workspace";
 import { StaticFeaturedDrivingRouteRepository } from "@/infrastructure/featured-driving-route/static-featured-driving-route-repository";
+import type { WeatherForecastTarget } from "@/domain/weather-forecast/model";
 
 const ControlPointDeleteConfirmation = lazy(() =>
   import("@/components/route-planning/control-point-delete-confirmation").then(
     (module) => ({ default: module.ControlPointDeleteConfirmation }),
+  ),
+);
+
+const WeatherForecastCard = lazy(() =>
+  import("@/components/weather-forecast/weather-forecast-card").then(
+    (module) => ({ default: module.WeatherForecastCard }),
   ),
 );
 
@@ -64,8 +71,24 @@ export function RoutePlanningWorkspace() {
     () => featuredRouteRepository.categories(),
     [],
   );
-  const points = workspace.activePlan?.controlPoints ?? [];
+  const points = useMemo(
+    () => workspace.activePlan?.controlPoints ?? [],
+    [workspace.activePlan?.controlPoints],
+  );
+  const [weatherTargetId, setWeatherTargetId] = useState<string | null>(null);
+  const weatherTarget = useMemo<WeatherForecastTarget | null>(() => {
+    const point = points.find((item) => item.id === weatherTargetId);
+    return point
+      ? {
+        id: point.id,
+        name: point.name,
+        latitude: point.latitude,
+        longitude: point.longitude,
+      }
+      : null;
+  }, [points, weatherTargetId]);
   const isFeaturedMode = Boolean(activeFeaturedRoute);
+  const isWeatherForecastOpen = !isFeaturedMode && Boolean(weatherTarget);
   const controlPointLimitReached =
     points.length >= ROUTE_PLAN_CONTROL_POINT_LIMIT;
   const controlPointLimitMessage = `当前点位已满（${points.length}/${ROUTE_PLAN_CONTROL_POINT_LIMIT}），请先删除一个点位`;
@@ -178,16 +201,19 @@ export function RoutePlanningWorkspace() {
   const loadFeaturedRoute = useCallback(async (route: FeaturedDrivingRoute) => {
     const loadedRoute = await featuredRouteRepository.loadById(route.id);
     if (!loadedRoute) throw new Error("热门路线不存在或已下线");
+    setWeatherTargetId(null);
     workspace.clearRouteLegSelection();
     openFeaturedRoute(loadedRoute);
   }, [openFeaturedRoute, workspace]);
 
   const createPlan = useCallback(() => {
+    setWeatherTargetId(null);
     closeFeaturedRoute();
     return workspace.createPlan();
   }, [closeFeaturedRoute, workspace]);
 
   const loadPlan = useCallback((id: string) => {
+    setWeatherTargetId(null);
     closeFeaturedRoute();
     return workspace.loadPlan(id);
   }, [closeFeaturedRoute, workspace]);
@@ -195,9 +221,23 @@ export function RoutePlanningWorkspace() {
   const selectMapControlPoint = useCallback(
     (id: string) => {
       selectControlPoint(id);
+      if (points.some((point) => point.id === id)) setWeatherTargetId(id);
     },
-    [selectControlPoint],
+    [points, selectControlPoint],
   );
+
+  const closeWeatherForecast = useCallback(() => {
+    setWeatherTargetId(null);
+  }, []);
+
+  const clearMapContextSelection = useCallback(() => {
+    setWeatherTargetId(null);
+    if (activeFeaturedRoute) {
+      clearFeaturedSelection();
+      return;
+    }
+    clearRouteLegSelection();
+  }, [activeFeaturedRoute, clearFeaturedSelection, clearRouteLegSelection]);
 
   const requestControlPointRemoval = useCallback((id: string) => {
     setDeleteConfirmationLoaded(true);
@@ -207,6 +247,7 @@ export function RoutePlanningWorkspace() {
   const confirmControlPointRemoval = useCallback(() => {
     if (!deleteCandidateId) return;
     removeControlPointFromPlan(deleteCandidateId);
+    setWeatherTargetId((current) => current === deleteCandidateId ? null : current);
     setDeleteCandidateId(null);
   }, [deleteCandidateId, removeControlPointFromPlan]);
 
@@ -260,7 +301,9 @@ export function RoutePlanningWorkspace() {
   }, [clearRouteLegSelection, workspace.selectedRouteLegId]);
 
   return (
-    <main className="planning-workspace">
+    <main
+      className={`planning-workspace${isWeatherForecastOpen ? " is-weather-forecast-open" : ""}`}
+    >
       <RouteMap
         adapter={workspace.adapter}
         provider={workspace.mapProvider}
@@ -277,15 +320,29 @@ export function RoutePlanningWorkspace() {
         featuredMarkers={featuredMarkers}
         featuredFocusRequest={featuredFocusRequest}
         onDoubleClick={addCoordinate}
-        onClearRouteLegSelection={isFeaturedMode
-          ? clearFeaturedSelection
-          : clearRouteLegSelection}
+        onClearRouteLegSelection={clearMapContextSelection}
         onSelectControlPoint={selectMapControlPoint}
         onSelectRouteLeg={workspace.selectRouteLeg}
         onSelectFeaturedControlPoint={selectFeaturedControlPoint}
         onSelectFeaturedMarker={selectFeaturedMarker}
         onInsertRouteLegControlPoint={workspace.insertRouteLegControlPoint}
       />
+
+      {!isFeaturedMode && weatherTarget ? (
+        <Suspense
+          fallback={(
+            <div className="map-toast" role="status">
+              正在加载天气卡片…
+            </div>
+          )}
+        >
+          <WeatherForecastCard
+            key={weatherTarget.id}
+            target={weatherTarget}
+            onClose={closeWeatherForecast}
+          />
+        </Suspense>
+      ) : null}
 
       <MapProviderSwitch
         provider={workspace.mapProvider}
