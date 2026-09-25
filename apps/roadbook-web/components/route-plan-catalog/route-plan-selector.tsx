@@ -93,7 +93,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
   return (
     <div className={`plan-row-shell${isActive ? " is-active" : ""}`}>
       <div
-        className={`plan-row__swipe-action${swipeOffset < 0 ? " is-visible" : ""}${isSwipeDeleteReady ? " is-ready" : ""}`}
+        className={`plan-row__swipe-action${isSwipeDeleteReady ? " is-ready" : ""}`}
         aria-hidden="true"
       >
         {isSwipeDeleteReady ? "松开删除" : "左滑删除"}

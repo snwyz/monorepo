@@ -105,7 +105,7 @@ function SortableAddressSequence({
       }}
     >
       <div
-        className={`address-row__swipe-action${swipeOffset < 0 ? " is-visible" : ""}${isSwipeDeleteReady ? " is-ready" : ""}`}
+        className={`address-row__swipe-action${isSwipeDeleteReady ? " is-ready" : ""}`}
         aria-hidden="true"
       >
         {isSwipeDeleteReady ? "松开删除" : "左滑删除"}

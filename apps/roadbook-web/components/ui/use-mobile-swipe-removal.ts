@@ -57,11 +57,14 @@ export function useMobileSwipeRemoval({
     const deltaY = event.clientY - gesture.startY;
 
     if (!gesture.isHorizontal) {
-      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      const horizontalDistance = Math.abs(deltaX);
+      const verticalDistance = Math.abs(deltaY);
+
+      if (Math.max(horizontalDistance, verticalDistance) < SWIPE_DIRECTION_THRESHOLD) return;
+      if (verticalDistance > horizontalDistance) {
         resetSwipe();
         return;
       }
-      if (Math.abs(deltaX) < SWIPE_DIRECTION_THRESHOLD) return;
       if (deltaX >= 0) {
         resetSwipe();
         return;
