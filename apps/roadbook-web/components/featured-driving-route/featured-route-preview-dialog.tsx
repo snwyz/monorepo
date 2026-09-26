@@ -9,12 +9,14 @@ import type { FeaturedDrivingRoute } from "@/domain/featured-driving-route/model
 
 interface FeaturedRoutePreviewDialogProps {
   route: FeaturedDrivingRoute;
+  inline?: boolean;
   onClose: () => void;
   onLoad: () => void | Promise<void>;
 }
 
 export function FeaturedRoutePreviewDialog({
   route,
+  inline = false,
   onClose,
   onLoad,
 }: FeaturedRoutePreviewDialogProps) {
@@ -47,7 +49,7 @@ export function FeaturedRoutePreviewDialog({
         onClose();
         return;
       }
-      if (event.key !== "Tab" || !focusable?.length) return;
+      if (inline || event.key !== "Tab" || !focusable?.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -63,10 +65,10 @@ export function FeaturedRoutePreviewDialog({
       document.removeEventListener("keydown", handleKeyDown);
       previous?.focus();
     };
-  }, [onClose]);
+  }, [inline, onClose]);
 
   return (
-    <div className="featured-preview-layer">
+    <div className={`featured-preview-layer${inline ? " is-inline" : ""}`}>
       <button
         type="button"
         className="featured-preview-layer__backdrop"
@@ -77,14 +79,14 @@ export function FeaturedRoutePreviewDialog({
         ref={dialogRef}
         className="featured-preview-dialog"
         role="dialog"
-        aria-modal="true"
+        aria-modal={inline ? undefined : true}
         aria-labelledby="featured-preview-title"
         aria-describedby="featured-preview-description"
       >
         <button
           type="button"
           className="featured-preview-dialog__close"
-          aria-label="关闭路线预览"
+          aria-label={inline ? "返回搜索" : "关闭路线预览"}
           onClick={onClose}
         >
           <CloseIcon />

@@ -25,6 +25,7 @@ import {
 } from "@/components/route-presentation/tool-icons";
 
 interface RouteMapProps {
+  mobileOcclusion: number;
   adapter: WebMapAdapter | null;
   provider: WebMapProvider;
   controlPoints: ControlPoint[];
@@ -54,12 +55,12 @@ interface RouteMapProps {
 const MOBILE_DISTANCE_FALLBACK_METERS = 2_000;
 const EARTH_RADIUS_METERS = 6_371_000;
 
-function getMapFitOptions(): WebMapFitOptions {
+function getMapFitOptions(mobileOcclusion = 0): WebMapFitOptions {
   const isMobile = window.matchMedia("(max-width: 760px)").matches;
   return {
     animated: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     padding: isMobile
-      ? { top: 148, right: 24, bottom: 96, left: 62 }
+      ? { top: 48, right: 96, bottom: Math.max(124, Math.min(mobileOcclusion, window.innerHeight * 0.56) + 20), left: 96 }
       : { top: 96, right: 356, bottom: 96, left: 24 },
   };
 }
@@ -106,6 +107,7 @@ function getRouteLegInsertion(
 }
 
 export function RouteMap({
+  mobileOcclusion,
   adapter,
   provider,
   controlPoints,
@@ -129,6 +131,7 @@ export function RouteMap({
   onInsertRouteLegControlPoint,
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mobileOcclusionRef = useRef(mobileOcclusion);
   const canvasRef = useRef<WebMapCanvas | null>(null);
   const controlPointsRef = useRef(controlPoints);
   const routeRef = useRef(route);
@@ -193,6 +196,18 @@ export function RouteMap({
     featuredMarkersRef.current = featuredMarkers;
   }, [featuredControlPoints, featuredMarkers, featuredRoads, featuredRouteId]);
 
+  useEffect(() => {
+    mobileOcclusionRef.current = mobileOcclusion;
+    const canvas = canvasRef.current;
+    // 全展开用于编辑，不把地图挤入顶部的狭小条带。
+    if (!canvas || !mobileOcclusion || mobileOcclusion > window.innerHeight * 0.72) return;
+    const coordinates = routeRef.current ? getRouteCoordinates(routeRef.current) : controlPointsRef.current;
+    const options = getMapFitOptions(mobileOcclusion);
+    if (coordinates.length && !canvas.containsCoordinates(coordinates, options.padding!)) {
+      canvas.fitCoordinates(coordinates, options);
+    }
+  }, [mobileOcclusion]);
+
   const fitPendingRoutePlan = useCallback((canvas: WebMapCanvas | null) => {
     const request = fitRoutePlanRequestRef.current;
     if (
@@ -201,7 +216,7 @@ export function RouteMap({
       || appliedFitRoutePlanSequenceRef.current === request.sequence
       || controlPointsRef.current.length === 0
     ) return;
-    canvas.fitCoordinates(controlPointsRef.current, getMapFitOptions());
+    canvas.fitCoordinates(controlPointsRef.current, getMapFitOptions(mobileOcclusionRef.current));
     appliedFitRoutePlanSequenceRef.current = request.sequence;
   }, []);
 
@@ -212,7 +227,7 @@ export function RouteMap({
     if (!canvas || !nextRoute) return;
     const coordinates = getRouteCoordinates(nextRoute);
     if (coordinates.length === 0) return;
-    const options = getMapFitOptions();
+    const options = getMapFitOptions(mobileOcclusionRef.current);
     if (!canvas.containsCoordinates(coordinates, options.padding!)) {
       canvas.fitCoordinates(coordinates, options);
     }
@@ -223,7 +238,7 @@ export function RouteMap({
     if (!canvas || !routeId || appliedFeaturedRouteIdRef.current === routeId) return;
     const coordinates = featuredRoadsRef.current.flatMap((road) => road.path);
     if (coordinates.length === 0) return;
-    canvas.fitCoordinates(coordinates, getMapFitOptions());
+    canvas.fitCoordinates(coordinates, getMapFitOptions(mobileOcclusionRef.current));
     appliedFeaturedRouteIdRef.current = routeId;
   }, []);
 
@@ -236,6 +251,7 @@ export function RouteMap({
     if (!adapter || !containerRef.current) return;
     let disposed = false;
     let canvas: WebMapCanvas | null = null;
+    let firstReady = false;
     const container = containerRef.current;
     void adapter.resolveInitialLocation().then((coordinate) => {
       if (disposed) return;
@@ -258,7 +274,14 @@ export function RouteMap({
           eventHandlersRef.current.onSelectFeaturedMarker(id)
         ),
         onLoading: () => setMapVisualReady(false),
-        onReady: () => setMapVisualReady(true),
+        onReady: () => {
+          if (disposed) return;
+          setMapVisualReady(true);
+          if (!firstReady && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+            console.debug("[Roadbook performance]", JSON.stringify({ name: "MapReady", value: Math.round(performance.now()) }));
+          }
+          firstReady = true;
+        },
       });
       canvas = nextCanvas;
       canvasRef.current = nextCanvas;
@@ -383,7 +406,7 @@ export function RouteMap({
     if (!addedPoint) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const options = getMapFitOptions();
+    const options = getMapFitOptions(mobileOcclusionRef.current);
     const exceedsMobileDistanceFallback = window.matchMedia("(max-width: 760px)").matches
       && controlPoints.some((point) => (
         point.id !== addedPoint.id

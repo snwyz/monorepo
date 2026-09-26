@@ -52,7 +52,7 @@ export function RouteMetricsPanel({
       aria-label="路线摘要"
     >
       <header className="widget-title">
-        <div><small>{selectedLeg ? "当前路段" : "完整环线"}</small><h2>{selectedLeg ? `路段 ${route.legs.indexOf(selectedLeg) + 1}` : `${controlPoints.length} 个坐标`}</h2></div>
+        <div><small>{selectedLeg ? "当前路段" : "完整环线"}</small><h2>{selectedLeg ? `路段 ${route.legs.indexOf(selectedLeg) + 1}` : `${controlPoints.length} 个途经点`}</h2></div>
       </header>
       <div className="metric-grid">
         {selectedLeg ? (

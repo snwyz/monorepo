@@ -126,7 +126,7 @@ export class StaticFeaturedDrivingRouteRepository {
     if (!route) return null;
     this.geometryRequest ??= fetch(
       "/featured-routes/golden-grand-loop-geometry.json",
-      { cache: "force-cache" },
+      { cache: "no-cache" },
     ).then(async (response) => {
       if (!response.ok) throw new Error("热门路线数据加载失败，请稍后重试");
       const payload: unknown = await response.json();

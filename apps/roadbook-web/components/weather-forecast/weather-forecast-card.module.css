@@ -246,13 +246,11 @@
 
 @media (max-width: 760px) {
   .layer {
-    position: fixed;
-    top: auto;
-    right: max(8px, env(safe-area-inset-right));
-    bottom: calc(28px + env(safe-area-inset-bottom));
-    left: 58px;
-    width: auto;
+    position: relative;
+    inset: auto;
+    width: 100%;
     min-width: 0;
+    transform: none;
   }
 
   .card {
@@ -278,4 +276,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card { animation: none; }
+}
+
+@media (max-width: 760px) {
+  .card { background: transparent; box-shadow: none; border: 0; padding: 0; }
+  .heading strong, .close { display: none; }
 }

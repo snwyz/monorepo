@@ -2,6 +2,7 @@
 
 import type { PlaceCandidate } from "@roadbook/map/web";
 import Image from "next/image";
+import { createPortal, flushSync } from "react-dom";
 import {
   lazy,
   Suspense,
@@ -12,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 
@@ -44,6 +46,8 @@ interface GlobalSearchProps {
   ref?: Ref<GlobalSearchHandle>;
   insertionLabel?: string;
   onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
+  onPreviewChange?: (open: boolean) => void;
   placeholder: string;
   placeSearchDisabled?: boolean;
   placeSearchDisabledReason?: string;
@@ -52,6 +56,13 @@ interface GlobalSearchProps {
   onSearchPlaces: (keyword: string) => Promise<PlaceCandidate[]>;
   onSelectPlace: (candidate: PlaceCandidate) => void | Promise<void>;
   onLoadFeaturedRoute: (route: FeaturedDrivingRoute) => void | Promise<void>;
+}
+
+const mobileQuery = "(max-width: 760px)";
+function subscribeMobile(onChange: () => void) {
+  const query = window.matchMedia(mobileQuery);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
 }
 
 function updatePreviewUrl(routeId: string | null) {
@@ -65,6 +76,8 @@ export function GlobalSearch({
   ref,
   insertionLabel,
   onClose,
+  onOpenChange,
+  onPreviewChange,
   placeholder,
   placeSearchDisabled,
   placeSearchDisabledReason,
@@ -74,6 +87,7 @@ export function GlobalSearch({
   onSelectPlace,
   onLoadFeaturedRoute,
 }: GlobalSearchProps) {
+  const isMobile = useSyncExternalStore(subscribeMobile, () => window.matchMedia(mobileQuery).matches, () => false);
   const historyRepository = useMemo(() => new LocalSearchHistoryRepository(), []);
   const rootRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -94,6 +108,7 @@ export function GlobalSearch({
   const [previewRoute, setPreviewRoute] = useState<FeaturedDrivingRoute | null>(null);
 
   const isSearchOpen = state === "discovering" || state === "filtering";
+  useEffect(() => { onOpenChange?.(isSearchOpen || state === "preview-dialog"); onPreviewChange?.(state === "preview-dialog"); }, [isSearchOpen, state, onOpenChange, onPreviewChange]);
   const normalizedQuery = query.trim().toLocaleLowerCase("zh-CN");
   const matchedRoutes = useMemo(() => {
     if (!normalizedQuery) return featuredRoutes;
@@ -118,7 +133,7 @@ export function GlobalSearch({
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
     setIsClosing(true);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    closeTimerRef.current = window.setTimeout(() => {
+    const finishClose = () => {
       closeTimerRef.current = null;
       onClose?.();
       setState("closed");
@@ -131,7 +146,9 @@ export function GlobalSearch({
       if (restoreFocus) {
         window.requestAnimationFrame(() => triggerRef.current?.focus());
       }
-    }, reducedMotion ? 0 : 160);
+    };
+    if (reducedMotion || window.matchMedia("(max-width: 760px)").matches) finishClose();
+    else closeTimerRef.current = window.setTimeout(finishClose, 160);
   }, [onClose]);
 
   const openDiscovering = useCallback(() => {
@@ -142,25 +159,24 @@ export function GlobalSearch({
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
     closeTimerRef.current = null;
     setIsClosing(false);
-    setState("discovering");
-    shouldFocusInputRef.current = true;
-  }, []);
+    flushSync(() => { setState("discovering"); onOpenChange?.(true); });
+    inputRef.current?.focus();
+  }, [onOpenChange]);
 
   useImperativeHandle(ref, () => ({ open: openDiscovering }), [openDiscovering]);
 
-  const closePreview = useCallback(() => {
+  const closePreview = useCallback((loaded = false) => {
     updatePreviewUrl(null);
     setPreviewRoute(null);
-    setState("closed");
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+    setState(loaded ? "closed" : "discovering");
+    if (loaded) window.requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
   const openPreview = useCallback((route: FeaturedDrivingRoute) => {
     recordQuery(route.name);
     setPreviewRoute(route);
     setState("preview-dialog");
-    setQuery("");
-    setPlaceItems([]);
+    inputRef.current?.blur();
     updatePreviewUrl(route.id);
   }, [recordQuery]);
 
@@ -238,6 +254,9 @@ export function GlobalSearch({
   }, [query, runPlaceSearch, state]);
 
   const applyQuery = useCallback((value: string) => {
+    requestIdRef.current += 1;
+    setPlaceItems([]);
+    setPlaceStatus("idle");
     setQuery(value);
     setState(value.trim() ? "filtering" : "discovering");
     shouldFocusInputRef.current = true;
@@ -280,7 +299,13 @@ export function GlobalSearch({
     focusSearchOption(event.key === "ArrowDown" ? 1 : -1, event.currentTarget);
   };
 
-  const clearQuery = () => closeSearch();
+  const clearQuery = () => {
+    requestIdRef.current += 1;
+    setPlaceItems([]);
+    setPlaceStatus("idle");
+    applyQuery("");
+    inputRef.current?.focus();
+  };
   const clearHistory = () => {
     historyRepository.clear();
     setRecentQueries([]);
@@ -310,7 +335,7 @@ export function GlobalSearch({
             onClick={() => closeSearch()}
           />
         ) : null}
-        {isSearchOpen ? (
+        {state === "preview-dialog" ? null : isSearchOpen ? (
           <form
             className="global-search__bar"
             role="search"
@@ -337,6 +362,7 @@ export function GlobalSearch({
                 <CloseIcon />
               </button>
             ) : <kbd>⌘ K</kbd>}
+            <button type="button" className="global-search__cancel" onClick={() => closeSearch()}>取消</button>
           </form>
         ) : (
           <button
@@ -463,18 +489,17 @@ export function GlobalSearch({
         ) : null}
       </section>
 
-      {state === "preview-dialog" && previewRoute ? (
-        <Suspense fallback={null}>
-          <FeaturedRoutePreviewDialog
-            route={previewRoute}
-            onClose={closePreview}
-            onLoad={async () => {
-              await onLoadFeaturedRoute(previewRoute);
-              closePreview();
-            }}
-          />
+      {state === "preview-dialog" && previewRoute ? (isMobile ? (
+        <Suspense fallback={<p role="status">正在加载路线介绍…</p>}>
+          <FeaturedRoutePreviewDialog route={previewRoute} inline onClose={() => closePreview()}
+            onLoad={async () => { await onLoadFeaturedRoute(previewRoute); closePreview(true); }} />
         </Suspense>
-      ) : null}
+      ) : createPortal(
+        <Suspense fallback={null}>
+          <FeaturedRoutePreviewDialog route={previewRoute} onClose={() => closePreview()}
+            onLoad={async () => { await onLoadFeaturedRoute(previewRoute); closePreview(true); }} />
+        </Suspense>, document.body,
+      )) : null}
     </>
   );
 }

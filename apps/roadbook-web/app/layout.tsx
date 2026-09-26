@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
 import { AppToaster } from "@/components/ui/app-toaster";
 
 import "./globals.css";
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body>
         {children}
         <AppToaster />
+        <WebVitalsReporter />
       </body>
     </html>
   );

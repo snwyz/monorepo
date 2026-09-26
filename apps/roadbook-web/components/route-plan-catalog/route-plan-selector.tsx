@@ -240,8 +240,8 @@ export function RoutePlanSelector({
         </span>
         <ChevronDownIcon className={open ? "is-rotated" : ""} />
       </button>
-      {open ? (
-        <div className="plan-selector__menu">
+      {(
+        <div className={`plan-selector__menu${open ? " is-open" : ""}`}>
           <div className="plan-selector__menu-head">
             <span className="plan-selector__menu-title">
               <span>已存路线</span>
@@ -339,7 +339,7 @@ export function RoutePlanSelector({
             <PlusIcon />新建规划
           </Button>
         </div>
-      ) : null}
+      )}
       {deleteConfirmationLoaded ? (
         <Suspense fallback={null}>
           <RoutePlanDeleteConfirmation
