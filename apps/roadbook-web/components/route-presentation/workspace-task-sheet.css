@@ -213,7 +213,7 @@
   .workspace-task-sheet .featured-route-panel__body { display: block; overflow: visible; padding: 0; }
   .workspace-discovery { order: 2; padding: 8px 0; }
   .workspace-discovery h2 { margin: 16px 2px 12px; font-size: 22px; letter-spacing: -.5px; }
-  .workspace-discovery__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .workspace-discovery__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .workspace-discovery button { color: var(--rb-color-text-strong); border: 0; border-radius: 16px; text-align: left; background: transparent; min-height: 64px; padding: 16px; }
   .workspace-discovery__actions strong { display: block; font-size: 17px; }
   .workspace-discovery__actions small { display: block; margin-top: 8px; font-size: 11px; color: var(--rb-color-muted); }

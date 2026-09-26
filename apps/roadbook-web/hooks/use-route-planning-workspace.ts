@@ -313,7 +313,7 @@ export function useRoutePlanningWorkspace() {
     setRoute(null);
     setRouteStatus("updating");
     setActivePlan(plan);
-    setSelectedControlPointId(null);
+    setSelectedControlPointId(plan.controlPoints[0]?.id ?? null);
     setSelectedRouteLegId(null);
     setPendingControlPointId(null);
     setMapFocusRequest(null);

@@ -322,7 +322,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .widget-title > div { display: flex; flex-direction: column; }
 .widget-title h2 { margin: 0; color: var(--rb-color-ink); font-size: 16px; line-height: 22px; }
 .count-badge { padding: 4px 8px; border-radius: 999px; background: var(--rb-color-surface-subtle); color: var(--rb-color-muted); font-size: 10px; }
-.address-list__body { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 6px 0; }
+.address-list__body { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 6px 8px; }
 @supports (-moz-appearance: none) {
   .address-list__body { scrollbar-color: rgba(60,60,67,.18) transparent; }
 }

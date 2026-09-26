@@ -87,10 +87,10 @@
 }
 
 .days {
-  min-width: 504px;
+  min-width: 540px;
   display: grid;
   grid-template-columns: repeat(7, minmax(64px, 1fr));
-  gap: 2px;
+  gap: 8px;
 }
 
 .day {
@@ -203,10 +203,10 @@
 }
 
 .skeletonDays {
-  min-width: 504px;
+  min-width: 540px;
   display: grid;
   grid-template-columns: repeat(7, minmax(64px, 1fr));
-  gap: 2px;
+  gap: 8px;
 }
 
 .skeletonDay {

@@ -197,3 +197,46 @@
   [data-glass] [data-slot="button"][data-variant],
   [data-glass] .featured-preview-dialog__load { background: ButtonFace; }
 }
+
+/* 列表项统一留白；路线连接行保留在各自点位组内。 */
+.plan-row-shell + .plan-row-shell,
+.search-route-result + .search-route-result,
+.search-place-result + .search-place-result,
+.address-sequence + .address-sequence,
+.featured-route-place + .featured-route-place {
+  margin-top: 8px;
+}
+.plan-row-shell:not(:last-child)::after { display: none; }
+.workspace-discovery__actions { gap: 8px; }
+
+/* 仅描绘边缘的均匀银灰细边，不覆盖文字或增加背景滤镜。 */
+:is([data-glass="inset"], .plan-row, .search-route-result, .search-place-result, .featured-route-card,
+    .address-row, .featured-route-place, .workspace-discovery button,
+    .global-search__trigger, .global-search__bar) {
+  position: relative;
+}
+.address-row { border-radius: 12px; }
+@supports (mask-composite: exclude) or (-webkit-mask-composite: xor) {
+  :is([data-glass="inset"], .plan-row, .search-route-result, .search-place-result, .featured-route-card,
+      .address-row, .featured-route-place, .workspace-discovery button,
+      .global-search__trigger, .global-search__bar)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: rgba(136,151,164,.30);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+@media (forced-colors: active), (prefers-contrast: more) {
+  :is([data-glass="inset"], .plan-row, .search-route-result, .search-place-result, .featured-route-card,
+      .address-row, .featured-route-place, .workspace-discovery button,
+      .global-search__trigger, .global-search__bar)::after { display: none; }
+}
+
+[data-slot="select-item"] + [data-slot="select-item"] { margin-top: 8px; }
