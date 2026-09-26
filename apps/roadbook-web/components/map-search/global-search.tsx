@@ -314,7 +314,6 @@ export function GlobalSearch({
   const insertionContext = insertionLabel ? (
     <div className="search-insertion-context" role="status">
       <span>{insertionLabel}</span>
-      <button type="button" onClick={() => closeSearch()}>取消</button>
     </div>
   ) : null;
 
@@ -336,34 +335,46 @@ export function GlobalSearch({
           />
         ) : null}
         {state === "preview-dialog" ? null : isSearchOpen ? (
-          <form
-            className="global-search__bar"
-            role="search"
-            onSubmit={(event) => event.preventDefault()}
-          >
-            <SearchIcon />
-            <input
-              ref={inputRef}
-              type="search"
-              autoComplete="off"
-              value={query}
-              aria-label="搜索地点或热门自驾路线"
-              placeholder={insertionLabel ? "搜索地点，添加到此路段" : placeholder}
-              onChange={(event) => applyQuery(event.target.value)}
-              onKeyDown={handleInputKeyDown}
-            />
-            {query ? (
-              <button
-                type="button"
-                className="global-search__clear"
-                aria-label="清空搜索"
-                onClick={clearQuery}
-              >
-                <CloseIcon />
-              </button>
-            ) : <kbd>⌘ K</kbd>}
-            <button type="button" className="global-search__cancel" onClick={() => closeSearch()}>取消</button>
-          </form>
+          <div className="global-search__header">
+            <form
+              className="global-search__bar"
+              role="search"
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <SearchIcon />
+              <input
+                ref={inputRef}
+                type="search"
+                autoComplete="off"
+                value={query}
+                aria-label="搜索地点或热门自驾路线"
+                placeholder={insertionLabel ? "搜索地点，添加到此路段" : placeholder}
+                onChange={(event) => applyQuery(event.target.value)}
+                onKeyDown={handleInputKeyDown}
+              />
+              {query ? (
+                <button
+                  type="button"
+                  className="global-search__clear"
+                  aria-label="清空搜索"
+                  title="清空搜索"
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={clearQuery}
+                >
+                  <CloseIcon />
+                </button>
+              ) : <kbd>⌘ K</kbd>}
+            </form>
+            <button
+              type="button"
+              className="global-search__close"
+              aria-label="返回上级"
+              title="返回上级"
+              onClick={() => closeSearch()}
+            >
+              <CloseIcon />
+            </button>
+          </div>
         ) : (
           <button
             ref={triggerRef}

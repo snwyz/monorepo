@@ -528,7 +528,7 @@ export function RoutePlanningWorkspace() {
                 setWeatherTargetId(null);
                 setInsertionTarget({
                   planId: workspace.activePlan.id, fromId, toId,
-                  label: `添加途经点：${from.name} → ${to.name}`,
+                  label: `正在添加途经点：${from.name} → ${to.name}`,
                 });
                 searchRef.current?.open();
               }}

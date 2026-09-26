@@ -186,6 +186,11 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .global-search__trigger > svg, .global-search__bar > svg { width: 18px; height: 18px; }
 .global-search__trigger > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 400; }
 .global-search kbd { flex: 0 0 auto; padding: 2px 6px; border: 1px solid var(--rb-color-border); border-radius: 6px; background: var(--rb-color-surface-subtle); color: #5f5e5a; font: 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.global-search__header { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; height: 100%; }
+.global-search__header .global-search__bar { flex: 1; }
+.global-search__close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: #eae9e6; color: var(--rb-color-text); }
+.global-search__close:hover { background: #deddd9; }
+.global-search__close svg { width: 20px; height: 20px; }
 .global-search__bar { position: relative; z-index: 1; gap: 10px; padding: 0 14px 0 18px; background: #fff; box-shadow: 0 6px 24px rgba(23,24,26,.1); transition: padding 240ms cubic-bezier(.33,.55,.2,1); }
 .global-search__bar input { min-width: 0; flex: 1; height: 100%; padding: 0; border: 0; outline: 0; appearance: none; background: transparent; color: #17181a; font-size: 16px; font-weight: 400; }
 .global-search__bar input::-webkit-search-cancel-button { display: none; }
@@ -522,4 +527,3 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .leg-add-waypoint:disabled { color: var(--rb-color-muted); cursor: not-allowed; }
 .search-insertion-context { position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--rb-color-surface); border-radius: 12px; font-size: 12px; }
 .search-insertion-context span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search-insertion-context button { flex: none; min-height: 44px; border: 0; background: transparent; color: var(--rb-color-text); }
