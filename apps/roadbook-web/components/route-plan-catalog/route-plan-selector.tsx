@@ -99,7 +99,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
         {isSwipeDeleteReady ? "松开删除" : "左滑删除"}
       </div>
       <button
-        className={`plan-row ${isActive ? "is-active" : ""}${swipeOffset < 0 ? " is-swiping" : ""}`}
+        data-glass="inset" className={`plan-row ${isActive ? "is-active" : ""}${swipeOffset < 0 ? " is-swiping" : ""}`}
         style={{ "--plan-swipe-offset": `${swipeOffset}px` } as CSSProperties}
         type="button"
         disabled={!plan.loadable}
@@ -228,8 +228,8 @@ export function RoutePlanSelector({
   };
 
   return (
-    <section className="plan-selector widget" aria-label="路线方案">
-      <button className="plan-selector__trigger" type="button" onClick={toggleSelector} aria-expanded={open}>
+    <section className="plan-selector" aria-label="路线方案">
+      <button data-glass="desktop" className="plan-selector__trigger" type="button" onClick={toggleSelector} aria-expanded={open}>
         <span className="plan-selector__brand"><RoadbookMark /></span>
         <span className="plan-selector__copy">
           <small className="plan-selector__eyebrow">
@@ -241,7 +241,7 @@ export function RoutePlanSelector({
         <ChevronDownIcon className={open ? "is-rotated" : ""} />
       </button>
       {(
-        <div className={`plan-selector__menu${open ? " is-open" : ""}`}>
+        <div data-glass="desktop" className={`plan-selector__menu${open ? " is-open" : ""}`}>
           <div className="plan-selector__menu-head">
             <span className="plan-selector__menu-title">
               <span>已存路线</span>
@@ -271,7 +271,7 @@ export function RoutePlanSelector({
                   <MoreIcon />
                 </button>
                 {managementMenuOpen ? (
-                  <span className="plan-selector__management-menu" role="menu">
+                  <span data-glass="overlay" className="plan-selector__management-menu" role="menu">
                     {activePlan ? (
                       <button type="button" role="menuitem" onClick={requestRename}>
                         <EditIcon />
@@ -289,7 +289,7 @@ export function RoutePlanSelector({
           </div>
           {isRenamingActivePlan ? (
             <form
-              className="plan-selector__rename-panel"
+              data-glass="inset" className="plan-selector__rename-panel"
               onSubmit={(event) => {
                 event.preventDefault();
                 commitRename();

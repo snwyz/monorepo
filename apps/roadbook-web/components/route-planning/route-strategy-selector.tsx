@@ -41,7 +41,7 @@ export function RouteStrategySelector({ strategy, routeStatus, draftStatus, erro
           : { label: "已暂存至本机", className: "is-success" };
 
   return (
-    <section className="strategy-selector widget" aria-label="路线策略与状态">
+    <section data-glass="desktop" className="strategy-selector widget" aria-label="路线策略与状态">
       <label>
         <span>全程策略</span>
         <Select value={strategy} onValueChange={(value) => onStrategyChange(value as DrivingStrategy)}>

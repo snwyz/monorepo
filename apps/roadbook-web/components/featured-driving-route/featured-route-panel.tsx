@@ -61,7 +61,7 @@ export function FeaturedRoutePanel({
   ));
 
   return (
-    <aside className={`featured-route-panel widget${collapsed ? " is-collapsed" : ""}`} aria-label={`${route.name}专题`}>
+    <aside data-glass="desktop" className={`featured-route-panel widget${collapsed ? " is-collapsed" : ""}`} aria-label={`${route.name}专题`}>
       <header className="featured-route-panel__header">
         <button
           type="button"

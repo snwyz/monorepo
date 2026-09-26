@@ -189,7 +189,7 @@ export function WorkspaceTaskSheet({ children, pageKey, title, searchOpen, onBac
   }, [pageKey]);
 
   return (
-    <section ref={sheetRef} className="workspace-task-sheet" data-detent={detent} data-search-open={searchOpen} data-page={pageKey} aria-label="地图任务面板"
+    <section ref={sheetRef} data-glass="sheet" className="workspace-task-sheet" data-detent={detent} data-search-open={searchOpen} data-page={pageKey} aria-label="地图任务面板"
       onClickCapture={(event) => { scrollPositions.current[pageKey] = bodyRef.current?.scrollTop ?? 0; if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}>
       <button type="button" className="workspace-task-sheet__handle" aria-label="调整面板高度，方向键上移或下移" aria-controls="workspace-task-content" aria-expanded={detent !== "compact"}
         onClick={() => setDetent(detent === "compact" ? "medium" : "compact")}

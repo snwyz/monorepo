@@ -312,7 +312,7 @@ export function GlobalSearch({
   };
 
   const insertionContext = insertionLabel ? (
-    <div className="search-insertion-context" role="status">
+    <div data-glass="inset" className="search-insertion-context" role="status">
       <span>{insertionLabel}</span>
     </div>
   ) : null;
@@ -337,7 +337,7 @@ export function GlobalSearch({
         {state === "preview-dialog" ? null : isSearchOpen ? (
           <div className="global-search__header">
             <form
-              className="global-search__bar"
+              data-glass="surface" className="global-search__bar"
               role="search"
               onSubmit={(event) => event.preventDefault()}
             >
@@ -379,7 +379,7 @@ export function GlobalSearch({
           <button
             ref={triggerRef}
             type="button"
-            className="global-search__trigger"
+            data-glass="surface" className="global-search__trigger"
             aria-label="打开全局搜索"
             onClick={openDiscovering}
           >
@@ -390,7 +390,7 @@ export function GlobalSearch({
         )}
 
         {state === "discovering" ? (
-          <div className="global-search__panel global-search__discover-panel">
+          <div data-glass="desktop" className="global-search__panel global-search__discover-panel">
             {insertionContext}
             {recentQueries.length ? (
               <section className="search-discovery-section">
@@ -431,7 +431,7 @@ export function GlobalSearch({
                   <button
                     key={route.id}
                     type="button"
-                    className="featured-route-card"
+                    data-glass="inset" className="featured-route-card"
                     onClick={() => openPreview(route)}
                   >
                     <span className="featured-route-card__preview">
@@ -454,7 +454,7 @@ export function GlobalSearch({
         ) : null}
 
         {state === "filtering" ? (
-          <div className="global-search__panel global-search__filter-panel">
+          <div data-glass="desktop" className="global-search__panel global-search__filter-panel">
             {insertionContext}
             <header className="search-filter-summary">
               <span>搜索结果</span>
@@ -464,7 +464,7 @@ export function GlobalSearch({
               <button
                 key={route.id}
                 type="button"
-                className="search-route-result"
+                data-glass="inset" className="search-route-result"
                 data-search-option
                 onClick={() => openPreview(route)}
                 onKeyDown={handleOptionKeyDown}
@@ -486,7 +486,7 @@ export function GlobalSearch({
             {placeItems.map((item) => (
               <button
                 type="button"
-                className="search-place-result"
+                data-glass="inset" className="search-place-result"
                 data-search-option
                 key={item.id}
                 onClick={() => choosePlace(item)}

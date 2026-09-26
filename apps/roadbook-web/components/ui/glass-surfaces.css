@@ -1,0 +1,199 @@
+/* 与已确认样张一致；高光画在背景中，不遮挡文字或改变布局和命中区域。 */
+@property --highlight-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+[data-glass] {
+  --glass-control-fill: rgba(232, 237, 241, .38);
+  --glass-control-hover: rgba(217, 226, 232, .52);
+  --glass-control-white: rgba(255, 255, 255, .32);
+  --glass-control-border: rgba(68, 82, 98, .12);
+  --glass-enabled: 1;
+  --highlight-opacity: 0;
+  --highlight-x: 50%;
+  --highlight-y: 50%;
+  --glass-tint: linear-gradient(145deg, rgba(255,255,255,.38), rgba(221,229,235,.24));
+  --glass-paint:
+    radial-gradient(34px 27px at var(--highlight-x) var(--highlight-y), rgba(255,255,255,calc(.98 * var(--highlight-opacity))), rgba(255,255,255,calc(.58 * var(--highlight-opacity))) 32%, transparent 100%),
+    radial-gradient(56px 44px at var(--highlight-x) var(--highlight-y), transparent 28%, rgba(97,127,148,calc(.19 * var(--highlight-opacity))) 62%, transparent 100%),
+    var(--glass-tint);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.30), 0 6px 22px rgba(28,28,30,.09), 0 1px 4px rgba(28,28,30,.04);
+}
+
+/* 三个属性选择器确保懒加载模块与原响应式背景不能覆盖共享材质。 */
+[data-glass][data-glass][data-glass] {
+  background: var(--glass-paint), #f7f7f5;
+  border-color: rgba(68,82,98,.12);
+  box-shadow: var(--glass-shadow);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-glass][data-glass][data-glass] {
+    background: var(--glass-paint);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    backdrop-filter: blur(10px) saturate(160%);
+  }
+}
+
+[data-glass].featured-route-card { border-radius: 12px; padding-bottom: 8px; }
+
+/* 入口与展开目录必须是同级滤镜表面，外壳不能隔断目录对地图的背景采样。 */
+.plan-selector { border: 1px solid transparent; border-radius: 12px; }
+.plan-selector__trigger[data-glass] { border: 1px solid rgba(68,82,98,.12); }
+
+/* 内层卡片共享反光，不重复创建背景模糊层。 */
+[data-glass="inset"][data-glass][data-glass] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(68,82,98,.06);
+}
+[data-glass="inset"]:is(:hover, :focus-visible) { --glass-tint: linear-gradient(145deg, rgba(255,255,255,.50), rgba(221,229,235,.34)); }
+[data-glass="inset"].is-active { --glass-tint: linear-gradient(145deg, rgba(255,255,255,.48), rgba(235,244,238,.36)); }
+/* 确认、菜单和通知位于其他表面上方，增加透光底层遮盖保证文字可读。 */
+[data-glass="overlay"] { --glass-tint: linear-gradient(145deg, rgba(255,255,255,.78), rgba(230,236,240,.66)); }
+
+[data-glass] .address-sequence,
+[data-glass] .metric-grid,
+[data-glass] .metric-grid__item { background: transparent; }
+
+[data-glass].map-toast { color: var(--rb-color-text-strong); }
+.featured-preview-layer__backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* 手机的可见背景由已有等高伪元素承载，不能给整块展开高度加模糊。 */
+[data-glass="sheet"][data-glass][data-glass] {
+  --glass-enabled: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+@media (max-width: 760px) {
+  [data-glass="sheet"][data-glass][data-glass] { --glass-enabled: 1; }
+  [data-glass="sheet"][data-glass]::before {
+    background: var(--glass-paint), #f7f7f5;
+    border-color: rgba(68,82,98,.12);
+    box-shadow: var(--glass-shadow);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    [data-glass="sheet"][data-glass]::before {
+      background: var(--glass-paint);
+      -webkit-backdrop-filter: blur(10px) saturate(160%);
+      backdrop-filter: blur(10px) saturate(160%);
+    }
+  }
+  [data-glass="desktop"][data-glass][data-glass] {
+    --glass-enabled: 0;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    border-color: transparent;
+  }
+  .workspace-task-sheet .global-search { background: transparent; }
+  .workspace-task-sheet .plan-row-shell { background: transparent; }
+  /* 透光行不能提前透出背面的删除提示；滑动时暂用实色遮住重叠部分。 */
+  .plan-row__swipe-action, .address-row__swipe-action { visibility: hidden; }
+  .plan-row-shell:has(.plan-row.is-swiping) > .plan-row__swipe-action,
+  .address-sequence:has(> .address-row.is-swiping) > .address-row__swipe-action { visibility: visible; }
+  [data-glass].plan-row.is-swiping { --glass-tint: linear-gradient(#f7f7f5, #f7f7f5); }
+  .workspace-task-sheet .address-row.is-swiping { background: #f7f7f5; }
+  .workspace-task-sheet [data-glass="surface"][data-glass][data-glass] {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glass] { --highlight-opacity: 0 !important; }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
+  [data-glass] {
+    --glass-control-fill: Canvas;
+    --glass-control-hover: ButtonFace;
+    --glass-control-white: Canvas;
+    --glass-control-border: CanvasText;
+  }
+  [data-glass][data-glass][data-glass]:not([data-glass="sheet"]),
+  [data-glass="sheet"][data-glass]::before {
+    background: Canvas;
+    border-color: CanvasText;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  @media (max-width: 760px) {
+    [data-glass="desktop"][data-glass][data-glass] { background: transparent; border-color: transparent; }
+  }
+}
+
+/* 内部控件只调整背景通道，不使用 opacity，不改变文字、图标和状态色。 */
+[data-glass][data-glass] :is(
+  .plan-selector__create, .plan-selector__count, .count-badge,
+  .global-search kbd, .global-search__close, .global-search__clear,
+  .search-history-row button, .search-category-row button,
+  .featured-route-legend > span, .featured-preview-dialog__roads span,
+  .elevation-panel__icon, .route-calculation-feedback__icon,
+  .ui-switch:not([data-state="checked"]),
+  .workspace-task-sheet__navigation button, .workspace-add-place,
+  .workspace-place-detail a, .workspace-place-detail button,
+  [data-slot="button"][data-variant="secondary"]
+) {
+  background: var(--glass-control-fill);
+  border-color: var(--glass-control-border);
+}
+[data-glass][data-glass] :is(
+  .plan-selector__rename-panel > input, .featured-preview-dialog__close,
+  .featured-route-card__preview, .featured-preview-dialog__visual,
+  .search-message--error button,
+  [data-slot="button"][data-variant="outline"]
+) {
+  background: var(--glass-control-white);
+  border-color: var(--glass-control-border);
+}
+[data-glass] .address-row:not(.is-selected) .point-number {
+  background: var(--glass-control-white);
+}
+[data-glass][data-glass] :is(
+  .plan-selector__create, .global-search__close, .global-search__clear,
+  .search-history-row button, .search-category-row button,
+  .workspace-task-sheet__navigation button, .workspace-add-place,
+  .workspace-place-detail a, .workspace-place-detail button,
+  .plan-selector__management-trigger, .plan-selector__management-menu button,
+  .strategy-selector__select-trigger, .undo-button, .featured-route-mode button,
+  .featured-route-panel__exit, .featured-route-place > a,
+  .featured-route-place, .plan-selector__rename-footer button,
+  .address-row__navigation,
+  .map-provider-switch__trigger, .map-provider-switch__options button,
+  .map-controls button, .metric-grid__toggle, .leg-add-waypoint,
+  [data-slot="button"][data-variant="secondary"],
+  [data-slot="button"][data-variant="outline"],
+  [data-slot="button"][data-variant="ghost"]
+):hover:not(:disabled) { background: var(--glass-control-hover); }
+[data-glass][data-glass] :is(
+  .strategy-selector__select-trigger[data-state="open"],
+  .plan-selector__management-trigger[aria-expanded="true"],
+  .map-provider-switch__trigger[aria-expanded="true"],
+  .map-provider-switch__options button.is-active,
+  .featured-route-place.is-selected,
+  [data-slot="select-item"][data-highlighted]
+) { background: var(--glass-control-hover); }
+
+/* 深色主操作和危险操作保留原文字对比，仅给色底少量透光。 */
+[data-glass] [data-slot="button"][data-variant="default"],
+[data-glass] .featured-preview-dialog__load { background: rgba(10,10,10,.88); }
+[data-glass] [data-slot="button"][data-variant="default"]:hover,
+[data-glass] .featured-preview-dialog__load:hover { background: rgba(10,10,10,.96); }
+[data-glass] [data-slot="button"][data-variant="destructive"] { background: rgba(180,35,24,.90); }
+[data-glass] [data-slot="button"][data-variant="destructive"]:hover { background: rgba(180,35,24,.97); }
+
+@media (max-width: 760px) {
+  /* 普通内容行透出面板材质；左滑时的遮挡实色仍由前面的规则负责。 */
+  .workspace-task-sheet[data-glass] .address-row:not(.is-swiping) { background: transparent; }
+  .workspace-task-sheet[data-glass] .address-row.is-selected:not(.is-swiping) { background: rgba(10,132,255,.08); }
+  .workspace-task-sheet[data-glass] .leg-row { background: transparent; }
+}
+@media (forced-colors: active) {
+  [data-glass] [data-slot="button"][data-variant],
+  [data-glass] .featured-preview-dialog__load { background: ButtonFace; }
+}

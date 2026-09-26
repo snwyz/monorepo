@@ -77,7 +77,7 @@ export function FeaturedRoutePreviewDialog({
       />
       <div
         ref={dialogRef}
-        className="featured-preview-dialog"
+        data-glass={inline ? "desktop" : "overlay"} className="featured-preview-dialog"
         role="dialog"
         aria-modal={inline ? undefined : true}
         aria-labelledby="featured-preview-title"

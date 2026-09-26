@@ -7,7 +7,7 @@ import { ChevronDownIcon, MountainIcon } from "@/components/ui/icons";
 export function ElevationPanel({ hasRoute }: { hasRoute: boolean }) {
   const [open, setOpen] = useState(false);
   return (
-    <section className={`elevation-panel widget ${open ? "is-open" : ""}`} aria-label="海拔分析">
+    <section data-glass="desktop" className={`elevation-panel widget ${open ? "is-open" : ""}`} aria-label="海拔分析">
       <button type="button" className="elevation-panel__trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
         <span className="elevation-panel__icon"><MountainIcon /></span>
         <span><small>地形分析</small><strong>基础海拔</strong></span>

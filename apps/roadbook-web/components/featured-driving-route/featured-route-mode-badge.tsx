@@ -8,7 +8,7 @@ interface FeaturedRouteModeBadgeProps {
 
 export function FeaturedRouteModeBadge({ routeName, onExit }: FeaturedRouteModeBadgeProps) {
   return (
-    <div className="featured-route-mode widget">
+    <div data-glass="desktop" className="featured-route-mode widget">
       <RoadbookMark />
       <span><small>热门路线专题</small><strong>{routeName}</strong></span>
       <button type="button" onClick={onExit} aria-label="退出热门路线专题" title="返回我的规划">

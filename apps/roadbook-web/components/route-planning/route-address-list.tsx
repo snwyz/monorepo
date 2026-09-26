@@ -226,7 +226,7 @@ export function RouteAddressList({
   };
 
   return (
-    <aside className={`address-list widget${collapsed ? " is-collapsed" : ""}`} aria-label="路线顺序">
+    <aside data-glass="desktop" className={`address-list widget${collapsed ? " is-collapsed" : ""}`} aria-label="路线顺序">
       <header className="widget-title address-list__header address-list__header--desktop">
         <div><small>路线顺序</small></div>
         <span className="count-badge">{controlPoints.length}/20</span>

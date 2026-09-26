@@ -6,7 +6,7 @@ interface RouteCalculationFeedbackProps {
 
 export function RouteCalculationFeedback({ controlPointCount }: RouteCalculationFeedbackProps) {
   return (
-    <section className="route-calculation-feedback widget" role="status" aria-live="polite">
+    <section data-glass="surface" className="route-calculation-feedback widget" role="status" aria-live="polite">
       <span className="route-calculation-feedback__icon">
         <Spinner />
       </span>

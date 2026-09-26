@@ -24,7 +24,7 @@ export function MapProviderSwitch({
   };
 
   return (
-    <section className={`map-provider-switch widget${expanded ? " is-expanded" : ""}`} aria-label="地图供应商">
+    <section data-glass="surface" className={`map-provider-switch widget${expanded ? " is-expanded" : ""}`} aria-label="地图供应商">
       <div className="map-provider-switch__compact">
         {expanded ? (
           <div className="map-provider-switch__options" role="group" aria-label="选择地图供应商">

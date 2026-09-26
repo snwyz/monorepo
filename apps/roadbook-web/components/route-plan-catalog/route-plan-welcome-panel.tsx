@@ -10,7 +10,7 @@ interface RoutePlanWelcomePanelProps {
 
 export function RoutePlanWelcomePanel({ onCreate }: RoutePlanWelcomePanelProps) {
   return (
-    <aside className="route-plan-welcome widget" aria-labelledby="route-plan-welcome-title">
+    <aside data-glass="desktop" className="route-plan-welcome widget" aria-labelledby="route-plan-welcome-title">
       <header>
         <span className="route-plan-welcome__icon"><RoadbookMark /></span>
         <span>

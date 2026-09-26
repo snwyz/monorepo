@@ -45,6 +45,7 @@ function Button({
   return (
     <Component
       data-slot="button"
+      data-variant={variant ?? "default"}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

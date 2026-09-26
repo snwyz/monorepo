@@ -135,7 +135,7 @@ export function WeatherForecastCard({ target, onClose }: WeatherForecastCardProp
   return (
     <div className={styles.layer}>
       <aside
-        className={styles.card}
+        data-glass="desktop" className={styles.card}
         aria-busy={status === "loading"}
         aria-labelledby={titleId}
       >
@@ -176,7 +176,7 @@ export function WeatherForecastCard({ target, onClose }: WeatherForecastCardProp
               <div className={styles.days}>
                 {forecast.days.map((day, index) => (
                   <div
-                    className={`${styles.day}${index === 0 ? ` ${styles.today}` : ""}`}
+                    data-glass="inset" className={`${styles.day}${index === 0 ? ` ${styles.today}` : ""}`}
                     key={day.date}
                   >
                     <span className={styles.dayName}>{formatDayLabel(day.date, index)}</span>

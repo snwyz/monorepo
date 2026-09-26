@@ -14,14 +14,14 @@ interface RouteMetricsPanelProps {
 }
 
 function formatDistance(meters: number) {
-  return meters >= 1000 ? `${(meters / 1000).toFixed(meters >= 100_000 ? 0 : 1)} km` : `${Math.round(meters)} m`;
+  return <>{meters >= 1000 ? (meters / 1000).toFixed(meters >= 100_000 ? 0 : 1) : Math.round(meters)} <em className="metric-unit">{meters >= 1000 ? "km" : "m"}</em></>;
 }
 
 function formatDuration(minutes: number) {
   const rounded = Math.round(minutes);
   const hours = Math.floor(rounded / 60);
   const rest = rounded % 60;
-  return hours ? `${hours} 小时 ${rest} 分` : `${rest} 分钟`;
+  return <>{hours > 0 && <>{hours} <em className="metric-unit">小时</em>{" "}</>}{rest} <em className="metric-unit">{hours ? "分" : "分钟"}</em></>;
 }
 
 export function RouteMetricsPanel({
@@ -48,7 +48,7 @@ export function RouteMetricsPanel({
   const durationLabel = selectedLeg ? "预计驾驶" : `${travelScopeLabel}用时`;
   return (
     <aside
-      className={`route-metrics widget${selectedLeg ? " is-leg-selected" : ""}`}
+      data-glass="desktop" className={`route-metrics widget${selectedLeg ? " is-leg-selected" : ""}`}
       aria-label="路线摘要"
     >
       <header className="widget-title">

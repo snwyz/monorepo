@@ -38,7 +38,7 @@ function AppToast({ record }: { record: ToastRecord }) {
   const loading = record.variant === "loading";
 
   return (
-    <ToastPrimitive.Root
+    <ToastPrimitive.Root data-glass="overlay"
       className={cn(
         "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-border bg-background p-4 pr-10 text-foreground shadow-lg",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80",

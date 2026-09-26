@@ -484,7 +484,7 @@ export function RouteMap({
         </div>
       ) : null}
       <div className="map-attribution">{provider === "amap" ? "高德地图" : "腾讯地图"}</div>
-      <div className="map-controls" aria-label="地图工具">
+      <div data-glass="surface" className="map-controls" aria-label="地图工具">
         <button
           type="button"
           onClick={() => canvasRef.current?.zoomBy(1)}
@@ -512,7 +512,7 @@ export function RouteMap({
         </button>
       </div>
       {locationMessage ? (
-        <div className="map-toast" role="status">
+        <div data-glass="surface" className="map-toast" role="status">
           {locationMessage}
         </div>
       ) : null}

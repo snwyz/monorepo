@@ -392,7 +392,7 @@ export function RoutePlanningWorkspace() {
       ) : null}
 
       {workspace.mapStatus === "unavailable" ? (
-        <section className="map-unavailable widget" role="status">
+        <section data-glass="surface" className="map-unavailable widget" role="status">
           <AlertIcon />
           <span>
             <strong>
@@ -415,7 +415,7 @@ export function RoutePlanningWorkspace() {
           {!isFeaturedMode && weatherTarget ? (
             <Suspense
               fallback={(
-                <div className="workspace-weather-loading" role="status">
+                <div data-glass="desktop" className="workspace-weather-loading" role="status">
                   正在加载天气卡片…
                 </div>
               )}
@@ -466,7 +466,7 @@ export function RoutePlanningWorkspace() {
               onExit={() => { closeFeaturedRoute(); setBusiness("discovery"); }}
             />
           ) : workspace.activePlan ? (
-            <Suspense fallback={<div className="strategy-selector widget workspace-section-loading" role="status">正在加载…</div>}>
+            <Suspense fallback={<div data-glass="desktop" className="strategy-selector widget workspace-section-loading" role="status">正在加载…</div>}>
               <RouteStrategySelector
               strategy={workspace.activePlan.strategy}
               routeStatus={workspace.routeStatus}
@@ -478,7 +478,7 @@ export function RoutePlanningWorkspace() {
             />
             </Suspense>
           ) : (
-            <div className="workspace-mode widget">
+            <div data-glass="desktop" className="workspace-mode widget">
               <LayersIcon />
               <span>地图工作台</span>
             </div>
@@ -499,18 +499,18 @@ export function RoutePlanningWorkspace() {
           <div className="workspace-discovery">
             <h2>你的路线</h2>
             <div className="workspace-discovery__actions">
-              <button type="button" onClick={() => setBusiness("catalog")}><strong>我的路线</strong><small>{workspace.catalog.length} 条 · 保存在此设备</small></button>
-              <button type="button" onClick={() => void createPlan()}><strong>＋ 新建规划</strong><small>从一个地点开始</small></button>
+              <button data-glass="inset" type="button" onClick={() => setBusiness("catalog")}><strong>我的路线</strong><small>{workspace.catalog.length} 条 · 保存在此设备</small></button>
+              <button data-glass="inset" type="button" onClick={() => void createPlan()}><strong>＋ 新建规划</strong><small>从一个地点开始</small></button>
             </div>
-            {workspace.activePlan ? <button type="button" className="workspace-discovery__resume" onClick={() => { closeFeaturedRoute(); revealRoute(); }}>继续编辑 · {routeTitle}<span>›</span></button> : null}
-            {activeFeaturedRoute ? <button type="button" className="workspace-discovery__resume" onClick={() => setBusiness("guide")}>继续浏览 · {activeFeaturedRoute.name}<span>›</span></button> : null}
+            {workspace.activePlan ? <button type="button" data-glass="inset" className="workspace-discovery__resume" onClick={() => { closeFeaturedRoute(); revealRoute(); }}>继续编辑 · {routeTitle}<span>›</span></button> : null}
+            {activeFeaturedRoute ? <button type="button" data-glass="inset" className="workspace-discovery__resume" onClick={() => setBusiness("guide")}>继续浏览 · {activeFeaturedRoute.name}<span>›</span></button> : null}
             <h2>路线指南</h2>
-            <button type="button" className="workspace-discovery__resume" onClick={() => searchRef.current?.open()}>探索热门自驾路线<span>›</span></button>
+            <button type="button" data-glass="inset" className="workspace-discovery__resume" onClick={() => searchRef.current?.open()}>探索热门自驾路线<span>›</span></button>
           </div>
         </WorkspaceSheetPage>
         <WorkspaceSheetPage active={!searchOpen && business === "planning" && !planningDetail}>
         {!isFeaturedMode && workspace.activePlan && points.length ? (
-          <Suspense fallback={<div className="address-list widget workspace-section-loading" style={{ minHeight: points.length * 112 + 96 }} role="status">正在加载…</div>}>
+          <Suspense fallback={<div data-glass="desktop" className="address-list widget workspace-section-loading" style={{ minHeight: points.length * 112 + 96 }} role="status">正在加载…</div>}>
             <RouteAddressList
               provider={workspace.mapProvider}
               controlPoints={points}
@@ -543,7 +543,7 @@ export function RoutePlanningWorkspace() {
         <WorkspaceSheetPage active={!searchOpen && business === "guide" && !guideDetail}>
           <button type="button" className="workspace-add-place workspace-mobile-only" onClick={() => searchRef.current?.open()} disabled={Boolean(searchDisabledReason)}>＋ 添加我的标记</button>
         {activeFeaturedRoute ? (
-          <Suspense fallback={<div className="featured-route-panel widget workspace-section-loading" role="status">正在加载…</div>}>
+          <Suspense fallback={<div data-glass="desktop" className="featured-route-panel widget workspace-section-loading" role="status">正在加载…</div>}>
             <FeaturedRoutePanel
               provider={workspace.mapProvider}
               route={activeFeaturedRoute}
@@ -583,7 +583,7 @@ export function RoutePlanningWorkspace() {
         <WorkspaceSheetPage active={!searchOpen && business === "planning" && !weatherTarget}>
         {selectedLeg ? <div className="workspace-leg-detail workspace-mobile-only"><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
         {!isFeaturedMode && points.length >= 2 && !workspace.route ? (
-          <aside className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
+          <aside data-glass="desktop" className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
             <strong>{workspace.routeStatus === "failed" ? "路线暂不可用" : "正在计算路线"}</strong>
             <span>{workspace.routeStatus === "failed" ? "可继续调整途经点，或切换路线策略重试。" : "预计里程与用时将在这里显示"}</span>
           </aside>
