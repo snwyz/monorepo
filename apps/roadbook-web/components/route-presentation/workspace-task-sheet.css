@@ -5,16 +5,20 @@
 .workspace-weather-loading { position: absolute; z-index: 8; top: 88px; left: 50%; width: 440px; min-height: 210px; transform: translateX(-50%); padding: 24px; border-radius: 18px; background: var(--rb-color-surface); }
 
 @media (max-width: 760px) {
+  html:has(.planning-workspace), body:has(.planning-workspace) { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .planning-workspace {
     --sheet-keyboard: 0px;
     --sheet-drag: 0px;
     --sheet-visible: 52dvh;
     --sheet-bottom: calc(12px + env(safe-area-inset-bottom) + var(--sheet-keyboard));
-    --sheet-height: calc(100dvh - var(--sheet-bottom) - max(12px, env(safe-area-inset-top)) - var(--sheet-viewport-top, 0px));
-    height: 100svh;
-    min-height: 100svh;
+    --sheet-height: calc(100% - var(--sheet-bottom) - max(12px, env(safe-area-inset-top)) - var(--sheet-viewport-top, 0px));
+    position: fixed;
+    inset: 0;
+    height: 100%;
+    min-height: 0;
+    overscroll-behavior: none;
   }
-  .planning-workspace .route-map, .planning-workspace .route-map__canvas, .planning-workspace .route-map__fallback { min-height: 100svh; }
+  .planning-workspace .route-map, .planning-workspace .route-map__canvas, .planning-workspace .route-map__fallback { min-height: 0; }
   .workspace-task-sheet {
     position: fixed;
     z-index: 65;
@@ -148,7 +152,7 @@
 }
 
 @media (max-width: 760px) {
-  .workspace-task-sheet[data-mode="search"] { transition: none; }
+  .workspace-task-sheet[data-search-open="true"] { transition: none; }
 }
 
 @media (max-width: 760px) {
@@ -236,4 +240,8 @@
   .workspace-task-sheet .featured-route-panel.is-collapsed .featured-route-panel__body { display: block; }
   .workspace-task-sheet .route-metrics .metric-grid { background: transparent; }
   .workspace-task-sheet .metric-grid__item > span { flex-direction: column; gap: 2px; }
+}
+
+@media (max-width: 760px) {
+  .planning-workspace[data-sheet-resizing="true"] :is(.workspace-task-sheet, .map-controls, .map-provider-switch) { transition: none; }
 }

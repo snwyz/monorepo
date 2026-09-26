@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { consumeSheetMovement, getSheetDetentHeights, settleSheetDetent } from "./workspace-sheet-geometry.ts";
+import { consumeSheetMovement, getSheetKeyboardInset, getSheetDetentHeights, settleSheetDetent } from "./workspace-sheet-geometry.ts";
 
 test("软键盘和短横屏下各档位不超出可用高度", () => {
   for (const [viewport, maximum] of [[844, 820], [375, 351], [280, 256], [160, 136]]) {
@@ -39,4 +39,16 @@ test("横屏短内容和过拉不产生负滚动或越界高度", () => {
   const sizes = getSheetDetentHeights(375, 351);
   assert.deepEqual(consumeSheetMovement(351, 0, -500, sizes, -20), { height: 351, scrollTop: 0 });
   assert.deepEqual(consumeSheetMovement(351, 0, 1000, sizes, 0), { height: 96, scrollTop: 0 });
+});
+
+test("开屏视口差和页面缩放不能误判为键盘", () => {
+  assert.equal(getSheetKeyboardInset(844, { height: 600, offsetTop: 0, scale: 1 }, false), 0);
+  assert.equal(getSheetKeyboardInset(844, { height: 420, offsetTop: 0, scale: 2 }, true), 0);
+  assert.equal(getSheetKeyboardInset(844, { height: 800, offsetTop: 0, scale: 1 }, true), 0);
+  assert.equal(getSheetKeyboardInset(844, null, true), 0);
+});
+test("输入时避让真实键盘，失焦立即清除避让", () => {
+  const viewport = { height: 500, offsetTop: 44, scale: 1 };
+  assert.equal(getSheetKeyboardInset(844, viewport, true), 300);
+  assert.equal(getSheetKeyboardInset(844, viewport, false), 0);
 });

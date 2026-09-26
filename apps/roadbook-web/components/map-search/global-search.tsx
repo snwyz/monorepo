@@ -144,7 +144,7 @@ export function GlobalSearch({
       setPlaceError("");
       inputRef.current?.blur();
       if (restoreFocus) {
-        window.requestAnimationFrame(() => triggerRef.current?.focus());
+        window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
       }
     };
     if (reducedMotion || window.matchMedia("(max-width: 760px)").matches) finishClose();
@@ -160,7 +160,7 @@ export function GlobalSearch({
     closeTimerRef.current = null;
     setIsClosing(false);
     flushSync(() => { setState("discovering"); onOpenChange?.(true); });
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   }, [onOpenChange]);
 
   useImperativeHandle(ref, () => ({ open: openDiscovering }), [openDiscovering]);
@@ -169,7 +169,7 @@ export function GlobalSearch({
     updatePreviewUrl(null);
     setPreviewRoute(null);
     setState(loaded ? "closed" : "discovering");
-    if (loaded) window.requestAnimationFrame(() => triggerRef.current?.focus());
+    if (loaded) window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
   }, []);
 
   const openPreview = useCallback((route: FeaturedDrivingRoute) => {
@@ -203,7 +203,7 @@ export function GlobalSearch({
   useEffect(() => {
     if (!isSearchOpen || !shouldFocusInputRef.current) return;
     shouldFocusInputRef.current = false;
-    window.requestAnimationFrame(() => inputRef.current?.focus());
+    window.requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
   }, [isSearchOpen, state]);
 
   useEffect(() => {
@@ -277,7 +277,7 @@ export function GlobalSearch({
     const nextIndex = currentIndex < 0
       ? direction === 1 ? 0 : options.length - 1
       : (currentIndex + direction + options.length) % options.length;
-    options[nextIndex]?.focus();
+    options[nextIndex]?.focus({ preventScroll: true });
   };
 
   const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -304,7 +304,7 @@ export function GlobalSearch({
     setPlaceItems([]);
     setPlaceStatus("idle");
     applyQuery("");
-    inputRef.current?.focus();
+    inputRef.current?.focus({ preventScroll: true });
   };
   const clearHistory = () => {
     historyRepository.clear();

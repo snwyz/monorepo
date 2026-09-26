@@ -31,3 +31,10 @@ export function consumeSheetMovement(height: number, scrollTop: number, delta: n
   }
   return { height: nextHeight, scrollTop: nextScroll };
 }
+
+/** 只有正在编辑且视口明显缩小时才避让键盘；开屏工具栏变化和缩放不算键盘。 */
+export function getSheetKeyboardInset(layoutHeight: number, viewport: { height: number; offsetTop: number; scale: number } | null, editing: boolean) {
+  if (!editing || !viewport || Math.abs(viewport.scale - 1) > 0.01) return 0;
+  const inset = Math.max(0, layoutHeight - viewport.height - viewport.offsetTop);
+  return inset > 100 ? inset : 0;
+}
