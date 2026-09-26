@@ -348,7 +348,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .leg-row { width: 100%; min-height: 28px; padding-left: 24px; display: flex; align-items: center; color: var(--rb-color-muted); }
 .leg-link { min-width: 0; height: 28px; flex: 1; padding: 0; border: 0; background: transparent; display: flex; align-items: center; gap: 8px; color: inherit; }
 .leg-link span { width: 2px; height: 24px; margin-left: 0; background: repeating-linear-gradient(to bottom, rgba(10,132,255,.42) 0 4px, transparent 4px 7px); }
-.leg-link small { opacity: 0; font-size: 10px; }
+.leg-link small { opacity: 1; font-size: 10px; }
 .leg-link:hover small, .leg-row.is-selected small { opacity: 1; }
 .leg-row.is-selected { color: var(--rb-color-route-boundary); font-weight: 600; }
 .leg-row.is-selected .leg-link span { width: 3px; background: var(--rb-color-route-boundary); }
@@ -515,3 +515,11 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.leg-row { min-height: 44px; padding-right: 12px; justify-content: space-between; gap: 8px; }
+.leg-add-waypoint { min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--rb-color-text); font-size: 12px; white-space: nowrap; }
+.leg-add-waypoint:hover:not(:disabled) { background: var(--rb-color-surface-subtle); color: var(--rb-color-ink); }
+.leg-add-waypoint:disabled { color: var(--rb-color-muted); cursor: not-allowed; }
+.search-insertion-context { position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--rb-color-surface); border-radius: 12px; font-size: 12px; }
+.search-insertion-context span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-insertion-context button { flex: none; min-height: 44px; border: 0; background: transparent; color: var(--rb-color-text); }

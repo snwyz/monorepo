@@ -15,7 +15,7 @@ import { ElevationPanel } from "@/components/elevation-analysis/elevation-panel"
 import { FeaturedRouteModeBadge } from "@/components/featured-driving-route/featured-route-mode-badge";
 import { FeaturedRoutePanel } from "@/components/featured-driving-route/featured-route-panel";
 import { MapProviderSwitch } from "@/components/map-provider/map-provider-switch";
-import { GlobalSearch } from "@/components/map-search/global-search";
+import { GlobalSearch, type GlobalSearchHandle } from "@/components/map-search/global-search";
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
 import { RoutePlanWelcomePanel } from "@/components/route-plan-catalog/route-plan-welcome-panel";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
@@ -48,6 +48,11 @@ const featuredRouteRepository = new StaticFeaturedDrivingRouteRepository();
 
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
+  const searchRef = useRef<GlobalSearchHandle>(null);
+  const [insertionTarget, setInsertionTarget] = useState<{
+    planId: string; fromId: string; toId: string; label: string;
+  } | null>(null);
+  const cancelInsertion = useCallback(() => setInsertionTarget(null), []);
   const featuredAtlas = useFeaturedDrivingRouteAtlas(workspace.adapter);
   const {
     activeRoute: activeFeaturedRoute,
@@ -193,9 +198,16 @@ export function RoutePlanningWorkspace() {
         }
         return;
       }
+      if (insertionTarget) {
+        if (!workspace.insertPlaceCandidate(insertionTarget, candidate)) {
+          appToast.info("路线已变化或点位已满，请重新选择插入位置");
+        }
+        setInsertionTarget(null);
+        return;
+      }
       void workspace.addPlaceCandidate(candidate);
     },
-    [activeFeaturedRoute, addPlaceMarker, workspace],
+    [activeFeaturedRoute, addPlaceMarker, insertionTarget, workspace],
   );
 
   const loadFeaturedRoute = useCallback(async (route: FeaturedDrivingRoute) => {
@@ -365,10 +377,13 @@ export function RoutePlanningWorkspace() {
           onClearAll={workspace.clearPlans}
         />
         <GlobalSearch
+          ref={searchRef}
+          insertionLabel={insertionTarget?.label}
+          onClose={cancelInsertion}
           placeholder={searchPlaceholder}
           placeSearchDisabled={Boolean(searchDisabledReason)}
           placeSearchDisabledReason={searchDisabledReason}
-          featuredRoutes={featuredRoutes}
+          featuredRoutes={insertionTarget ? [] : featuredRoutes}
           categories={featuredCategories}
           onSearchPlaces={workspace.searchPlaces}
           onSelectPlace={selectSearchPlace}
@@ -425,6 +440,19 @@ export function RoutePlanningWorkspace() {
           pendingControlPointId={workspace.pendingControlPointId}
           onSelectControlPoint={selectControlPoint}
           onSelectRouteLeg={workspace.selectRouteLeg}
+          addWaypointDisabledReason={searchDisabledReason}
+          onAddWaypoint={(fromId, toId) => {
+            if (!workspace.activePlan || searchDisabledReason) return;
+            const from = points.find((point) => point.id === fromId);
+            const to = points.find((point) => point.id === toId);
+            if (!from || !to) return;
+            setWeatherTargetId(null);
+            setInsertionTarget({
+              planId: workspace.activePlan.id, fromId, toId,
+              label: `添加途经点：${from.name} → ${to.name}`,
+            });
+            searchRef.current?.open();
+          }}
           onReorder={workspace.reorderControlPoint}
           onRemove={requestControlPointRemoval}
         />

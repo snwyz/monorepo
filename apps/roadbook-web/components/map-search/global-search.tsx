@@ -6,6 +6,8 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useImperativeHandle,
+  type Ref,
   useEffect,
   useMemo,
   useRef,
@@ -34,7 +36,14 @@ const FeaturedRoutePreviewDialog = lazy(() =>
 type GlobalSearchState = "closed" | "discovering" | "filtering" | "preview-dialog";
 type PlaceSearchStatus = "idle" | "loading" | "empty" | "failed" | "unavailable";
 
+export interface GlobalSearchHandle {
+  open: () => void;
+}
+
 interface GlobalSearchProps {
+  ref?: Ref<GlobalSearchHandle>;
+  insertionLabel?: string;
+  onClose?: () => void;
   placeholder: string;
   placeSearchDisabled?: boolean;
   placeSearchDisabledReason?: string;
@@ -53,6 +62,9 @@ function updatePreviewUrl(routeId: string | null) {
 }
 
 export function GlobalSearch({
+  ref,
+  insertionLabel,
+  onClose,
   placeholder,
   placeSearchDisabled,
   placeSearchDisabledReason,
@@ -108,6 +120,7 @@ export function GlobalSearch({
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     closeTimerRef.current = window.setTimeout(() => {
       closeTimerRef.current = null;
+      onClose?.();
       setState("closed");
       setIsClosing(false);
       setQuery("");
@@ -119,15 +132,21 @@ export function GlobalSearch({
         window.requestAnimationFrame(() => triggerRef.current?.focus());
       }
     }, reducedMotion ? 0 : 160);
-  }, []);
+  }, [onClose]);
 
   const openDiscovering = useCallback(() => {
+    requestIdRef.current += 1;
+    setQuery("");
+    setPlaceItems([]);
+    setPlaceStatus("idle");
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
     closeTimerRef.current = null;
     setIsClosing(false);
     setState("discovering");
     shouldFocusInputRef.current = true;
   }, []);
+
+  useImperativeHandle(ref, () => ({ open: openDiscovering }), [openDiscovering]);
 
   const closePreview = useCallback(() => {
     updatePreviewUrl(null);
@@ -267,6 +286,13 @@ export function GlobalSearch({
     setRecentQueries([]);
   };
 
+  const insertionContext = insertionLabel ? (
+    <div className="search-insertion-context" role="status">
+      <span>{insertionLabel}</span>
+      <button type="button" onClick={() => closeSearch()}>取消</button>
+    </div>
+  ) : null;
+
   return (
     <>
       <section
@@ -297,7 +323,7 @@ export function GlobalSearch({
               autoComplete="off"
               value={query}
               aria-label="搜索地点或热门自驾路线"
-              placeholder={placeholder}
+              placeholder={insertionLabel ? "搜索地点，添加到此路段" : placeholder}
               onChange={(event) => applyQuery(event.target.value)}
               onKeyDown={handleInputKeyDown}
             />
@@ -328,6 +354,7 @@ export function GlobalSearch({
 
         {state === "discovering" ? (
           <div className="global-search__panel global-search__discover-panel">
+            {insertionContext}
             {recentQueries.length ? (
               <section className="search-discovery-section">
                 <header className="search-discovery-heading">
@@ -360,7 +387,7 @@ export function GlobalSearch({
               </div>
             </section>
 
-            <section className="search-discovery-section">
+            {!insertionLabel ? <section className="search-discovery-section">
               <header className="search-discovery-heading"><h2>热门自驾路线</h2></header>
               <div className="featured-route-card-row">
                 {featuredRoutes.map((route) => (
@@ -385,15 +412,16 @@ export function GlobalSearch({
                   </button>
                 ))}
               </div>
-            </section>
+            </section> : null}
           </div>
         ) : null}
 
         {state === "filtering" ? (
           <div className="global-search__panel global-search__filter-panel">
+            {insertionContext}
             <header className="search-filter-summary">
               <span>搜索结果</span>
-              <strong>{matchedRoutes.length} of {featuredRoutes.length} 条热门路线</strong>
+              {!insertionLabel ? <strong>{matchedRoutes.length} of {featuredRoutes.length} 条热门路线</strong> : null}
             </header>
             {matchedRoutes.map((route) => (
               <button

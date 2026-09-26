@@ -34,6 +34,8 @@ interface RouteAddressListProps {
   pendingControlPointId: string | null;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
+  onAddWaypoint: (fromId: string, toId: string) => void;
+  addWaypointDisabledReason?: string;
   onReorder: (activeId: string, overId: string) => void;
   onRemove: (id: string) => void;
 }
@@ -49,6 +51,8 @@ interface SortableAddressSequenceProps {
   isPending: boolean;
   onSelectControlPoint: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
+  onAddWaypoint: (fromId: string, toId: string) => void;
+  addWaypointDisabledReason?: string;
   onRemove: (id: string) => void;
 }
 
@@ -63,6 +67,8 @@ function SortableAddressSequence({
   isPending,
   onSelectControlPoint,
   onSelectRouteLeg,
+  onAddWaypoint,
+  addWaypointDisabledReason,
   onRemove,
 }: SortableAddressSequenceProps) {
   const {
@@ -166,6 +172,16 @@ function SortableAddressSequence({
           >
             <span /><small>{index === controlPointCount - 1 ? "返回起点" : `路段 ${index + 1}`}</small>
           </button>
+          <button
+            type="button"
+            className="leg-add-waypoint"
+            disabled={Boolean(addWaypointDisabledReason)}
+            title={addWaypointDisabledReason ?? `在${point.name}与${nextPoint.name}之间添加途经点`}
+            aria-label={`在${point.name}与${nextPoint.name}之间添加途经点`}
+            onClick={() => onAddWaypoint(point.id, nextPoint.id)}
+          >
+            <span aria-hidden="true">＋</span> 添加途经点
+          </button>
         </div>
       ) : null}
     </div>
@@ -180,6 +196,8 @@ export function RouteAddressList({
   pendingControlPointId,
   onSelectControlPoint,
   onSelectRouteLeg,
+  onAddWaypoint,
+  addWaypointDisabledReason,
   onReorder,
   onRemove,
 }: RouteAddressListProps) {
@@ -252,6 +270,8 @@ export function RouteAddressList({
                   isPending={pendingControlPointId === point.id}
                   onSelectControlPoint={onSelectControlPoint}
                   onSelectRouteLeg={onSelectRouteLeg}
+                  onAddWaypoint={onAddWaypoint}
+                  addWaypointDisabledReason={addWaypointDisabledReason}
                   onRemove={onRemove}
                 />
               );

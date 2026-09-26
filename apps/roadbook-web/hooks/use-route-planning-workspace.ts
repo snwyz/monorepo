@@ -401,6 +401,35 @@ export function useRoutePlanningWorkspace() {
     setMapFocusRequest({ id: controlPointId, sequence: mapFocusSequence.current });
   }, [appendControlPoint, ensurePlanReadyForControlPoint]);
 
+  const insertPlaceCandidate = useCallback((
+    target: { planId: string; fromId: string; toId: string },
+    candidate: PlaceCandidate,
+  ) => {
+    const current = activePlanRef.current;
+    if (!current || current.id !== target.planId) return false;
+    const point: ControlPoint = {
+      id: createId("point"),
+      name: candidate.name,
+      address: candidate.address,
+      ...candidate.coordinate,
+    };
+    const controlPoints = insertControlPointIntoRouteLeg(
+      current.controlPoints, target.fromId, target.toId, point,
+    );
+    if (!controlPoints) return false;
+    setHistory((items) => [...items.slice(-19), current]);
+    const nextPlan = reviseRoutePlan(current, (plan) => ({ ...plan, controlPoints }));
+    activePlanRef.current = nextPlan;
+    setActivePlan(nextPlan);
+    setDraftStatus("saving");
+    setPendingControlPointId(null);
+    setSelectedControlPointId(point.id);
+    setSelectedRouteLegId(null);
+    mapFocusSequence.current += 1;
+    setMapFocusRequest({ id: point.id, sequence: mapFocusSequence.current });
+    return true;
+  }, []);
+
   const insertRouteLegControlPoint = useCallback(async (
     routeLegId: string,
     coordinate: MapCoordinate,
@@ -577,6 +606,7 @@ export function useRoutePlanningWorkspace() {
     addPlaceCandidate,
     addCoordinate,
     insertRouteLegControlPoint,
+    insertPlaceCandidate,
     searchPlaces,
     removeControlPoint,
     reorderControlPoint,
