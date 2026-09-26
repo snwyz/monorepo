@@ -357,6 +357,13 @@ export function RoutePlanningWorkspace() {
       className={`planning-workspace${isWeatherForecastOpen ? " is-weather-forecast-open" : ""}`}
     >
       <RouteMap
+        providerControl={
+          <MapProviderSwitch
+            provider={workspace.mapProvider}
+            loading={workspace.mapStatus === "loading"}
+            onProviderChange={workspace.setMapProvider}
+          />
+        }
         mobileOcclusion={mapOcclusion}
         adapter={workspace.adapter}
         provider={workspace.mapProvider}
@@ -381,11 +388,6 @@ export function RoutePlanningWorkspace() {
         onInsertRouteLegControlPoint={workspace.insertRouteLegControlPoint}
       />
 
-      <MapProviderSwitch
-        provider={workspace.mapProvider}
-        loading={workspace.mapStatus === "loading"}
-        onProviderChange={workspace.setMapProvider}
-      />
 
       {!isFeaturedMode && workspace.routeStatus === "updating" && points.length >= 2 ? (
         <RouteCalculationFeedback controlPointCount={points.length} />

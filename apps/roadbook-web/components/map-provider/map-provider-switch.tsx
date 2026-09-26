@@ -2,7 +2,7 @@
 
 import type { WebMapProvider } from "@roadbook/map/web";
 
-import { CheckIcon, LayersIcon } from "@/components/ui/icons";
+import { LayersIcon } from "@/components/ui/icons";
 import { useState } from "react";
 
 interface MapProviderSwitchProps {
@@ -24,19 +24,19 @@ export function MapProviderSwitch({
   };
 
   return (
-    <section data-glass="surface" className={`map-provider-switch widget${expanded ? " is-expanded" : ""}`} aria-label="地图供应商">
+    <section className={`map-provider-switch${expanded ? " is-expanded" : ""}`} aria-label="地图供应商">
       <div className="map-provider-switch__compact">
         {expanded ? (
-          <div className="map-provider-switch__options" role="group" aria-label="选择地图供应商">
+          <div data-glass="surface" className="map-provider-switch__options" role="group" aria-label="选择地图供应商">
             {(["amap", "tencent"] as const).map((option) => (
               <button
                 type="button"
                 key={option}
                 disabled={loading}
+                aria-pressed={provider === option}
                 className={provider === option ? "is-active" : undefined}
                 onClick={() => chooseProvider(option)}
               >
-                {provider === option ? <CheckIcon /> : null}
                 {option === "amap" ? "高德" : "腾讯"}
               </button>
             ))}

@@ -115,11 +115,8 @@
   .workspace-task-sheet .workspace-weather-slot { display: block; order: 2; }
   .workspace-task-sheet .workspace-weather-loading { position: static; width: 100%; transform: none; min-height: 210px; }
   .workspace-task-sheet .workspace-route-empty { display: block; order: 4; margin: 0; padding: 24px 16px; border-radius: 18px; background: transparent; color: var(--rb-color-muted); line-height: 1.8; }
-  .planning-workspace .map-controls { left: auto; right: max(14px, env(safe-area-inset-right)); bottom: calc(var(--sheet-bottom) + var(--sheet-visible) + 12px); width: 48px; padding: 2px; border-radius: 18px; transform: translateY(var(--sheet-drag)); transition: transform 260ms var(--rb-ease); }
-  .planning-workspace .map-controls button { width: 42px; height: 42px; border-radius: 14px; }
-  .planning-workspace .map-provider-switch { left: max(14px, env(safe-area-inset-left)); bottom: calc(var(--sheet-bottom) + var(--sheet-visible) + 30px); border-radius: 16px; transform: translateY(var(--sheet-drag)); }
-  .planning-workspace .map-provider-switch__trigger { width: 38px; height: 40px; }
-  .planning-workspace:has(.workspace-task-sheet[data-detent="expanded"]) :is(.map-controls, .map-provider-switch) { visibility: hidden; pointer-events: none; }
+  .planning-workspace .map-controls { left: max(14px, env(safe-area-inset-left)); right: auto; bottom: calc(var(--sheet-bottom) + var(--sheet-visible) + 30px); transform: translateY(var(--sheet-drag)); transition: transform 260ms var(--rb-ease); }
+  .planning-workspace:has(.workspace-task-sheet[data-detent="expanded"]) .map-controls { visibility: hidden; pointer-events: none; }
   .planning-workspace .map-attribution { left: 14px; bottom: calc(var(--sheet-bottom) + var(--sheet-visible) + 6px); transform: translateY(var(--sheet-drag)); }
   /* 定位反馈独立于面板和两侧地图工具，避免短文案被拉伸及拖动时相互遮挡。 */
   .planning-workspace .map-toast {
@@ -140,7 +137,7 @@
     pointer-events: none;
   }
   .planning-workspace .map-unavailable { position: fixed; top: max(16px, env(safe-area-inset-top)); bottom: auto; left: 16px; right: 16px; z-index: 4; }
-  .planning-workspace[data-sheet-dragging="true"] :is(.workspace-task-sheet, .map-controls, .map-provider-switch) { transition: none; }
+  .planning-workspace[data-sheet-dragging="true"] :is(.workspace-task-sheet, .map-controls) { transition: none; }
 }
 
 .workspace-section-loading { min-height: 180px; padding: 16px; color: var(--rb-color-muted); }
@@ -221,11 +218,10 @@
   .workspace-place-detail { order: 1; padding: 0 4px 16px; }
   .workspace-place-detail p, .workspace-leg-detail p { margin: 0 0 18px; line-height: 1.7; color: var(--rb-color-muted); }
   .workspace-place-detail a, .workspace-place-detail button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; margin: 0 10px 8px 0; border: 0; border-radius: 14px; background: var(--glass-control-fill); color: var(--rb-color-text-strong); font-size: 14px; text-decoration: none; }
-  .planning-workspace .map-controls { bottom: calc(var(--sheet-bottom) + 12px); transform: translateY(calc(0px - var(--sheet-visible) + var(--sheet-drag))); }
-  .planning-workspace .map-provider-switch { bottom: calc(var(--sheet-bottom) + 30px); transform: translateY(calc(0px - var(--sheet-visible) + var(--sheet-drag))); transition: transform 260ms var(--rb-ease); }
+  .planning-workspace .map-controls { bottom: calc(var(--sheet-bottom) + 30px); transform: translateY(calc(0px - var(--sheet-visible) + var(--sheet-drag))); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .workspace-task-sheet, .planning-workspace .map-controls, .planning-workspace .map-provider-switch { transition: none; }
+  .workspace-task-sheet, .planning-workspace .map-controls { transition: none; }
 }
 
 @media (max-width: 760px) {
@@ -255,5 +251,5 @@
 }
 
 @media (max-width: 760px) {
-  .planning-workspace[data-sheet-resizing="true"] :is(.workspace-task-sheet, .map-controls, .map-provider-switch) { transition: none; }
+  .planning-workspace[data-sheet-resizing="true"] :is(.workspace-task-sheet, .map-controls) { transition: none; }
 }

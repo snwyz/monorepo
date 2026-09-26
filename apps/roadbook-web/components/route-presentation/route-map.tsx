@@ -12,19 +12,16 @@ import type {
   WebMapProvider,
   WebMapRouteLegInsertion,
 } from "@roadbook/map/web";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   ROUTE_PLAN_CONTROL_POINT_LIMIT,
   type ControlPoint,
 } from "@/domain/route-planning/model";
-import {
-  LocateIcon,
-  MinusIcon,
-  PlusIcon,
-} from "@/components/route-presentation/tool-icons";
+import { LocateIcon } from "@/components/route-presentation/tool-icons";
 
 interface RouteMapProps {
+  providerControl: ReactNode;
   mobileOcclusion: number;
   adapter: WebMapAdapter | null;
   provider: WebMapProvider;
@@ -107,6 +104,7 @@ function getRouteLegInsertion(
 }
 
 export function RouteMap({
+  providerControl,
   mobileOcclusion,
   adapter,
   provider,
@@ -485,22 +483,7 @@ export function RouteMap({
       ) : null}
       <div className="map-attribution">{provider === "amap" ? "高德地图" : "腾讯地图"}</div>
       <div data-glass="surface" className="map-controls" aria-label="地图工具">
-        <button
-          type="button"
-          onClick={() => canvasRef.current?.zoomBy(1)}
-          aria-label="放大地图"
-          title="放大"
-        >
-          <PlusIcon />
-        </button>
-        <button
-          type="button"
-          onClick={() => canvasRef.current?.zoomBy(-1)}
-          aria-label="缩小地图"
-          title="缩小"
-        >
-          <MinusIcon />
-        </button>
+        {providerControl}
         <span className="map-controls__divider" />
         <button
           type="button"
