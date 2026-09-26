@@ -7,6 +7,10 @@
 - 地图领域能力位于 `packages/map`，Web 端使用腾讯地图适配器。
 - 小程序位于 `apps/roadbook-mini-app`，共享配置位于 `packages/config`。
 
+## 子项目规范
+
+- 开始任何 Roadbook Web 需求、设计、实现、诊断或评审前，先读取 `apps/roadbook-web/AGENTS.md`，并按其中的路由读取相关正式规范。
+
 ## 开发约定
 
 - 文档使用中文。
