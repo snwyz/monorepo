@@ -208,6 +208,22 @@ async function requestAmapProxy<T extends AmapServiceResponse>(url: string) {
   return payload;
 }
 
+async function getIpLocation(): Promise<MapCoordinate | null> {
+  const response = await requestAmapProxy<
+    AmapServiceResponse & { rectangle?: unknown }
+  >("/api/amap/ip-location");
+  if (typeof response.rectangle !== "string") return null;
+  const [southwestText, northeastText] = response.rectangle.split(";");
+  const southwest = parseCoordinate(southwestText);
+  const northeast = parseCoordinate(northeastText);
+  if (!southwest || !northeast) return null;
+  const coordinate = {
+    latitude: (southwest.latitude + northeast.latitude) / 2,
+    longitude: (southwest.longitude + northeast.longitude) / 2,
+  };
+  return isValidMapCoordinate(coordinate) ? coordinate : null;
+}
+
 function locationMarkerSvg() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="${mapOverlayColors.location}" fill-opacity=".18"/><circle cx="16" cy="16" r="8" fill="${mapOverlayColors.location}" stroke="${mapOverlayColors.surface}" stroke-width="3"/></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
@@ -753,7 +769,10 @@ export class AmapWebAdapter implements WebMapAdapter {
   private nextDrivingRequestAt = 0;
   private routeCalculationVersion = 0;
 
-  private constructor(private readonly amap: AmapNamespace) {}
+  private constructor(
+    private readonly amap: AmapNamespace,
+    private readonly initialLocation: Promise<MapCoordinate | null>,
+  ) {}
 
   static async create(options: AmapWebAdapterOptions) {
     if (!options.key.trim()) {
@@ -762,12 +781,16 @@ export class AmapWebAdapter implements WebMapAdapter {
         "MISSING_KEY",
       );
     }
-    return new AmapWebAdapter(
-      await loadAmapSdk({
-        ...options,
-        key: options.key.trim(),
-      }),
-    );
+    const sdk = loadAmapSdk({ ...options, key: options.key.trim() });
+    // IP 定位不依赖 SDK；立即处理失败，避免 SDK 尚未就绪时产生未处理拒绝。
+    // Promise 仅属于本次适配器，切换供应商后不会复用旧位置。
+    const initialLocation = typeof window === "undefined"
+      ? Promise.resolve(null)
+      : getIpLocation().catch((error: unknown) => {
+        locationDebug("warn", "initial:ip-failed", { error: debugError(error) });
+        return null;
+      });
+    return new AmapWebAdapter(await sdk, initialLocation);
   }
 
   createMap(container: HTMLElement, options: WebMapOptions = {}): WebMapCanvas {
@@ -792,16 +815,11 @@ export class AmapWebAdapter implements WebMapAdapter {
   }
 
   async resolveInitialLocation(): Promise<MapCoordinate | null> {
-    try {
-      const coordinate = await this.getIpLocation();
-      if (!coordinate) return null;
-      this.searchLocation = coordinate;
-      this.currentLocation = { coordinate, approximate: true };
-      return coordinate;
-    } catch (error) {
-      locationDebug("warn", "initial:ip-failed", { error: debugError(error) });
-      return null;
-    }
+    const coordinate = await this.initialLocation;
+    if (!coordinate) return null;
+    this.searchLocation = coordinate;
+    this.currentLocation = { coordinate, approximate: true };
+    return coordinate;
   }
 
   async resolveAuthorizedLocation(): Promise<MapCoordinate | null> {
@@ -985,7 +1003,7 @@ export class AmapWebAdapter implements WebMapAdapter {
         return { coordinate, approximate: false };
       } catch (error) {
         if (approximateFallback) return approximateFallback;
-        const coordinate = await this.getIpLocation();
+        const coordinate = await getIpLocation();
         if (coordinate) return { coordinate, approximate: true };
         throw error;
       }
@@ -1102,24 +1120,6 @@ export class AmapWebAdapter implements WebMapAdapter {
       });
     this.preciseLocationRequest = request;
     return request;
-  }
-
-  private async getIpLocation() {
-    const response = await requestAmapProxy<
-      AmapServiceResponse & {
-        rectangle?: unknown;
-      }
-    >("/api/amap/ip-location");
-    if (typeof response.rectangle !== "string") return null;
-    const [southwestText, northeastText] = response.rectangle.split(";");
-    const southwest = parseCoordinate(southwestText);
-    const northeast = parseCoordinate(northeastText);
-    if (!southwest || !northeast) return null;
-    const coordinate = {
-      latitude: (southwest.latitude + northeast.latitude) / 2,
-      longitude: (southwest.longitude + northeast.longitude) / 2,
-    };
-    return isValidMapCoordinate(coordinate) ? coordinate : null;
   }
 
   private scheduleDrivingRequest<T>(operation: () => Promise<T>) {
