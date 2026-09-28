@@ -19,6 +19,7 @@ import {
   type ControlPoint,
 } from "@/domain/route-planning/model";
 import { LocateIcon } from "@/components/route-presentation/tool-icons";
+import { bindMapViewportGestureGuard } from "@/components/route-presentation/map-viewport-gesture-guard";
 
 interface RouteMapProps {
   providerControl: ReactNode;
@@ -156,6 +157,12 @@ export function RouteMap({
   const checkedRouteViewportRef = useRef<ClosedDrivingRoute | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [mapVisualReady, setMapVisualReady] = useState(false);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    return bindMapViewportGestureGuard(container);
+  }, []);
+
   useEffect(() => {
     eventHandlersRef.current = {
       onDoubleClick,
