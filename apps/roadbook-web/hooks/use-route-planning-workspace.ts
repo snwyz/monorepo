@@ -4,7 +4,6 @@ import {
   AmapWebAdapter,
   TencentMapWebAdapter,
   type ClosedDrivingRoute,
-  type DrivingStrategy,
   type MapCoordinate,
   type PlaceCandidate,
   type WebMapAdapter,
@@ -203,7 +202,7 @@ export function useRoutePlanningWorkspace() {
       setRouteStatus("updating");
       setRouteError(null);
       adapter
-        .calculateClosedDrivingRoute(calculationPoints, calculationStrategy ?? "recommend", controller.signal)
+        .calculateClosedDrivingRoute(calculationPoints, calculationStrategy ?? "highway", controller.signal)
         .then((nextRoute) => {
           if (calculationToken.current !== token) return;
           setRoute(nextRoute);
@@ -543,7 +542,7 @@ export function useRoutePlanningWorkspace() {
     });
   }, [mutatePlan]);
 
-  const setStrategy = useCallback((strategy: DrivingStrategy) => {
+  const setStrategy = useCallback((strategy: RoutePlan["strategy"]) => {
     mutatePlan((plan) => ({ ...plan, strategy }));
   }, [mutatePlan]);
 

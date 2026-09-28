@@ -106,3 +106,13 @@ export function areCoordinatesInsideViewport(
   }
   return validCoordinateCount > 0;
 }
+
+export function projectCoordinateToViewport(coordinate: MapCoordinate, viewport: WebMapViewportState) {
+  const worldSize = TILE_SIZE * 2 ** viewport.zoom;
+  const center = projectCoordinate(viewport.center, worldSize);
+  const point = projectCoordinate(coordinate, worldSize);
+  return {
+    x: viewport.width / 2 + wrappedHorizontalDelta(point.x, center.x, worldSize),
+    y: viewport.height / 2 + point.y - center.y,
+  };
+}

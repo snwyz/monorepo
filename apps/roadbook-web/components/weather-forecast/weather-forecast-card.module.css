@@ -235,12 +235,12 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 1180px) {
+@media (min-width: 761px) {
   .layer {
-    top: 156px;
+    top: 88px;
     left: 16px;
-    width: min(560px, calc(100vw - 380px));
-    min-width: 390px;
+    width: min(560px, calc(100vw - 372px));
+    min-width: 0;
     transform: none;
   }
 }

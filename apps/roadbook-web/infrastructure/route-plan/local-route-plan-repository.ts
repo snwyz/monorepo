@@ -1,3 +1,4 @@
+import { normalizeRoutePlanStrategy } from "@/domain/route-planning/model";
 import type {
   RoutePlan,
   RoutePlanSummary,
@@ -53,7 +54,7 @@ export class LocalRoutePlanRepository {
       const raw = window.localStorage.getItem(`${SNAPSHOT_PREFIX}${id}`);
       if (!raw) return null;
       const parsed: unknown = JSON.parse(raw);
-      return isRoutePlan(parsed) ? parsed : null;
+      return isRoutePlan(parsed) ? { ...parsed, strategy: normalizeRoutePlanStrategy(parsed.strategy) } : null;
     } catch {
       return null;
     }

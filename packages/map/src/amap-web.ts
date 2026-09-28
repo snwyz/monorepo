@@ -35,6 +35,8 @@ import {
   isValidMapCoordinate,
 } from "./web-viewport";
 
+import { mergeRoadSections, selectRoadLabels } from "./route-road-label";
+
 type AmapPosition = [number, number];
 
 interface AmapLngLat {
@@ -96,7 +98,7 @@ interface AmapDrivingPath {
   distance?: string;
   duration?: string;
   traffic_lights?: string;
-  steps?: Array<{ polyline?: string }>;
+  steps?: Array<{ polyline?: string; road?: unknown }>;
 }
 
 declare global {
@@ -268,6 +270,11 @@ class AmapCanvasImpl implements WebMapCanvas {
   private featuredControlPointOverlays: InteractiveOverlay[] = [];
   private featuredMarkerOverlays: InteractiveOverlay[] = [];
   private controlPointOverlays: InteractiveOverlay[] = [];
+  private roadLabelOverlays: AmapOverlay[] = [];
+  private roadLabelSignature = "";
+  private roadLabelLegs: WebMapRouteLeg[] = [];
+  private roadLabelPoints: WebMapControlPoint[] = [];
+  private readonly roadLabelsChangedHandler = () => this.updateRoadLabels();
   private routeOutlineOverlays: AmapOverlay[] = [];
   private routeCoreOverlays: InteractiveOverlay[] = [];
   private routeOverlays: InteractiveOverlay[] = [];
@@ -338,9 +345,14 @@ class AmapCanvasImpl implements WebMapCanvas {
     map.on("dblclick", this.doubleClickHandler);
     map.on("click", this.mapClickHandler);
     map.on("complete", this.mapReadyHandler);
+    map.on("moveend", this.roadLabelsChangedHandler);
+    map.on("zoomend", this.roadLabelsChangedHandler);
+    map.on("resize", this.roadLabelsChangedHandler);
   }
 
   setControlPoints(controlPoints: WebMapControlPoint[]) {
+    this.roadLabelPoints = controlPoints;
+    this.updateRoadLabels();
     this.clearInteractiveOverlays(this.controlPointOverlays);
     this.controlPointOverlays = controlPoints.map((point) => {
       const visual = createControlPointLabelVisual(point);
@@ -452,6 +464,8 @@ class AmapCanvasImpl implements WebMapCanvas {
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
+    this.roadLabelLegs = routeLegs;
+    this.updateRoadLabels();
     this.clearOverlays(this.routeOutlineOverlays);
     this.clearInteractiveOverlays(this.routeCoreOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
@@ -510,6 +524,8 @@ class AmapCanvasImpl implements WebMapCanvas {
       const route = new this.amap.Polyline({
         path: leg.path.map(toPosition),
         strokeColor: mapOverlayColors.routeCore,
+        // 箭头放在最上层内芯，避免被绿色主线遮挡；路径顺序即行驶方向。
+        showDir: true,
         strokeWeight: leg.selected
           ? plannedRouteStrokeWidths.selected.core
           : plannedRouteStrokeWidths.normal.core,
@@ -523,6 +539,31 @@ class AmapCanvasImpl implements WebMapCanvas {
       route.on("click", handler);
       this.map.add(route);
       return [{ overlay: route, handler }];
+    });
+  }
+
+  private updateRoadLabels() {
+    const labels = selectRoadLabels(this.roadLabelLegs, this.roadLabelPoints, {
+      center: toCoordinate(this.map.getCenter()), zoom: this.map.getZoom(),
+      width: this.container.clientWidth, height: this.container.clientHeight,
+    });
+    const signature = JSON.stringify(labels);
+    if (signature === this.roadLabelSignature) return;
+    this.roadLabelSignature = signature;
+    this.clearOverlays(this.roadLabelOverlays);
+    this.roadLabelOverlays = labels.map(({ name, coordinate, visual }) => {
+      const marker = new this.amap.Marker({
+        position: toPosition(coordinate),
+        content: markerContent(visual.source, visual.width, visual.height),
+        title: name,
+        anchor: "top-left",
+        offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
+        zIndex: 90,
+        bubble: true,
+        clickable: false,
+      });
+      this.map.add(marker);
+      return marker;
     });
   }
 
@@ -680,6 +721,10 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.map.off("dblclick", this.doubleClickHandler);
     this.map.off("click", this.mapClickHandler);
     this.map.off("complete", this.mapReadyHandler);
+    this.map.off("moveend", this.roadLabelsChangedHandler);
+    this.map.off("zoomend", this.roadLabelsChangedHandler);
+    this.map.off("resize", this.roadLabelsChangedHandler);
+    this.clearOverlays(this.roadLabelOverlays);
     this.clearInteractiveOverlays(this.controlPointOverlays);
     this.clearOverlays(this.featuredRoadOutlineOverlays);
     this.clearOverlays(this.featuredRoadOverlays);
@@ -918,7 +963,7 @@ export class AmapWebAdapter implements WebMapAdapter {
     }
     const strategyCode: Record<DrivingStrategy, string> = {
       recommend: "10",
-      highway: "20",
+      highway: "19",
       "avoid-highway": "13",
     };
     const calculationVersion = ++this.routeCalculationVersion;
@@ -969,6 +1014,9 @@ export class AmapWebAdapter implements WebMapAdapter {
             ? trafficLightCount
             : null,
           path,
+          roadSections: mergeRoadSections((route.steps ?? []).map((step) => ({
+            name: step.road, path: decodePolyline(step.polyline),
+          }))),
         });
       }
       const lightCounts = legs.map((leg) => leg.trafficLightCount);

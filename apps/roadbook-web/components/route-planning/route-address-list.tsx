@@ -19,7 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { WebMapProvider } from "@roadbook/map/web";
 import { CloudSunIcon, GripVerticalIcon } from "lucide-react";
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 
 import { ChevronDownIcon, CloseIcon, NavigationIcon, TrashIcon } from "@/components/ui/icons";
 import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
@@ -27,6 +27,7 @@ import type { ControlPoint } from "@/domain/route-planning/model";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
 interface RouteAddressListProps {
+  strategyControl?: ReactNode;
   provider: WebMapProvider;
   controlPoints: ControlPoint[];
   selectedControlPointId: string | null;
@@ -210,6 +211,7 @@ function SortableAddressSequence({
 }
 
 export function RouteAddressList({
+  strategyControl,
   provider,
   controlPoints,
   selectedControlPointId,
@@ -248,9 +250,10 @@ export function RouteAddressList({
   };
 
   return (
-    <aside data-glass="desktop" className={`address-list widget${collapsed ? " is-collapsed" : ""}`} aria-label="路线顺序">
+    <aside data-glass="desktop" className={`address-list widget${controlPoints.length === 0 ? " is-empty" : ""}${collapsed ? " is-collapsed" : ""}`} aria-label="路线顺序">
       <header className="widget-title address-list__header address-list__header--desktop">
         <div><small>路线顺序</small></div>
+        {strategyControl}
         <span className="count-badge">{controlPoints.length}/20</span>
       </header>
       <button

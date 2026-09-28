@@ -256,7 +256,11 @@ export function RouteMap({
       const nextCanvas = adapter.createMap(container, {
         center: coordinate ?? undefined,
         zoom: 11,
-        onDoubleClick: (value) => eventHandlersRef.current.onDoubleClick(value),
+        onDoubleClick: (value) => {
+          // 手机端地图点击选点暂缓开放，待交互方案确认；保留桌面端双击选点。
+          if (window.matchMedia("(max-width: 760px)").matches) return;
+          eventHandlersRef.current.onDoubleClick(value);
+        },
         onMapBackgroundSelect: () => (
           eventHandlersRef.current.onClearRouteLegSelection()
         ),
@@ -307,6 +311,7 @@ export function RouteMap({
         (routeRef.current?.legs ?? []).map((leg) => ({
           id: leg.id,
           path: leg.path,
+          roadSections: leg.roadSections,
           selected: leg.id === selectedRouteLegIdRef.current,
           stale: routeUpdatingRef.current,
         })),
@@ -423,6 +428,7 @@ export function RouteMap({
       (route?.legs ?? []).map((leg) => ({
         id: leg.id,
         path: leg.path,
+        roadSections: leg.roadSections,
         selected: leg.id === selectedRouteLegId,
         stale: routeUpdating,
       })),

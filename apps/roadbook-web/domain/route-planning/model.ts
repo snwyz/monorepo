@@ -1,5 +1,11 @@
 import type { DrivingStrategy, MapCoordinate } from "@roadbook/map/web";
 
+export type RoutePlanStrategy = Exclude<DrivingStrategy, "recommend">;
+
+export function normalizeRoutePlanStrategy(value: unknown): RoutePlanStrategy {
+  return value === "avoid-highway" ? "avoid-highway" : "highway";
+}
+
 export interface ControlPoint extends MapCoordinate {
   id: string;
   name: string;
@@ -9,7 +15,7 @@ export interface ControlPoint extends MapCoordinate {
 export interface RoutePlan {
   id: string;
   name: string;
-  strategy: DrivingStrategy;
+  strategy: RoutePlanStrategy;
   controlPoints: ControlPoint[];
   revision: number;
   updatedAt: string;
@@ -43,7 +49,7 @@ export function createRoutePlan(id: string, now = new Date()): RoutePlan {
   return {
     id,
     name: "未命名路线",
-    strategy: "recommend",
+    strategy: "highway",
     controlPoints: [],
     revision: 0,
     updatedAt: now.toISOString(),

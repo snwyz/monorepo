@@ -470,7 +470,7 @@ export function RoutePlanningWorkspace() {
               onExit={() => { closeFeaturedRoute(); setBusiness("discovery"); }}
             />
           ) : workspace.activePlan ? (
-            <Suspense fallback={<div data-glass="desktop" className="strategy-selector widget workspace-section-loading" role="status">正在加载…</div>}>
+            <Suspense fallback={<div data-glass="desktop" className="strategy-selector widget workspace-section-loading workspace-mobile-only" role="status">正在加载…</div>}>
               <RouteStrategySelector
               strategy={workspace.activePlan.strategy}
               routeStatus={workspace.routeStatus}
@@ -512,10 +512,25 @@ export function RoutePlanningWorkspace() {
             <button type="button" data-glass="inset" className="workspace-discovery__resume" onClick={() => searchRef.current?.open()}>探索热门自驾路线<span>›</span></button>
           </div>
         </WorkspaceSheetPage>
+        <div className="workspace-route-panels">
         <WorkspaceSheetPage active={!searchOpen && business === "planning" && !planningDetail}>
-        {!isFeaturedMode && workspace.activePlan && points.length ? (
-          <Suspense fallback={<div data-glass="desktop" className="address-list widget workspace-section-loading" style={{ minHeight: points.length * 112 + 96 }} role="status">正在加载…</div>}>
+        {!isFeaturedMode && workspace.activePlan ? (
+          <Suspense fallback={<div data-glass="desktop" className={`address-list widget workspace-section-loading${points.length === 0 ? " is-empty" : ""}`} style={{ height: points.length * 112 + 96 }} role="status">正在加载…</div>}>
             <RouteAddressList
+              strategyControl={(
+                <Suspense fallback={<span className="address-list__strategy-loading">路线策略…</span>}>
+                  <RouteStrategySelector
+                    compact
+                    strategy={workspace.activePlan.strategy}
+                    routeStatus={workspace.routeStatus}
+                    draftStatus={workspace.draftStatus}
+                    error={workspace.routeError}
+                    canUndo={workspace.canUndo}
+                    onStrategyChange={workspace.setStrategy}
+                    onUndo={workspace.undo}
+                  />
+                </Suspense>
+              )}
               provider={workspace.mapProvider}
               controlPoints={points}
               selectedControlPointId={workspace.selectedControlPointId}
@@ -552,6 +567,43 @@ export function RoutePlanningWorkspace() {
 
           <button type="button" className="workspace-add-place workspace-mobile-only" onClick={() => searchRef.current?.open()} disabled={Boolean(searchDisabledReason)}>＋ 添加途经点</button>
         </WorkspaceSheetPage>
+        <WorkspaceSheetPage active={!searchOpen && business === "planning" && !weatherTarget}>
+        {selectedLeg ? <div className="workspace-leg-detail workspace-mobile-only"><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
+        {!isFeaturedMode && points.length >= 2 && !workspace.route ? (
+          <aside data-glass="desktop" className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
+            <div className="workspace-metrics-loading__header">
+              <strong>{workspace.routeStatus === "cancelled" ? "已取消路线生成" : workspace.routeStatus === "failed" ? "路线暂不可用" : "正在计算路线"}</strong>
+              {workspace.routeStatus === "cancelled" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="workspace-metrics-loading__retry"
+                  onClick={workspace.retryRouteCalculation}
+                  disabled={workspace.mapStatus !== "ready" || !workspace.adapter}
+                  title={workspace.mapStatus !== "ready" ? "地图服务连接后可再次生成" : "按当前控制点和策略再次生成"}
+                >
+                  <RotateCw size={16} aria-hidden="true" />
+                  再次生成
+                </Button>
+              ) : null}
+            </div>
+            <span>{workspace.routeStatus === "cancelled" ? "控制点已保留，可点击再次生成。" : workspace.routeStatus === "failed" ? "可继续调整途经点，或切换路线策略重试。" : "预计里程与用时将在这里显示"}</span>
+          </aside>
+        ) : null}
+        {!isFeaturedMode && workspace.route ? (
+          <RouteMetricsPanel
+            route={workspace.route}
+            provider={workspace.mapProvider}
+            controlPoints={points}
+            selectedRouteLegId={workspace.selectedRouteLegId}
+          />
+        ) : null}
+
+        {!isFeaturedMode && workspace.activePlan && points.length === 0 ? (
+          <p className="workspace-route-empty">搜索地点或双击地图，添加路线起点。</p>
+        ) : null}
+        </WorkspaceSheetPage>
+        </div>
         <WorkspaceSheetPage active={!searchOpen && business === "guide" && !guideDetail}>
           <button type="button" className="workspace-add-place workspace-mobile-only" onClick={() => searchRef.current?.open()} disabled={Boolean(searchDisabledReason)}>＋ 添加我的标记</button>
         {activeFeaturedRoute ? (
@@ -592,42 +644,6 @@ export function RoutePlanningWorkspace() {
           </Suspense>
         ) : null}
 
-        <WorkspaceSheetPage active={!searchOpen && business === "planning" && !weatherTarget}>
-        {selectedLeg ? <div className="workspace-leg-detail workspace-mobile-only"><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
-        {!isFeaturedMode && points.length >= 2 && !workspace.route ? (
-          <aside data-glass="desktop" className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
-            <div className="workspace-metrics-loading__header">
-              <strong>{workspace.routeStatus === "cancelled" ? "已取消路线生成" : workspace.routeStatus === "failed" ? "路线暂不可用" : "正在计算路线"}</strong>
-              {workspace.routeStatus === "cancelled" ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="workspace-metrics-loading__retry"
-                  onClick={workspace.retryRouteCalculation}
-                  disabled={workspace.mapStatus !== "ready" || !workspace.adapter}
-                  title={workspace.mapStatus !== "ready" ? "地图服务连接后可再次生成" : "按当前控制点和策略再次生成"}
-                >
-                  <RotateCw size={16} aria-hidden="true" />
-                  再次生成
-                </Button>
-              ) : null}
-            </div>
-            <span>{workspace.routeStatus === "cancelled" ? "控制点已保留，可点击再次生成。" : workspace.routeStatus === "failed" ? "可继续调整途经点，或切换路线策略重试。" : "预计里程与用时将在这里显示"}</span>
-          </aside>
-        ) : null}
-        {!isFeaturedMode && workspace.route ? (
-          <RouteMetricsPanel
-            route={workspace.route}
-            provider={workspace.mapProvider}
-            controlPoints={points}
-            selectedRouteLegId={workspace.selectedRouteLegId}
-          />
-        ) : null}
-
-        {!isFeaturedMode && workspace.activePlan && points.length === 0 ? (
-          <p className="workspace-route-empty">搜索地点或双击地图，添加路线起点。</p>
-        ) : null}
-        </WorkspaceSheetPage>
       </WorkspaceTaskSheet>
       {!isFeaturedMode ? <ElevationPanel hasRoute={Boolean(workspace.route)} /> : null}
     </main>

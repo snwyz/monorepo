@@ -68,9 +68,15 @@ export interface WebMapControlPoint extends MapCoordinate {
   selected?: boolean;
 }
 
+export interface RouteRoadSection {
+  name: string;
+  path: MapCoordinate[];
+}
+
 export interface WebMapRouteLeg {
   id: string;
   path: MapCoordinate[];
+  roadSections?: RouteRoadSection[];
   selected?: boolean;
   stale?: boolean;
   failed?: boolean;
@@ -102,6 +108,7 @@ export interface DrivingRouteLeg {
   durationMinutes: number;
   trafficLightCount: number | null;
   path: MapCoordinate[];
+  roadSections?: RouteRoadSection[];
 }
 
 export interface ClosedDrivingRoute {

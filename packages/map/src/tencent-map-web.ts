@@ -32,6 +32,8 @@ import {
   isValidMapCoordinate,
 } from "./web-viewport";
 
+import { getTencentRoadPath, mergeRoadSections, selectRoadLabels } from "./route-road-label";
+
 interface TencentLatLng {
   getLat(): number;
   getLng(): number;
@@ -86,6 +88,7 @@ interface TencentDrivingRoute {
   duration?: number;
   traffic_light_count?: number;
   polyline?: number[];
+  steps?: Array<{ road_name?: unknown; polyline_idx?: number[] }>;
 }
 
 interface TencentWebServiceResponse {
@@ -200,6 +203,11 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   private readonly routeOutlineLayer: TencentOverlay;
   private readonly routeCoreLayer: TencentOverlay;
   private readonly routeLayer: TencentOverlay;
+  private readonly roadLabelLayer: TencentOverlay;
+  private roadLabelSignature = "";
+  private roadLabelLegs: WebMapRouteLeg[] = [];
+  private roadLabelPoints: WebMapControlPoint[] = [];
+  private readonly roadLabelsChangedHandler = () => this.updateRoadLabels();
   private readonly routeLegInsertionOutlineLayer: TencentOverlay;
   private readonly routeLegInsertionGuideLayer: TencentOverlay;
   private readonly routeLegInsertionHandleLayer: TencentOverlay;
@@ -427,15 +435,23 @@ class TencentMapCanvasImpl implements WebMapCanvas {
           color: mapOverlayColors.routeCore,
           width: plannedRouteStrokeWidths.normal.core,
           lineCap: "round",
+          showArrow: true,
+          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
         }),
         selected: new tmap.PolylineStyle({
           color: mapOverlayColors.routeCore,
           width: plannedRouteStrokeWidths.selected.core,
           lineCap: "round",
+          showArrow: true,
+          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
         }),
       },
       geometries: [],
     });
+    this.roadLabelLayer = new tmap.MultiMarker({
+      map, zIndex: 90, disableInteractive: true, styles: {}, geometries: [],
+    });
+    map.on("idle", this.roadLabelsChangedHandler);
     this.routeLegInsertionOutlineLayer = new tmap.MultiPolyline({
       map,
       zIndex: 80,
@@ -528,6 +544,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   setControlPoints(controlPoints: WebMapControlPoint[]) {
+    this.roadLabelPoints = controlPoints;
+    this.updateRoadLabels();
     const styles: Record<string, unknown> = {};
     const geometries = controlPoints.map((point) => {
       const styleId = `label-${point.id}-${point.selected ? "selected" : "normal"}`;
@@ -627,6 +645,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
+    this.roadLabelLegs = routeLegs;
+    this.updateRoadLabels();
     const outline = routeLegs
       .filter((leg) => leg.path.length > 1)
       .map((leg) => ({
@@ -666,6 +686,28 @@ class TencentMapCanvasImpl implements WebMapCanvas {
           (point) => new this.tmap.LatLng(point.latitude, point.longitude),
         ),
       })));
+  }
+
+  private updateRoadLabels() {
+    const labels = selectRoadLabels(this.roadLabelLegs, this.roadLabelPoints, {
+      center: toCoordinate(this.map.getCenter()), zoom: this.map.getZoom(),
+      width: this.container.clientWidth, height: this.container.clientHeight,
+    });
+    const signature = JSON.stringify(labels);
+    if (signature === this.roadLabelSignature) return;
+    this.roadLabelSignature = signature;
+    const styles: Record<string, unknown> = {};
+    const geometries = labels.map(({ coordinate, visual }, index) => {
+      const id = `road-label-${index}`;
+      styles[id] = new this.tmap.MarkerStyle({
+        width: visual.width, height: visual.height,
+        anchor: visual.anchor, src: visual.source,
+      });
+      return { id, styleId: id, position: new this.tmap.LatLng(coordinate.latitude, coordinate.longitude) };
+    });
+    this.roadLabelLayer.setGeometries([]);
+    this.roadLabelLayer.setStyles?.(styles);
+    this.roadLabelLayer.setGeometries(geometries);
   }
 
   setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null) {
@@ -821,6 +863,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.map.off("dblclick", this.doubleClickHandler);
     this.map.off("click", this.mapClickHandler);
     this.map.off("tilesloaded", this.mapReadyHandler);
+    this.map.off("idle", this.roadLabelsChangedHandler);
+    this.roadLabelLayer.setMap?.(null);
     this.controlPointLayer.off?.("click", this.markerClickHandler);
     this.featuredControlPointLayer.off?.("click", this.featuredControlPointClickHandler);
     this.featuredMarkerLayer.off?.("click", this.featuredMarkerClickHandler);
@@ -1070,9 +1114,11 @@ export class TencentMapWebAdapter implements WebMapAdapter {
     if (controlPoints.length < 2) {
       throw new TencentMapWebError("至少需要两个控制点", "INVALID_RESULT");
     }
-    const policyByStrategy: Record<DrivingStrategy, string> = {
+    if (strategy === "highway") {
+      throw new TencentMapWebError("当前腾讯地图接口不支持高速优先，请切换高德地图，或选择不走高速。", "SERVICE_FAILED");
+    }
+    const policyByStrategy: Record<Exclude<DrivingStrategy, "highway">, string> = {
       recommend: "LEAST_TIME,REAL_TRAFFIC",
-      highway: "LEAST_TIME,REAL_TRAFFIC",
       "avoid-highway": "LEAST_TIME,AVOID_HIGHWAY",
     };
     const calculationVersion = ++this.routeCalculationVersion;
@@ -1117,6 +1163,9 @@ export class TencentMapWebAdapter implements WebMapAdapter {
           durationMinutes: route.duration ?? 0,
           trafficLightCount: route.traffic_light_count ?? null,
           path,
+          roadSections: mergeRoadSections((route.steps ?? []).map((step) => ({
+            name: step.road_name, path: getTencentRoadPath(path, step.polyline_idx),
+          }))),
         });
       }
       const lightCounts = legs.map((leg) => leg.trafficLightCount);

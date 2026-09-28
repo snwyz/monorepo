@@ -5,6 +5,7 @@ export type {
   AmapWebAdapterOptions,
   ClosedDrivingRoute,
   DrivingRouteLeg,
+  RouteRoadSection,
   DrivingStrategy,
   MapCoordinate,
   PlaceCandidate,

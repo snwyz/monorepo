@@ -5,7 +5,7 @@ import { requestAmapWebService } from "@/lib/amap/amap-web-service";
 export const runtime = "nodejs";
 
 const coordinatePattern = /^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/;
-const allowedStrategies = new Set(["10", "13", "20"]);
+const allowedStrategies = new Set(["10", "13", "19", "20"]);
 
 function toAmapCoordinate(value: string) {
   const [latitude, longitude] = value.split(",");
@@ -15,11 +15,11 @@ function toAmapCoordinate(value: string) {
 export async function GET(request: NextRequest) {
   const from = request.nextUrl.searchParams.get("from") ?? "";
   const to = request.nextUrl.searchParams.get("to") ?? "";
-  const requestedStrategy = request.nextUrl.searchParams.get("strategy") ?? "10";
+  const requestedStrategy = request.nextUrl.searchParams.get("strategy") ?? "19";
   if (!coordinatePattern.test(from) || !coordinatePattern.test(to)) {
     return NextResponse.json({ status: "0", info: "起终点坐标格式无效" }, { status: 400 });
   }
-  const strategy = allowedStrategies.has(requestedStrategy) ? requestedStrategy : "10";
+  const strategy = allowedStrategies.has(requestedStrategy) ? requestedStrategy : "19";
   try {
     const result = await requestAmapWebService("/v3/direction/driving", {
       origin: toAmapCoordinate(from),

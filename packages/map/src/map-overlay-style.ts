@@ -11,14 +11,14 @@ export const mapOverlayColors = {
 
 export const plannedRouteStrokeWidths = {
   normal: {
-    outline: 11,
-    boundary: 8,
-    core: 4,
+    outline: 14,
+    boundary: 11,
+    core: 7,
   },
   selected: {
-    outline: 13,
-    boundary: 10,
-    core: 6,
+    outline: 16,
+    boundary: 13,
+    core: 9,
   },
   stale: {
     outline: 9,
