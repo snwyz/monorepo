@@ -11,7 +11,7 @@ import {
 } from "react";
 import { RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { PlaceCandidate } from "@roadbook/map/web";
+import type { PlaceCandidate, MapCoordinate } from "@roadbook/map/web";
 
 import { WorkspaceTaskSheet, WorkspaceSheetPage } from "@/components/route-presentation/workspace-task-sheet";
 import { ElevationPanel } from "@/components/elevation-analysis/elevation-panel";
@@ -21,6 +21,7 @@ import { GlobalSearch, type GlobalSearchHandle } from "@/components/map-search/g
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
 import { RoutePlanWelcomePanel } from "@/components/route-plan-catalog/route-plan-welcome-panel";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
+import { RouteChargingEntry } from "@/components/route-charging/route-charging-entry";
 import { RouteMap } from "@/components/route-presentation/route-map";
 import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
 import { AlertIcon, LayersIcon } from "@/components/ui/icons";
@@ -29,6 +30,8 @@ import type { FeaturedDrivingRoute } from "@/domain/featured-driving-route/model
 import { formatPlanDisplayName, ROUTE_PLAN_CONTROL_POINT_LIMIT } from "@/domain/route-planning/model";
 import { useFeaturedDrivingRouteAtlas } from "@/hooks/use-featured-driving-route-atlas";
 import { useRoutePlanningWorkspace } from "@/hooks/use-route-planning-workspace";
+import { useRouteCharging } from "@/hooks/use-route-charging";
+import type { RouteChargingCandidate } from "@/domain/route-charging/model";
 import { StaticFeaturedDrivingRouteRepository } from "@/infrastructure/featured-driving-route/static-featured-driving-route-repository";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 import type { WeatherForecastTarget } from "@/domain/weather-forecast/model";
@@ -52,6 +55,7 @@ const WeatherForecastCard = lazy(() =>
 );
 
 const featuredRouteRepository = new StaticFeaturedDrivingRouteRepository();
+const RouteChargingPanel = lazy(() => import("@/components/route-charging/route-charging-panel").then((module) => ({ default: module.RouteChargingPanel })));
 
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
@@ -340,16 +344,65 @@ export function RoutePlanningWorkspace() {
   }, [clearRouteLegSelection, workspace.selectedRouteLegId]);
 
   const selectedLeg = workspace.route?.legs.find((leg) => leg.id === workspace.selectedRouteLegId);
+  const [chargingEnabled, setChargingEnabled] = useState(false);
+  const charging = useRouteCharging(workspace.route,
+    `${workspace.activePlan?.id}:${workspace.mapProvider}`, workspace.activePlan?.revision ?? 0,
+    chargingEnabled && !isFeaturedMode && points.length >= 2, workspace.routeStatus === "ready");
+  const [chargingFocusRequest, setChargingFocusRequest] = useState<{ coordinate: MapCoordinate; sequence: number } | null>(null);
+  const chargingMarkers = useMemo(() => charging.result?.stations.map((station) => ({
+    id: station.id, name: station.name, ...station.coordinate, selected: station.id === charging.selectedStation?.id,
+  })) ?? [], [charging.result, charging.selectedStation]);
+  const selectedChargingStation = !weatherTarget && !selectedLeg ? charging.selectedStation : null;
+  const selectChargingStation = (id: string | null) => {
+    charging.selectStation(id);
+    const station = charging.result?.stations.find((item) => item.id === id);
+    if (station) {
+      setWeatherTargetId(null);
+      workspace.clearRouteLegSelection();
+      setChargingFocusRequest((previous) => ({ coordinate: station.coordinate, sequence: (previous?.sequence ?? 0) + 1 }));
+    }
+    revealRoute();
+  };
+  const chargingAlreadyAdded = Boolean(selectedChargingStation && points.some((point) =>
+    Math.abs(point.latitude - selectedChargingStation.coordinate.latitude) < 0.00001
+    && Math.abs(point.longitude - selectedChargingStation.coordinate.longitude) < 0.00001));
+  const chargingAddDisabledReason = chargingAlreadyAdded ? "该站点已在路线中"
+    : controlPointLimitReached ? controlPointLimitMessage
+    : !charging.current || workspace.routeStatus !== "ready" ? "等待沿途站点更新后再添加" : undefined;
+  const addChargingStation = (station: RouteChargingCandidate) => {
+    if (!workspace.activePlan || chargingAddDisabledReason) return;
+    const inserted = workspace.insertPlaceCandidate({
+      planId: workspace.activePlan.id, fromId: station.fromControlPointId, toId: station.toControlPointId,
+    }, { id: station.id, name: station.name, address: station.address, coordinate: station.coordinate });
+    if (inserted) { charging.selectStation(null); revealRoute(); appToast.info("已加入途经点，正在更新路线"); }
+    else appToast.info("路线已变化，请等待沿途站点更新");
+  };
+  const chargingStatus = !chargingEnabled ? "点击图标，在地图上显示全程超充"
+    : workspace.routeStatus !== "ready" ? "等待路线更新 · 图层保持开启"
+    : charging.loading ? "正在更新全程超充…"
+    : charging.error ? (charging.result ? "更新失败，保留上次站点" : "站点暂不可用")
+    : charging.result?.stations.length === 0 ? "全程沿途 2 公里内暂无超充站"
+    : `${charging.result?.stations.length ?? 0} 座超充 · 点击地图图标查看${charging.result?.stale ? " · 缓存目录" : ""}`;
+  const dismissChargingStation = charging.selectStation;
+  useEffect(() => {
+    if (!selectedChargingStation) return;
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || (event.target instanceof HTMLElement && event.target.closest('input, textarea, [contenteditable="true"], [role="dialog"]'))) return;
+      dismissChargingStation(null);
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [selectedChargingStation, dismissChargingStation]);
   const selectedPlace = points.find((point) => point.id === weatherTargetId);
   const featuredPlace = activeFeaturedRoute?.controlPoints.find((point) => point.id === featuredSelectedControlPointId)
     ?? featuredRouteMarkers.find((point) => point.id === featuredSelectedMarkerId);
-  const planningDetail = business === "planning" && Boolean(weatherTarget || selectedLeg);
+  const planningDetail = business === "planning" && Boolean(weatherTarget || selectedChargingStation || selectedLeg);
   const guideDetail = business === "guide" && Boolean(featuredPlace);
   const routeTitle = workspace.activePlan ? formatPlanDisplayName(workspace.catalog.find((plan) => plan.id === workspace.activePlan?.id) ?? workspace.activePlan) : "路线规划";
-  const pageKey = searchOpen ? (searchPreviewOpen ? "search-preview" : "search") : planningDetail ? (weatherTarget ? `place:${weatherTarget.id}` : `leg:${selectedLeg?.id}`) : guideDetail ? `guide-place:${featuredPlace?.id}` : business;
-  const title = business === "discovery" ? "" : business === "catalog" ? "我的路线" : business === "guide" ? (featuredPlace?.name ?? activeFeaturedRoute?.name ?? "路线指南") : weatherTarget?.name ?? (selectedLeg ? `路段 ${workspace.route!.legs.indexOf(selectedLeg) + 1}` : routeTitle);
+  const pageKey = searchOpen ? (searchPreviewOpen ? "search-preview" : "search") : planningDetail ? (weatherTarget ? `place:${weatherTarget.id}` : selectedChargingStation ? `charging:${selectedChargingStation.id}` : `leg:${selectedLeg?.id}`) : guideDetail ? `guide-place:${featuredPlace?.id}` : business;
+  const title = business === "discovery" ? "" : business === "catalog" ? "我的路线" : business === "guide" ? (featuredPlace?.name ?? activeFeaturedRoute?.name ?? "路线指南") : weatherTarget?.name ?? selectedChargingStation?.name ?? (selectedLeg ? `路段 ${workspace.route!.legs.indexOf(selectedLeg) + 1}` : routeTitle);
   const returnToParent = () => {
-    if (planningDetail) { setWeatherTargetId(null); workspace.clearRouteLegSelection(); }
+    if (planningDetail) { setWeatherTargetId(null); charging.selectStation(null); workspace.clearRouteLegSelection(); }
     else if (guideDetail) clearFeaturedSelection();
     else setBusiness("discovery");
   };
@@ -381,10 +434,13 @@ export function RoutePlanningWorkspace() {
         featuredControlPoints={featuredControlPoints}
         featuredMarkers={featuredMarkers}
         featuredFocusRequest={featuredFocusRequest}
+        chargingStations={chargingMarkers}
+        chargingFocusRequest={chargingFocusRequest}
+        onSelectChargingStation={selectChargingStation}
         onDoubleClick={addCoordinate}
-        onClearRouteLegSelection={clearMapContextSelection}
-        onSelectControlPoint={selectMapControlPoint}
-        onSelectRouteLeg={(id) => { workspace.selectRouteLeg(id); setWeatherTargetId(null); revealRoute(); }}
+        onClearRouteLegSelection={() => { charging.selectStation(null); clearMapContextSelection(); }}
+        onSelectControlPoint={(id) => { charging.selectStation(null); selectMapControlPoint(id); }}
+        onSelectRouteLeg={(id) => { charging.selectStation(null); workspace.selectRouteLeg(id); setWeatherTargetId(null); revealRoute(); }}
         onSelectFeaturedControlPoint={(id) => { selectFeaturedControlPoint(id); setBusiness("guide"); }}
         onSelectFeaturedMarker={(id) => { selectFeaturedMarker(id); setBusiness("guide"); }}
         onInsertRouteLegControlPoint={workspace.insertRouteLegControlPoint}
@@ -512,11 +568,28 @@ export function RoutePlanningWorkspace() {
             <button type="button" data-glass="inset" className="workspace-discovery__resume" onClick={() => searchRef.current?.open()}>探索热门自驾路线<span>›</span></button>
           </div>
         </WorkspaceSheetPage>
-        <div className="workspace-route-panels">
+        <div className={`workspace-route-panels${!isFeaturedMode && selectedChargingStation ? " is-charging" : ""}`}>
+        <WorkspaceSheetPage active={!searchOpen && business === "planning" && Boolean(selectedChargingStation)}>
+        {!isFeaturedMode && selectedChargingStation ? (
+          <Suspense fallback={<section className="route-charging-loading" role="status">正在加载充电站详情…</section>}>
+            <RouteChargingPanel
+              station={selectedChargingStation} provider={workspace.mapProvider}
+              stale={!charging.current || Boolean(charging.result?.stale)}
+              addDisabledReason={chargingAddDisabledReason}
+              onAdd={addChargingStation} onClose={() => charging.selectStation(null)}
+            />
+          </Suspense>
+        ) : null}
+        </WorkspaceSheetPage>
         <WorkspaceSheetPage active={!searchOpen && business === "planning" && !planningDetail}>
-        {!isFeaturedMode && workspace.activePlan ? (
+        {!isFeaturedMode && workspace.activePlan && !selectedChargingStation ? (
           <Suspense fallback={<div data-glass="desktop" className={`address-list widget workspace-section-loading${points.length === 0 ? " is-empty" : ""}`} style={{ height: points.length * 112 + 96 }} role="status">正在加载…</div>}>
             <RouteAddressList
+              routeActions={points.length >= 2 ? <RouteChargingEntry
+                disabled={!chargingEnabled && (workspace.routeStatus !== "ready" || !workspace.route?.legs.length)}
+                enabled={chargingEnabled} status={chargingStatus} error={Boolean(charging.error)} onRetry={charging.retry}
+                onToggle={() => { setChargingEnabled(!chargingEnabled); charging.selectStation(null); }}
+              /> : null}
               strategyControl={(
                 <Suspense fallback={<span className="address-list__strategy-loading">路线策略…</span>}>
                   <RouteStrategySelector
@@ -545,7 +618,7 @@ export function RoutePlanningWorkspace() {
                 }
               }}
               onShowWeather={selectMapControlPoint}
-              onSelectRouteLeg={(id) => { workspace.selectRouteLeg(id); setWeatherTargetId(null); }}
+              onSelectRouteLeg={(id) => { charging.selectStation(null); workspace.selectRouteLeg(id); setWeatherTargetId(null); }}
               addWaypointDisabledReason={searchDisabledReason}
               onAddWaypoint={(fromId, toId) => {
                 if (!workspace.activePlan || searchDisabledReason) return;

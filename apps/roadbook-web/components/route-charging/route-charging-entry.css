@@ -1,0 +1,12 @@
+.route-facilities { flex: 0 0 auto; margin: 10px 14px 0; padding: 8px 12px; border: 1px solid rgba(60,60,67,.1); border-radius: 14px; background: rgba(255,255,255,.7); color: var(--rb-color-text-strong); }
+.route-facilities__layers { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.route-facilities__layers > span { font-size: 14px; font-weight: 550; margin-right: auto; }
+.route-facilities__toggle { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto; padding: 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; cursor: pointer; }
+.route-facilities__toggle img { width: 24px; height: 24px; object-fit: contain; }
+.route-facilities__toggle[aria-pressed="true"] { background: rgba(227,25,55,.08); border-color: rgba(227,25,55,.3); box-shadow: inset 0 -2px 0 rgba(227,25,55,.7); }
+.route-facilities__toggle:disabled { opacity: .4; cursor: default; }
+.route-facilities__status { display: flex; align-items: center; gap: 6px; min-height: 32px; font-size: 11px; line-height: 16px; color: var(--rb-color-muted); }
+.route-facilities__status > span { flex: 1; }
+.route-facilities__status button { min-height: 32px; border: 0; background: transparent; color: var(--rb-color-text-strong); cursor: pointer; flex-shrink: 0; }
+@media (hover: hover) { .route-facilities__toggle:hover:not(:disabled) { background: rgba(118,118,128,.1); } }
+@media (max-width: 760px) { .route-facilities { margin: 0 0 16px; } .route-facilities__status, .route-facilities__status button { min-height: 44px; } }

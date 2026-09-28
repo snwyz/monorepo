@@ -28,6 +28,7 @@ import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri"
 
 interface RouteAddressListProps {
   strategyControl?: ReactNode;
+  routeActions?: ReactNode;
   provider: WebMapProvider;
   controlPoints: ControlPoint[];
   selectedControlPointId: string | null;
@@ -212,6 +213,7 @@ function SortableAddressSequence({
 
 export function RouteAddressList({
   strategyControl,
+  routeActions,
   provider,
   controlPoints,
   selectedControlPointId,
@@ -269,6 +271,7 @@ export function RouteAddressList({
           <ChevronDownIcon className={collapsed ? undefined : "is-rotated"} />
         </span>
       </button>
+      {routeActions}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

@@ -30,6 +30,7 @@ export interface WebMapOptions {
   onRouteLegInsert?: (routeLegId: string, coordinate: MapCoordinate) => void;
   onFeaturedRouteControlPointSelect?: (controlPointId: string) => void;
   onFeaturedRouteMarkerSelect?: (markerId: string) => void;
+  onChargingStationSelect?: (stationId: string) => void;
   onLoading?: () => void;
   onReady?: () => void;
 }
@@ -56,6 +57,12 @@ export interface WebMapFeaturedRouteControlPoint extends MapCoordinate {
 }
 
 export interface WebMapFeaturedRouteMarker extends MapCoordinate {
+  id: string;
+  name: string;
+  selected?: boolean;
+}
+
+export interface WebMapChargingStation extends MapCoordinate {
   id: string;
   name: string;
   selected?: boolean;
@@ -126,8 +133,10 @@ export interface WebMapCanvas {
   setFeaturedRoads(roads: WebMapFeaturedRoad[]): void;
   setFeaturedRouteControlPoints(controlPoints: WebMapFeaturedRouteControlPoint[]): void;
   setFeaturedRouteMarkers(markers: WebMapFeaturedRouteMarker[]): void;
+  setChargingStations(stations: WebMapChargingStation[]): void;
   setUserLocation(location: WebMapLocation | null): void;
   setCenter(center: MapCoordinate): void;
+  focusCoordinate(coordinate: MapCoordinate, padding: WebMapViewportPadding): void;
   setView(center: MapCoordinate, zoom: number): void;
   containsCoordinates(
     coordinates: MapCoordinate[],

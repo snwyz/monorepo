@@ -6,6 +6,7 @@ import type {
   PlaceCandidate,
   TencentMapWebAdapterOptions,
   WebMapCanvas,
+  WebMapChargingStation,
   WebMapControlPoint,
   WebMapFeaturedRoad,
   WebMapFeaturedRouteControlPoint,
@@ -19,6 +20,7 @@ import type {
 } from "./web-types";
 import { TencentMapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
+import { createChargingStationMarkerVisual } from "./charging-station-marker";
 import {
   createFeaturedControlPointLabelVisual,
   createFeaturedMarkerVisual,
@@ -29,6 +31,7 @@ import { mapOverlayColors, plannedRouteStrokeWidths } from "./map-overlay-style"
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
+  getPaddedMapCenter,
   isValidMapCoordinate,
 } from "./web-viewport";
 
@@ -198,6 +201,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   private readonly featuredRoadLabelLayer: TencentOverlay;
   private readonly featuredControlPointLayer: TencentOverlay;
   private readonly featuredMarkerLayer: TencentOverlay;
+  private readonly chargingStationLayer: TencentOverlay;
   private readonly controlPointLayer: TencentOverlay;
   private readonly userLocationLayer: TencentOverlay;
   private readonly routeOutlineLayer: TencentOverlay;
@@ -221,6 +225,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   ) => void;
   private readonly onFeaturedRouteControlPointSelect?: (controlPointId: string) => void;
   private readonly onFeaturedRouteMarkerSelect?: (markerId: string) => void;
+  private readonly onChargingStationSelect?: (stationId: string) => void;
   private readonly onLoading?: () => void;
   private readonly onReady?: () => void;
   private routeLegInsertion: WebMapRouteLegInsertion | null = null;
@@ -265,6 +270,11 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     if (event.geometry?.id) this.onFeaturedRouteMarkerSelect?.(event.geometry.id);
   };
 
+  private readonly chargingStationClickHandler = (event: TencentMapEvent) => {
+    event.originalEvent?.stopPropagation?.();
+    if (event.geometry?.id) this.onChargingStationSelect?.(event.geometry.id);
+  };
+
   private readonly routeLegInsertionDragStartHandler = (event: TencentMapEvent) => {
     if (!this.routeLegInsertion || event.geometry?.id !== "route-leg-insertion-handle") return;
     event.originalEvent?.preventDefault?.();
@@ -300,6 +310,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   ) {
     this.onDoubleClick = options.onDoubleClick;
     this.onMapBackgroundSelect = options.onMapBackgroundSelect;
+    this.onChargingStationSelect = options.onChargingStationSelect;
     this.onMarkerSelect = options.onMarkerSelect;
     this.onRouteLegSelect = options.onRouteLegSelect;
     this.onRouteLegInsert = options.onRouteLegInsert;
@@ -368,6 +379,9 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       isStopPropagation: true,
       styles: {},
       geometries: [],
+    });
+    this.chargingStationLayer = new tmap.MultiMarker({
+      map, zIndex: 125, isStopPropagation: true, styles: {}, geometries: [],
     });
     this.controlPointLayer = new tmap.MultiMarker({
       map,
@@ -512,6 +526,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.controlPointLayer.on?.("click", this.markerClickHandler);
     this.featuredControlPointLayer.on?.("click", this.featuredControlPointClickHandler);
     this.featuredMarkerLayer.on?.("click", this.featuredMarkerClickHandler);
+    this.chargingStationLayer.on?.("click", this.chargingStationClickHandler);
     this.routeLayer.on?.("click", this.routeClickHandler);
     this.routeLegInsertionHandleLayer.on?.(
       "mousedown",
@@ -644,6 +659,21 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.featuredMarkerLayer.setGeometries(geometries);
   }
 
+  setChargingStations(stations: WebMapChargingStation[]) {
+    const styles: Record<string, unknown> = {};
+    for (const selected of [false, true]) {
+      const visual = createChargingStationMarkerVisual(selected);
+      styles[selected ? "selected" : "normal"] = new this.tmap.MarkerStyle({
+        width: visual.width, height: visual.height, anchor: visual.anchor, src: visual.source,
+      });
+    }
+    this.chargingStationLayer.setStyles?.(styles);
+    this.chargingStationLayer.setGeometries(stations.map((station) => ({
+      id: station.id, styleId: station.selected ? "selected" : "normal",
+      position: new this.tmap.LatLng(station.latitude, station.longitude),
+    })));
+  }
+
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
     this.roadLabelLegs = routeLegs;
     this.updateRoadLabels();
@@ -739,6 +769,12 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       ),
     }]);
     locationDebug("info", "map:user-location-applied", location);
+  }
+
+  focusCoordinate(coordinate: MapCoordinate, padding: WebMapViewportPadding) {
+    if (!isValidMapCoordinate(coordinate)) return;
+    const zoom = Math.max(13, this.map.getZoom());
+    this.setView(getPaddedMapCenter(coordinate, zoom, padding), zoom);
   }
 
   setCenter(center: MapCoordinate) {
@@ -868,6 +904,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.controlPointLayer.off?.("click", this.markerClickHandler);
     this.featuredControlPointLayer.off?.("click", this.featuredControlPointClickHandler);
     this.featuredMarkerLayer.off?.("click", this.featuredMarkerClickHandler);
+    this.chargingStationLayer.off?.("click", this.chargingStationClickHandler);
     this.routeLayer.off?.("click", this.routeClickHandler);
     this.routeLegInsertionHandleLayer.off?.(
       "mousedown",
@@ -903,6 +940,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.featuredRoadLabelLayer.setMap?.(null);
     this.featuredControlPointLayer.setMap?.(null);
     this.featuredMarkerLayer.setMap?.(null);
+    this.chargingStationLayer.setMap?.(null);
     this.userLocationLayer.setMap?.(null);
     this.routeOutlineLayer.setMap?.(null);
     this.routeCoreLayer.setMap?.(null);

@@ -75,7 +75,7 @@ export function RouteMetricsPanel({
         )}
         <div className="metric-grid__item"><ClockIcon /><span><small>{durationLabel}</small><strong aria-live="polite">{formatDuration(duration)}</strong></span></div>
       </div>
-      <footer>数据来自{provider === "amap" ? "高德" : "腾讯"}地图 · 预计值仅供参考</footer>
+      <footer>数据来自{provider === "amap" ? "高德" : "腾讯"}地图 · 预计值</footer>
     </aside>
   );
 }

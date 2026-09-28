@@ -37,7 +37,7 @@
   --rb-color-success: #2f6b4f;
   --rb-color-warning: #946200;
   --rb-color-danger: #b42318;
-  --rb-color-focus: #0a0a0a;
+  --rb-color-focus: #87939e;
   --rb-color-route-boundary: #0a84ff;
   --rb-color-route-core: #30d158;
   --rb-color-route-stale: #8e8e93;
@@ -48,7 +48,6 @@
   --rb-road-g228: #0a84ff;
   --rb-shadow-widget: 0 8px 28px rgba(10, 10, 10, 0.09);
   --rb-shadow-float: 0 3px 12px rgba(10, 10, 10, 0.12);
-  --rb-border-search: linear-gradient(135deg, rgba(10, 10, 10, 0.2) 0%, rgba(231, 229, 225, 0.88) 48%, rgba(10, 10, 10, 0.1) 100%);
   --rb-shadow-search: 0 4px 14px rgba(10, 10, 10, 0.08), 0 1px 3px rgba(10, 10, 10, 0.05);
   --rb-ease: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -67,6 +66,9 @@ button, input, select { font: inherit; }
 button, select { cursor: pointer; }
 button:disabled, select:disabled { cursor: not-allowed; }
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--rb-color-focus); outline-offset: 2px; }
+@media (forced-colors: active) {
+  :root { --rb-color-focus: Highlight; }
+}
 svg { width: 20px; height: 20px; flex: 0 0 auto; }
 
 .planning-workspace { position: relative; width: 100%; min-height: 100dvh; overflow: hidden; isolation: isolate; }
@@ -134,7 +136,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .plan-selector__rename-panel { margin: 0 0 12px; padding: 12px; border-radius: 12px; background: var(--rb-color-surface-subtle); animation: planManagementMenuIn 120ms var(--rb-ease) both; }
 .plan-selector__rename-panel > label { display: block; color: var(--rb-color-muted); font-size: 11px; line-height: 16px; font-weight: 500; }
 .plan-selector__rename-panel > input { width: 100%; height: 38px; margin-top: 6px; padding: 0 10px; border: 1px solid transparent; border-radius: 9px; outline: 0; background: var(--rb-color-surface); color: var(--rb-color-text-strong); font-size: 14px; line-height: 20px; font-weight: 600; }
-.plan-selector__rename-panel > input:focus-visible { border-color: rgba(10,10,10,.28); outline: 0; box-shadow: 0 0 0 3px rgba(10,10,10,.07); }
+.plan-selector__rename-panel > input:focus-visible { border-color: var(--rb-color-focus); outline: 2px solid var(--rb-color-focus); outline-offset: -2px; }
 .plan-selector__rename-footer { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .plan-selector__rename-footer > small { color: var(--rb-color-muted); font-size: 10px; line-height: 15px; }
 .plan-selector__rename-footer > span { display: flex; align-items: center; gap: 2px; }
@@ -154,6 +156,9 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .plan-row.is-active { background: rgba(253,252,251,.38); box-shadow: inset 0 0 0 1px rgba(10, 10, 10, .055); }
 .plan-row.is-active:hover { background: rgba(251,250,248,.48); box-shadow: inset 0 0 0 1px rgba(10, 10, 10, .075); }
 .plan-row:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--rb-color-focus); }
+@media (forced-colors: active) {
+  .plan-row:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+}
 .plan-row__route { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; background: transparent; box-shadow: inset 0 0 0 1px transparent; transition: background 160ms var(--rb-ease), box-shadow 160ms var(--rb-ease); }
 .plan-row__route svg { width: 18px; }
 .plan-row:hover:not(.is-active) .plan-row__route { background: rgba(10, 10, 10, .025); }
@@ -447,6 +452,8 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .workspace-route-panels { display: contents; }
+.route-charging-loading { flex: 1 1 0; min-height: 280px; display: grid; place-items: center; color: var(--rb-color-muted); font-size: 13px; pointer-events: auto; }
+@media (max-width: 760px) { .route-charging-loading { min-height: 480px; order: 2; } }
 
 @media (min-width: 761px) {
   .workspace-route-panels { position: absolute; z-index: 6; top: 88px; right: 16px; bottom: 76px; width: 324px; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }

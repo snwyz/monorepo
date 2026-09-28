@@ -7,6 +7,7 @@ import type {
   PlaceCandidate,
   WebMapAdapter,
   WebMapCanvas,
+  WebMapChargingStation,
   WebMapControlPoint,
   WebMapFeaturedRoad,
   WebMapFeaturedRouteControlPoint,
@@ -19,6 +20,7 @@ import type {
 } from "./web-types";
 import { AmapWebError } from "./web-types";
 import { createControlPointLabelVisual } from "./control-point-label";
+import { createChargingStationMarkerVisual } from "./charging-station-marker";
 import {
   createFeaturedControlPointLabelVisual,
   createFeaturedMarkerVisual,
@@ -32,6 +34,7 @@ import {
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
+  getPaddedMapCenter,
   isValidMapCoordinate,
 } from "./web-viewport";
 
@@ -269,6 +272,7 @@ class AmapCanvasImpl implements WebMapCanvas {
   private featuredRoadLabelOverlays: AmapOverlay[] = [];
   private featuredControlPointOverlays: InteractiveOverlay[] = [];
   private featuredMarkerOverlays: InteractiveOverlay[] = [];
+  private chargingStationOverlays: InteractiveOverlay[] = [];
   private controlPointOverlays: InteractiveOverlay[] = [];
   private roadLabelOverlays: AmapOverlay[] = [];
   private roadLabelSignature = "";
@@ -298,6 +302,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     controlPointId: string,
   ) => void;
   private readonly onFeaturedRouteMarkerSelect?: (markerId: string) => void;
+  private readonly onChargingStationSelect?: (stationId: string) => void;
   private readonly onReady?: () => void;
   private dragResetFrame: number | null = null;
 
@@ -339,6 +344,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.onFeaturedRouteControlPointSelect =
       options.onFeaturedRouteControlPointSelect;
     this.onFeaturedRouteMarkerSelect = options.onFeaturedRouteMarkerSelect;
+    this.onChargingStationSelect = options.onChargingStationSelect;
     this.onReady = options.onReady;
     options.onLoading?.();
     map.setStatus({ doubleClickZoom: false });
@@ -457,6 +463,35 @@ class AmapCanvasImpl implements WebMapCanvas {
         bubble: false,
       });
       const handler = () => this.onFeaturedRouteMarkerSelect?.(item.id);
+      marker.on("click", handler);
+      this.map.add(marker);
+      return { overlay: marker, handler };
+    });
+  }
+
+  setChargingStations(stations: WebMapChargingStation[]) {
+    this.clearInteractiveOverlays(this.chargingStationOverlays);
+    this.chargingStationOverlays = stations.map((station) => {
+      const visual = createChargingStationMarkerVisual(station.selected);
+      const content = markerContent(visual.source, visual.width, visual.height);
+      content.setAttribute("role", "button");
+      content.setAttribute("aria-label", `超充站：${station.name}`);
+      content.setAttribute("aria-pressed", String(Boolean(station.selected)));
+      content.setAttribute("title", station.name);
+      content.tabIndex = 0;
+      content.style.pointerEvents = "auto";
+      const handler = () => this.onChargingStationSelect?.(station.id);
+      content.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        handler();
+      });
+      const marker = new this.amap.Marker({
+        position: toPosition(station), content, anchor: "top-left",
+        offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
+        zIndex: station.selected ? 160 : 150, bubble: false,
+      });
       marker.on("click", handler);
       this.map.add(marker);
       return { overlay: marker, handler };
@@ -652,6 +687,12 @@ class AmapCanvasImpl implements WebMapCanvas {
     if (isValidMapCoordinate(center)) this.map.setCenter(toPosition(center));
   }
 
+  focusCoordinate(coordinate: MapCoordinate, padding: WebMapViewportPadding) {
+    if (!isValidMapCoordinate(coordinate)) return;
+    const zoom = Math.max(13, this.map.getZoom());
+    this.setView(getPaddedMapCenter(coordinate, zoom, padding), zoom);
+  }
+
   setView(center: MapCoordinate, zoom: number) {
     if (!isValidMapCoordinate(center)) return;
     this.map.setCenter(toPosition(center));
@@ -732,6 +773,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.clearInteractiveOverlays(this.featuredControlPointOverlays);
     this.clearInteractiveOverlays(this.featuredMarkerOverlays);
     this.clearOverlays(this.routeOutlineOverlays);
+    this.clearInteractiveOverlays(this.chargingStationOverlays);
     this.clearInteractiveOverlays(this.routeCoreOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
     this.clearRouteLegInsertion();

@@ -69,6 +69,18 @@ function projectCoordinate(coordinate: MapCoordinate, worldSize: number) {
   };
 }
 
+/** 将目标置于扣除业务面板后的可视区中心，保留地图容器尺寸。 */
+export function getPaddedMapCenter(coordinate: MapCoordinate, zoom: number, padding: WebMapViewportPadding): MapCoordinate {
+  const worldSize = TILE_SIZE * 2 ** zoom;
+  const point = projectCoordinate(coordinate, worldSize);
+  const x = point.x + (padding.right - padding.left) / 2;
+  const y = point.y + (padding.bottom - padding.top) / 2;
+  return {
+    longitude: x / worldSize * 360 - 180,
+    latitude: Math.atan(Math.sinh(Math.PI * (1 - 2 * y / worldSize))) * 180 / Math.PI,
+  };
+}
+
 function wrappedHorizontalDelta(value: number, center: number, worldSize: number) {
   let delta = value - center;
   if (delta > worldSize / 2) delta -= worldSize;

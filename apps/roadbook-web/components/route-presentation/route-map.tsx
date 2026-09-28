@@ -5,6 +5,7 @@ import type {
   MapCoordinate,
   WebMapAdapter,
   WebMapCanvas,
+  WebMapChargingStation,
   WebMapFeaturedRoad,
   WebMapFeaturedRouteControlPoint,
   WebMapFeaturedRouteMarker,
@@ -38,6 +39,9 @@ interface RouteMapProps {
   featuredControlPoints: WebMapFeaturedRouteControlPoint[];
   featuredMarkers: WebMapFeaturedRouteMarker[];
   featuredFocusRequest: { coordinate: MapCoordinate; zoom: number; sequence: number } | null;
+  chargingStations: WebMapChargingStation[];
+  chargingFocusRequest: { coordinate: MapCoordinate; sequence: number } | null;
+  onSelectChargingStation: (id: string) => void;
   onDoubleClick: (coordinate: { latitude: number; longitude: number }) => void;
   onClearRouteLegSelection: () => void;
   onSelectControlPoint: (id: string) => void;
@@ -121,6 +125,9 @@ export function RouteMap({
   featuredControlPoints,
   featuredMarkers,
   featuredFocusRequest,
+  chargingStations,
+  chargingFocusRequest,
+  onSelectChargingStation,
   onDoubleClick,
   onClearRouteLegSelection,
   onSelectControlPoint,
@@ -142,7 +149,9 @@ export function RouteMap({
   const featuredRoadsRef = useRef(featuredRoads);
   const featuredControlPointsRef = useRef(featuredControlPoints);
   const featuredMarkersRef = useRef(featuredMarkers);
+  const chargingStationsRef = useRef(chargingStations);
   const eventHandlersRef = useRef({
+    onSelectChargingStation,
     onDoubleClick,
     onClearRouteLegSelection,
     onSelectControlPoint,
@@ -165,6 +174,7 @@ export function RouteMap({
 
   useEffect(() => {
     eventHandlersRef.current = {
+      onSelectChargingStation,
       onDoubleClick,
       onClearRouteLegSelection,
       onSelectControlPoint,
@@ -174,6 +184,7 @@ export function RouteMap({
       onInsertRouteLegControlPoint,
     };
   }, [
+    onSelectChargingStation,
     onClearRouteLegSelection,
     onDoubleClick,
     onInsertRouteLegControlPoint,
@@ -186,6 +197,16 @@ export function RouteMap({
   useEffect(() => {
     controlPointsRef.current = controlPoints;
   }, [controlPoints]);
+
+  useEffect(() => {
+    chargingStationsRef.current = chargingStations;
+    canvasRef.current?.setChargingStations(chargingStations);
+  }, [chargingStations]);
+
+  useEffect(() => {
+    if (!chargingFocusRequest) return;
+    canvasRef.current?.focusCoordinate(chargingFocusRequest.coordinate, getMapFitOptions(mobileOcclusionRef.current).padding!);
+  }, [chargingFocusRequest]);
 
   useEffect(() => {
     routeRef.current = route;
@@ -208,6 +229,11 @@ export function RouteMap({
     if (!canvas || !mobileOcclusion || mobileOcclusion > window.innerHeight * 0.72) return;
     const coordinates = routeRef.current ? getRouteCoordinates(routeRef.current) : controlPointsRef.current;
     const options = getMapFitOptions(mobileOcclusion);
+    const selectedStation = chargingStationsRef.current.find((station) => station.selected);
+    if (selectedStation) {
+      canvas.focusCoordinate(selectedStation, options.padding!);
+      return;
+    }
     if (coordinates.length && !canvas.containsCoordinates(coordinates, options.padding!)) {
       canvas.fitCoordinates(coordinates, options);
     }
@@ -272,6 +298,7 @@ export function RouteMap({
           eventHandlersRef.current.onClearRouteLegSelection()
         ),
         onMarkerSelect: (id) => eventHandlersRef.current.onSelectControlPoint(id),
+        onChargingStationSelect: (id) => eventHandlersRef.current.onSelectChargingStation(id),
         onRouteLegSelect: (id) => eventHandlersRef.current.onSelectRouteLeg(id),
         onRouteLegInsert: (routeLegId, value) => (
           eventHandlersRef.current.onInsertRouteLegControlPoint(routeLegId, value)
@@ -312,6 +339,7 @@ export function RouteMap({
       nextCanvas.setFeaturedRoads(featuredRoadsRef.current);
       nextCanvas.setFeaturedRouteControlPoints(featuredControlPointsRef.current);
       nextCanvas.setFeaturedRouteMarkers(featuredMarkersRef.current);
+      nextCanvas.setChargingStations(chargingStationsRef.current);
       fitPendingRoutePlan(nextCanvas);
       fitFeaturedRouteIfNeeded(nextCanvas);
       nextCanvas.setRouteLegs(

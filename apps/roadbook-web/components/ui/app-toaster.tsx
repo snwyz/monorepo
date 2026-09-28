@@ -78,7 +78,7 @@ function AppToast({ record }: { record: ToastRecord }) {
       </div>
       <ToastPrimitive.Close
         aria-label="关闭通知"
-        className="absolute right-2 top-2 grid size-7 place-items-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="absolute right-2 top-2 grid size-7 place-items-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
       >
         <XIcon className="size-4" />
       </ToastPrimitive.Close>
