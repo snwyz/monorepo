@@ -189,7 +189,8 @@
   .workspace-task-sheet[data-detent="compact"] .workspace-discovery { display: none; }
   .workspace-task-sheet .address-list { background: transparent; border-radius: 0; }
   .workspace-task-sheet .address-list__body { padding: 0; }
-  .workspace-task-sheet .address-row { background: transparent; padding-inline: 2px; }
+  .workspace-task-sheet .address-row { background: transparent; padding-inline: 6px; }
+  .workspace-task-sheet .address-row__select { padding-left: 0; }
   .workspace-task-sheet .address-row__copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .workspace-task-sheet .address-list__hint { padding: 12px 0; }
   .workspace-task-sheet .leg-row { min-height: 40px; }
@@ -253,3 +254,6 @@
 @media (max-width: 760px) {
   .planning-workspace[data-sheet-resizing="true"] :is(.workspace-task-sheet, .map-controls) { transition: none; }
 }
+
+.workspace-metrics-loading__header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.workspace-metrics-loading__retry { flex-shrink: 0; padding-inline: 10px; font-size: 12px; color: var(--rb-color-text-strong); }

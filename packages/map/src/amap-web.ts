@@ -196,8 +196,8 @@ function describeAmapServiceError(error: unknown) {
   return "服务暂不可用";
 }
 
-async function requestAmapProxy<T extends AmapServiceResponse>(url: string) {
-  const response = await fetch(url, { cache: "no-store" });
+async function requestAmapProxy<T extends AmapServiceResponse>(url: string, signal?: AbortSignal) {
+  const response = await fetch(url, { cache: "no-store", signal });
   const payload = (await response.json()) as T;
   if (
     !response.ok ||
@@ -911,6 +911,7 @@ export class AmapWebAdapter implements WebMapAdapter {
   async calculateClosedDrivingRoute(
     controlPoints: Array<MapCoordinate & { id: string }>,
     strategy: DrivingStrategy,
+    signal?: AbortSignal,
   ): Promise<ClosedDrivingRoute> {
     if (controlPoints.length < 2) {
       throw new AmapWebError("至少需要两个控制点", "INVALID_RESULT");
@@ -930,6 +931,7 @@ export class AmapWebAdapter implements WebMapAdapter {
     try {
       const legs: DrivingRouteLeg[] = [];
       for (const { from, to, index } of connections) {
+        if (signal?.aborted) throw new Error("路线计算已取消");
         if (calculationVersion !== this.routeCalculationVersion) {
           throw new Error("路线计算已被更新");
         }
@@ -943,8 +945,10 @@ export class AmapWebAdapter implements WebMapAdapter {
             AmapServiceResponse & {
               route?: { paths?: AmapDrivingPath[] };
             }
-          >(`/api/amap/driving?${params.toString()}`),
+          >(`/api/amap/driving?${params.toString()}`, signal),
+          signal,
         );
+        if (signal?.aborted) throw new Error("路线计算已取消");
         const route = response.route?.paths?.[0];
         if (!route) throw new Error(`第 ${index + 1} 段没有返回路线`);
         const path = combineStepPolylines(route.steps);
@@ -1122,10 +1126,12 @@ export class AmapWebAdapter implements WebMapAdapter {
     return request;
   }
 
-  private scheduleDrivingRequest<T>(operation: () => Promise<T>) {
+  private scheduleDrivingRequest<T>(operation: () => Promise<T>, signal?: AbortSignal) {
     const scheduled = this.drivingRequestQueue.then(async () => {
+      if (signal?.aborted) throw new Error("路线计算已取消");
       const remaining = this.nextDrivingRequestAt - Date.now();
       if (remaining > 0) await wait(remaining);
+      if (signal?.aborted) throw new Error("路线计算已取消");
       this.nextDrivingRequestAt = Date.now() + 650;
       return operation();
     });

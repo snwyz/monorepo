@@ -146,6 +146,7 @@ export interface WebMapAdapter {
   calculateClosedDrivingRoute(
     controlPoints: Array<MapCoordinate & { id: string }>,
     strategy: DrivingStrategy,
+    signal?: AbortSignal,
   ): Promise<ClosedDrivingRoute>;
 }
 

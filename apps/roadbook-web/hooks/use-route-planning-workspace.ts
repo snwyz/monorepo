@@ -41,6 +41,7 @@ export function useRoutePlanningWorkspace() {
   const [activePlan, setActivePlan] = useState<RoutePlan | null>(null);
   const [route, setRoute] = useState<ClosedDrivingRoute | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteCalculationStatus>("idle");
+  const [calculationAttempt, setCalculationAttempt] = useState(0);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>("idle");
   const [mapProvider, setMapProviderState] = useState<WebMapProvider>("amap");
@@ -63,6 +64,8 @@ export function useRoutePlanningWorkspace() {
     promise: Promise<boolean>;
   } | null>(null);
   const calculationToken = useRef(0);
+  const calculationAbort = useRef<(() => void) | null>(null);
+  const cancelledCalculationKey = useRef<string | null>(null);
   const mapFocusSequence = useRef(0);
   const fitRoutePlanSequence = useRef(0);
   const changeMapProvider = useCallback((provider: WebMapProvider) => {
@@ -84,6 +87,26 @@ export function useRoutePlanningWorkspace() {
       longitude,
     })) ?? [],
   );
+
+  const calculationKey = JSON.stringify([calculationPlanId, calculationStrategy, calculationPointsJson, mapProvider]);
+  const cancelRouteCalculation = useCallback(() => {
+    cancelledCalculationKey.current = calculationKey;
+    calculationToken.current += 1;
+    calculationAbort.current?.();
+    setRoute(null);
+    setRouteError(null);
+    setSelectedRouteLegId(null);
+    setRouteStatus("cancelled");
+  }, [calculationKey]);
+
+  const retryRouteCalculation = useCallback(() => {
+    if (routeStatus !== "cancelled" || !adapter || mapStatus !== "ready") return;
+    if (!activePlanRef.current || activePlanRef.current.controlPoints.length < 2) return;
+    cancelledCalculationKey.current = null;
+    setRouteError(null);
+    setRouteStatus("updating");
+    setCalculationAttempt((attempt) => attempt + 1);
+  }, [adapter, mapStatus, routeStatus]);
 
   useEffect(() => {
     activePlanRef.current = activePlan;
@@ -149,6 +172,8 @@ export function useRoutePlanningWorkspace() {
 
   useEffect(() => {
     const token = ++calculationToken.current;
+    if (cancelledCalculationKey.current === calculationKey) return;
+    cancelledCalculationKey.current = null;
     const calculationPoints = JSON.parse(calculationPointsJson) as Array<
       MapCoordinate & { id: string }
     >;
@@ -162,6 +187,7 @@ export function useRoutePlanningWorkspace() {
     }
     if (!adapter) {
       const timer = window.setTimeout(() => {
+        if (calculationToken.current !== token) return;
         if (mapStatus === "loading") {
           setRouteStatus("updating");
           setRouteError(null);
@@ -172,11 +198,12 @@ export function useRoutePlanningWorkspace() {
       }, 0);
       return () => window.clearTimeout(timer);
     }
+    const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setRouteStatus("updating");
       setRouteError(null);
       adapter
-        .calculateClosedDrivingRoute(calculationPoints, calculationStrategy ?? "recommend")
+        .calculateClosedDrivingRoute(calculationPoints, calculationStrategy ?? "recommend", controller.signal)
         .then((nextRoute) => {
           if (calculationToken.current !== token) return;
           setRoute(nextRoute);
@@ -188,8 +215,17 @@ export function useRoutePlanningWorkspace() {
           setRouteError(error instanceof Error ? error.message : "路线计算失败");
         });
     }, 400);
-    return () => window.clearTimeout(timer);
-  }, [adapter, calculationPlanId, calculationPointsJson, calculationStrategy, mapProvider, mapStatus]);
+    const abort = () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+    calculationAbort.current = abort;
+    return () => {
+      calculationToken.current += 1;
+      abort();
+      if (calculationAbort.current === abort) calculationAbort.current = null;
+    };
+  }, [adapter, calculationAttempt, calculationKey, calculationPlanId, calculationPointsJson, calculationStrategy, mapProvider, mapStatus]);
 
   const initializePlan = useCallback(() => {
     const plan = createRoutePlan(createId("plan"));
@@ -585,6 +621,8 @@ export function useRoutePlanningWorkspace() {
     activePlan,
     route,
     routeStatus,
+    cancelRouteCalculation,
+    retryRouteCalculation,
     routeError,
     draftStatus,
     mapStatus,

@@ -73,6 +73,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
   const planTime = formatPlanUpdatedTime(plan.updatedAt);
   const {
     swipeOffset,
+    swipeActionClipPath,
     isSwipeDeleteReady,
     handlePointerDown,
     handlePointerMove,
@@ -93,10 +94,12 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
   return (
     <div className={`plan-row-shell${isActive ? " is-active" : ""}`}>
       <div
+        style={{ clipPath: swipeActionClipPath }}
         className={`plan-row__swipe-action${isSwipeDeleteReady ? " is-ready" : ""}`}
         aria-hidden="true"
       >
-        {isSwipeDeleteReady ? "松开删除" : "左滑删除"}
+        <TrashIcon />
+        <span>{isSwipeDeleteReady ? "松开删除" : "左滑删除"}</span>
       </div>
       <button
         data-glass="inset" className={`plan-row ${isActive ? "is-active" : ""}${swipeOffset < 0 ? " is-swiping" : ""}`}

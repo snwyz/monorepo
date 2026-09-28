@@ -105,6 +105,8 @@ export function useMobileSwipeRemoval({
 
   return {
     swipeOffset,
+    // 裁去前景行尚未让出的区域，兼容半透明卡片而不增加独立显隐状态。
+    swipeActionClipPath: `inset(0 0 0 ${Math.max(0, SWIPE_DELETE_MAX_OFFSET + swipeOffset)}px)`,
     isSwipeDeleteReady,
     handlePointerDown,
     handlePointerMove,

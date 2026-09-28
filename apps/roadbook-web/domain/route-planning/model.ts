@@ -30,6 +30,7 @@ export interface RoutePlanSummary {
 export type RouteCalculationStatus =
   | "idle"
   | "waiting-for-points"
+  | "cancelled"
   | "updating"
   | "ready"
   | "failed";

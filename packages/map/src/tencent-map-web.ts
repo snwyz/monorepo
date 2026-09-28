@@ -124,8 +124,8 @@ function toWebServiceCoordinate(value: TencentWebServiceLocation): MapCoordinate
   return { latitude: value.lat, longitude: value.lng };
 }
 
-async function requestTencentMapProxy<T extends TencentWebServiceResponse>(url: string) {
-  const response = await fetch(url, { cache: "no-store" });
+async function requestTencentMapProxy<T extends TencentWebServiceResponse>(url: string, signal?: AbortSignal) {
+  const response = await fetch(url, { cache: "no-store", signal });
   const payload = await response.json() as T;
   if (!response.ok || (payload.status !== undefined && payload.status !== 0)) {
     throw payload;
@@ -1065,6 +1065,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
   async calculateClosedDrivingRoute(
     controlPoints: Array<MapCoordinate & { id: string }>,
     strategy: DrivingStrategy,
+    signal?: AbortSignal,
   ): Promise<ClosedDrivingRoute> {
     if (controlPoints.length < 2) {
       throw new TencentMapWebError("至少需要两个控制点", "INVALID_RESULT");
@@ -1084,6 +1085,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
     try {
       const legs: DrivingRouteLeg[] = [];
       for (const { from, to, index } of connections) {
+        if (signal?.aborted) throw new Error("路线计算已取消");
         if (calculationVersion !== this.routeCalculationVersion) {
           throw new Error("路线计算已被更新");
         }
@@ -1095,8 +1097,10 @@ export class TencentMapWebAdapter implements WebMapAdapter {
         const response = await this.scheduleDrivingRequest(() =>
           requestTencentMapProxy<TencentWebServiceResponse & {
             result?: { routes?: TencentDrivingRoute[] };
-          }>(`/api/tencent-map/driving?${params.toString()}`),
+          }>(`/api/tencent-map/driving?${params.toString()}`, signal),
+          signal,
         );
+        if (signal?.aborted) throw new Error("路线计算已取消");
         const route = response.result?.routes?.[0];
         if (!route) {
           throw new Error(`第 ${index + 1} 段没有返回路线`);
@@ -1361,10 +1365,12 @@ export class TencentMapWebAdapter implements WebMapAdapter {
     return coordinate;
   }
 
-  private scheduleDrivingRequest<T>(operation: () => Promise<T>) {
+  private scheduleDrivingRequest<T>(operation: () => Promise<T>, signal?: AbortSignal) {
     const scheduled = this.drivingRequestQueue.then(async () => {
+      if (signal?.aborted) throw new Error("路线计算已取消");
       const remaining = this.nextDrivingRequestAt - Date.now();
       if (remaining > 0) await wait(remaining);
+      if (signal?.aborted) throw new Error("路线计算已取消");
       this.nextDrivingRequestAt = Date.now() + 650;
       return operation();
     });

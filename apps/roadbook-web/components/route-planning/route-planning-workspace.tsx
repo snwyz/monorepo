@@ -9,6 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { RotateCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { PlaceCandidate } from "@roadbook/map/web";
 
 import { WorkspaceTaskSheet, WorkspaceSheetPage } from "@/components/route-presentation/workspace-task-sheet";
@@ -390,7 +392,7 @@ export function RoutePlanningWorkspace() {
 
 
       {!isFeaturedMode && workspace.routeStatus === "updating" && points.length >= 2 ? (
-        <RouteCalculationFeedback controlPointCount={points.length} />
+        <RouteCalculationFeedback controlPointCount={points.length} onCancel={workspace.cancelRouteCalculation} />
       ) : null}
 
       {workspace.mapStatus === "unavailable" ? (
@@ -519,7 +521,15 @@ export function RoutePlanningWorkspace() {
               selectedControlPointId={workspace.selectedControlPointId}
               selectedRouteLegId={workspace.selectedRouteLegId}
               pendingControlPointId={workspace.pendingControlPointId}
-              onSelectControlPoint={selectMapControlPoint}
+              onSelectControlPoint={(id) => {
+                if (window.matchMedia("(max-width: 760px)").matches) {
+                  selectControlPoint(id);
+                  setWeatherTargetId(null);
+                } else {
+                  selectMapControlPoint(id);
+                }
+              }}
+              onShowWeather={selectMapControlPoint}
               onSelectRouteLeg={(id) => { workspace.selectRouteLeg(id); setWeatherTargetId(null); }}
               addWaypointDisabledReason={searchDisabledReason}
               onAddWaypoint={(fromId, toId) => {
@@ -586,8 +596,23 @@ export function RoutePlanningWorkspace() {
         {selectedLeg ? <div className="workspace-leg-detail workspace-mobile-only"><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
         {!isFeaturedMode && points.length >= 2 && !workspace.route ? (
           <aside data-glass="desktop" className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
-            <strong>{workspace.routeStatus === "failed" ? "路线暂不可用" : "正在计算路线"}</strong>
-            <span>{workspace.routeStatus === "failed" ? "可继续调整途经点，或切换路线策略重试。" : "预计里程与用时将在这里显示"}</span>
+            <div className="workspace-metrics-loading__header">
+              <strong>{workspace.routeStatus === "cancelled" ? "已取消路线生成" : workspace.routeStatus === "failed" ? "路线暂不可用" : "正在计算路线"}</strong>
+              {workspace.routeStatus === "cancelled" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="workspace-metrics-loading__retry"
+                  onClick={workspace.retryRouteCalculation}
+                  disabled={workspace.mapStatus !== "ready" || !workspace.adapter}
+                  title={workspace.mapStatus !== "ready" ? "地图服务连接后可再次生成" : "按当前控制点和策略再次生成"}
+                >
+                  <RotateCw size={16} aria-hidden="true" />
+                  再次生成
+                </Button>
+              ) : null}
+            </div>
+            <span>{workspace.routeStatus === "cancelled" ? "控制点已保留，可点击再次生成。" : workspace.routeStatus === "failed" ? "可继续调整途经点，或切换路线策略重试。" : "预计里程与用时将在这里显示"}</span>
           </aside>
         ) : null}
         {!isFeaturedMode && workspace.route ? (
