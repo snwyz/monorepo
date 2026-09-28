@@ -304,9 +304,12 @@ export function RoutePlanSelector({
                 aria-describedby="route-plan-name-hint"
                 autoFocus
                 value={renameDraft?.value ?? ""}
-                onChange={(event) => setRenameDraft((current) => current
-                  ? { ...current, value: event.currentTarget.value }
-                  : current)}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setRenameDraft((current) => current
+                    ? { ...current, value }
+                    : current);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setRenameDraft(null);
                 }}
