@@ -10,3 +10,8 @@
 .route-facilities__status button { min-height: 32px; border: 0; background: transparent; color: var(--rb-color-text-strong); cursor: pointer; flex-shrink: 0; }
 @media (hover: hover) { .route-facilities__toggle:hover:not(:disabled) { background: rgba(118,118,128,.1); } }
 @media (max-width: 760px) { .route-facilities { margin: 0 0 16px; } .route-facilities__status, .route-facilities__status button { min-height: 44px; } }
+@media (min-width: 761px) {
+  .workspace-route-panels .route-facilities { margin: 0; padding: 4px 16px; border: 0; border-radius: 0; background: transparent; border-bottom: 1px solid rgba(60,60,67,.09); }
+  .workspace-route-panels .route-facilities__layers > span { font-size: 12px; }
+  .workspace-route-panels .route-facilities__status { min-height: 20px; }
+}

@@ -40,7 +40,15 @@
 
 /* 入口与展开目录必须是同级滤镜表面，外壳不能隔断目录对地图的背景采样。 */
 .plan-selector { border: 1px solid transparent; border-radius: 12px; }
-.plan-selector__trigger[data-glass] { border: 1px solid rgba(68,82,98,.12); }
+.plan-selector__header[data-glass] { border: 1px solid rgba(68,82,98,.12); }
+
+/* 创建入口以均匀银灰细边与内侧反光形成金属边界，不增加模糊层。 */
+[data-glass][data-glass] .plan-selector__create {
+  --plan-create-border: rgba(136,151,164,.42);
+  border: 1px solid var(--plan-create-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.62), inset 0 -1px 0 rgba(98,115,129,.08);
+}
+[data-glass][data-glass] .plan-selector__create:hover:not(:disabled) { --plan-create-border: rgba(112,130,145,.56); }
 
 /* 内层卡片共享反光，不重复创建背景模糊层。 */
 [data-glass="inset"][data-glass][data-glass] {
@@ -114,6 +122,11 @@
     --glass-control-white: Canvas;
     --glass-control-border: CanvasText;
   }
+  [data-glass][data-glass] .plan-selector__create,
+  [data-glass][data-glass] .plan-selector__create:hover:not(:disabled) {
+    --plan-create-border: CanvasText;
+    box-shadow: none;
+  }
   [data-glass][data-glass][data-glass]:not([data-glass="sheet"]),
   [data-glass="sheet"][data-glass]::before {
     background: Canvas;
@@ -139,7 +152,7 @@
   [data-slot="button"][data-variant="secondary"]
 ) {
   background: var(--glass-control-fill);
-  border-color: var(--glass-control-border);
+  border-color: var(--plan-create-border, var(--glass-control-border));
 }
 [data-glass][data-glass] :is(
   .plan-selector__rename-panel > input, .featured-preview-dialog__close,

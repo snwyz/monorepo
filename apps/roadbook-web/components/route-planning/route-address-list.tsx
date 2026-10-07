@@ -21,7 +21,7 @@ import type { WebMapProvider } from "@roadbook/map/web";
 import { CloudSunIcon, GripVerticalIcon } from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
 
-import { ChevronDownIcon, CloseIcon, NavigationIcon, TrashIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, CloseIcon, NavigationIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
 import type { ControlPoint } from "@/domain/route-planning/model";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
@@ -39,6 +39,7 @@ interface RouteAddressListProps {
   onShowWeather: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
   onAddWaypoint: (fromId: string, toId: string) => void;
+  onAppendWaypoint: () => void;
   addWaypointDisabledReason?: string;
   onReorder: (activeId: string, overId: string) => void;
   onRemove: (id: string) => void;
@@ -228,6 +229,7 @@ export function RouteAddressList({
   addWaypointDisabledReason,
   onReorder,
   onRemove,
+  onAppendWaypoint,
 }: RouteAddressListProps) {
   const [collapsed, setCollapsed] = useState(true);
   const sensors = useSensors(
@@ -307,6 +309,10 @@ export function RouteAddressList({
                 />
               );
             })}
+            <button type="button" className="route-plan-append" onClick={onAppendWaypoint}
+              disabled={Boolean(addWaypointDisabledReason)} title={addWaypointDisabledReason}>
+              <PlusIcon />添加途经点
+            </button>
           </div>
         </SortableContext>
       </DndContext>

@@ -78,17 +78,21 @@
   .workspace-task-sheet__navigation h1 { flex: 1; font-size: 23px; line-height: 30px; color: var(--rb-color-text-strong); letter-spacing: -.5px; }
   .workspace-task-sheet__navigation small { font-size: 11px; color: var(--rb-color-muted); }
   .workspace-task-sheet__navigation button { flex: none; min-height: 44px; border: 0; padding: 0 8px; border-radius: 12px; background: transparent; color: var(--rb-color-text); font-size: 12px; }
-  .workspace-task-sheet .plan-selector { display: block; order: 2; width: 100%; min-height: 0; background: transparent; border: 0; box-shadow: none; }
+  .workspace-task-sheet .plan-selector { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 8px; order: 2; width: 100%; min-height: 0; background: transparent; border: 0; box-shadow: none; }
+  .workspace-task-sheet .plan-selector__header { display: contents; }
   .workspace-task-sheet .plan-selector__trigger { display: none; }
-  .workspace-task-sheet .plan-selector__menu { display: block; position: static; width: 100%; max-height: none; overflow: visible; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; animation: none; }
-  .workspace-task-sheet .plan-selector__list { max-height: none; overflow: visible; }
-  .workspace-task-sheet .plan-selector__menu-head { padding: 0 0 10px; }
+  .workspace-task-sheet .plan-selector__menu { display: contents; position: static; width: 100%; max-height: none; overflow: visible; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; animation: none; }
+  .workspace-task-sheet .plan-selector__list { grid-column: 1 / -1; max-height: none; overflow: visible; }
+  .workspace-task-sheet .plan-selector__menu-head { grid-column: 1; grid-row: 1; min-width: 0; padding: 0; }
+  .workspace-task-sheet .plan-selector__rename-panel { grid-column: 1 / -1; margin-bottom: 0; }
+  .workspace-task-sheet .plan-selector__resume { grid-column: 1 / -1; grid-row: 2; min-height: 44px; border: 0; padding: 0 12px; border-radius: 12px; background: var(--glass-control-fill); color: var(--rb-color-text-strong); text-align: left; display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+  .workspace-task-sheet .plan-selector__resume svg { width: 16px; height: 16px; transform: rotate(90deg); }
   .workspace-task-sheet .plan-date-group { padding: 0; border: 0; }
   .workspace-task-sheet .plan-date-group h3 { margin: 10px 4px; font-size: 12px; }
   .workspace-task-sheet .plan-row-shell { border-radius: 16px; background: transparent; }
   .workspace-task-sheet .plan-row { min-height: 76px; padding: 12px; border-radius: 16px; }
   .workspace-task-sheet .plan-row__copy strong { font-size: 16px; line-height: 24px; }
-  .workspace-task-sheet .plan-selector__create { min-height: 48px; margin-top: 18px; background: var(--glass-control-fill); }
+  .workspace-task-sheet .plan-selector__create { grid-column: 2; grid-row: 1; margin: 0; background: var(--glass-control-fill); }
   .workspace-task-sheet .plan-selector__management-trigger { width: 44px; height: 44px; }
   .workspace-task-sheet .strategy-selector { display: flex; position: static; order: 5; width: 100%; flex-wrap: wrap; justify-content: space-between; min-height: 52px; box-shadow: none; border: 0; padding: 8px; border-radius: 16px; }
   .workspace-task-sheet .strategy-selector__divider { display: none; }
@@ -218,6 +222,7 @@
   .workspace-discovery .workspace-discovery__resume { width: 100%; margin: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; }
   .workspace-place-detail { order: 1; padding: 0 4px 16px; }
   .workspace-place-detail p, .workspace-leg-detail p { margin: 0 0 18px; line-height: 1.7; color: var(--rb-color-muted); }
+  .workspace-leg-detail__back, .workspace-leg-detail h2 { display: none; }
   .workspace-place-detail__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .workspace-place-detail__actions > * { min-width: 0; min-height: 44px; padding-inline: 12px; font-size: 13px; text-decoration: none; }
   .workspace-place-detail__actions svg { width: 16px; height: 16px; }

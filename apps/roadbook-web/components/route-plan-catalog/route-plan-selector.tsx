@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, type CSSProperties, useState } from "react";
+import { lazy, Suspense, type CSSProperties, useId, useState } from "react";
 
 import { RoadbookMark } from "@/components/branding/roadbook-mark";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,12 @@ const RoutePlanClearConfirmation = lazy(() =>
 
 interface RoutePlanSelectorProps {
   catalog: RoutePlanSummary[];
+  catalogReady: boolean;
   activePlan: RoutePlan | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  resumeLabel?: string;
+  contextLabel?: string;
   onCreate: () => void;
   onLoad: (id: string) => boolean;
   onRename: (name: string) => void;
@@ -155,14 +160,19 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
 
 export function RoutePlanSelector({
   catalog,
+  catalogReady,
   activePlan,
+  open,
+  onOpenChange,
+  resumeLabel,
+  contextLabel,
   onCreate,
   onLoad,
   onRename,
   onDelete,
   onClearAll,
 }: RoutePlanSelectorProps) {
-  const [open, setOpen] = useState(false);
+  const catalogId = useId();
   const [deleteConfirmationLoaded, setDeleteConfirmationLoaded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; label: string } | null>(null);
   const [clearConfirmationLoaded, setClearConfirmationLoaded] = useState(false);
@@ -174,14 +184,14 @@ export function RoutePlanSelector({
     : undefined;
   const activePlanLabel = activePlan
     ? formatPlanDisplayName(activePlanSummary ?? activePlan)
-    : "未选择方案";
+    : "选择路线";
   const isRenamingActivePlan = Boolean(
     activePlan && renameDraft?.planId === activePlan.id,
   );
   const planGroups = groupPlansByUpdatedDate(catalog);
 
   const closeSelector = () => {
-    setOpen(false);
+    onOpenChange(false);
     setManagementMenuOpen(false);
     setRenameDraft(null);
   };
@@ -191,7 +201,7 @@ export function RoutePlanSelector({
       closeSelector();
       return;
     }
-    setOpen(true);
+    onOpenChange(true);
   };
 
   const requestDelete = (id: string, label: string) => {
@@ -227,24 +237,42 @@ export function RoutePlanSelector({
   const confirmClearAll = () => {
     onClearAll();
     setClearRequested(false);
-    closeSelector();
+    setManagementMenuOpen(false);
+    setRenameDraft(null);
+    onOpenChange(true);
   };
 
   return (
-    <section className="plan-selector" aria-label="路线方案">
-      <button data-glass="desktop" className="plan-selector__trigger" type="button" onClick={toggleSelector} aria-expanded={open}>
-        <span className="plan-selector__brand"><RoadbookMark /></span>
-        <span className="plan-selector__copy">
-          <small className="plan-selector__eyebrow">
-            <span>我的路线</span>
-            {catalog.length > 0 ? <span className="plan-selector__count">{catalog.length}</span> : null}
-          </small>
-          <strong>{activePlanLabel}</strong>
-        </span>
-        <ChevronDownIcon className={open ? "is-rotated" : ""} />
-      </button>
+    <section className="plan-selector" data-catalog-open={open} aria-label="路线方案">
+      <div data-glass="desktop" className="plan-selector__header">
+        <button
+          className="plan-selector__trigger"
+          type="button"
+          disabled={open && !resumeLabel}
+          onClick={toggleSelector}
+          aria-expanded={open}
+          aria-controls={catalogId}
+          aria-label={`${open ? "返回当前任务" : "查看我的路线"}，${contextLabel ?? activePlanLabel}`}
+        >
+          <span className="plan-selector__brand"><RoadbookMark /></span>
+          <span className="plan-selector__copy">
+            <small className="plan-selector__eyebrow">
+              <span>我的路线</span>
+              {catalog.length > 0 ? <span className="plan-selector__count">{catalog.length}</span> : null}
+            </small>
+            <span className="plan-selector__title">
+              <strong title={contextLabel ?? activePlanLabel}>{contextLabel ?? activePlanLabel}</strong>
+              <ChevronDownIcon className={open ? "is-rotated" : ""} />
+            </span>
+          </span>
+        </button>
+        <Button type="button" variant="secondary" className="plan-selector__create" onClick={() => { onCreate(); closeSelector(); }}>
+          <PlusIcon />新建规划
+        </Button>
+      </div>
       {(
-        <div data-glass="desktop" className={`plan-selector__menu${open ? " is-open" : ""}`}>
+        <div id={catalogId} data-glass="desktop" className={`plan-selector__menu${open ? " is-open" : ""}`}>
+          {resumeLabel ? <button type="button" className="plan-selector__resume" onClick={closeSelector}><ChevronDownIcon />{resumeLabel}</button> : null}
           <div className="plan-selector__menu-head">
             <span className="plan-selector__menu-title">
               <span>已存路线</span>
@@ -324,7 +352,7 @@ export function RoutePlanSelector({
             </form>
           ) : null}
           <div className="plan-selector__list">
-            {catalog.length === 0 ? <p className="empty-list">还没有路线方案</p> : null}
+            {!catalogReady ? <p className="empty-list" role="status">正在读取本机路线…</p> : catalog.length === 0 ? <p className="empty-list">还没有路线方案，点击上方新建规划开始。</p> : null}
             {planGroups.map((group) => (
               <section className="plan-date-group" key={group.key} aria-label={group.label}>
                 <h3>{group.label}</h3>
@@ -341,9 +369,6 @@ export function RoutePlanSelector({
               </section>
             ))}
           </div>
-          <Button variant="secondary" size="lg" className="plan-selector__create" onClick={() => { onCreate(); closeSelector(); }}>
-            <PlusIcon />新建规划
-          </Button>
         </div>
       )}
       {deleteConfirmationLoaded ? (

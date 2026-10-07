@@ -209,6 +209,6 @@ export function WorkspaceTaskSheet({ children, pageKey, title, searchOpen, onBac
 }
 
 /** 保留桌面领域组件位置；移动端仅显示当前业务页面，避免重复挂载地图或业务状态。 */
-export function WorkspaceSheetPage({ active, children, mobileOnly = false }: { active: boolean; children: ReactNode; mobileOnly?: boolean }) {
-  return <div className={`workspace-sheet-page${mobileOnly ? " workspace-sheet-page--mobile" : ""}`} data-active={active}>{children}</div>;
+export function WorkspaceSheetPage({ active, desktopActive, children, mobileOnly = false }: { active: boolean; desktopActive?: boolean; children: ReactNode; mobileOnly?: boolean }) {
+  return <div className={`workspace-sheet-page${mobileOnly ? " workspace-sheet-page--mobile" : ""}`} data-active={active} data-desktop-active={desktopActive}>{children}</div>;
 }

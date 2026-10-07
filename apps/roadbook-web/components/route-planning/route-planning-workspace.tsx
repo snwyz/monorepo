@@ -19,12 +19,11 @@ import { FeaturedRouteModeBadge } from "@/components/featured-driving-route/feat
 import { MapProviderSwitch } from "@/components/map-provider/map-provider-switch";
 import { GlobalSearch, type GlobalSearchHandle } from "@/components/map-search/global-search";
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
-import { RoutePlanWelcomePanel } from "@/components/route-plan-catalog/route-plan-welcome-panel";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
 import { RouteChargingEntry } from "@/components/route-charging/route-charging-entry";
 import { RouteMap } from "@/components/route-presentation/route-map";
 import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
-import { AlertIcon, LayersIcon } from "@/components/ui/icons";
+import { AlertIcon, ChevronDownIcon, LayersIcon } from "@/components/ui/icons";
 import { appToast } from "@/components/ui/toast-store";
 import type { FeaturedDrivingRoute } from "@/domain/featured-driving-route/model";
 import { formatPlanDisplayName, ROUTE_PLAN_CONTROL_POINT_LIMIT } from "@/domain/route-planning/model";
@@ -399,6 +398,8 @@ export function RoutePlanningWorkspace() {
   const planningDetail = business === "planning" && Boolean(weatherTarget || selectedChargingStation || selectedLeg);
   const guideDetail = business === "guide" && Boolean(featuredPlace);
   const routeTitle = workspace.activePlan ? formatPlanDisplayName(workspace.catalog.find((plan) => plan.id === workspace.activePlan?.id) ?? workspace.activePlan) : "路线规划";
+  const desktopCatalogOpen = business === "catalog" || (!workspace.activePlan && !isFeaturedMode);
+  const desktopPanelPage = desktopCatalogOpen ? "catalog" : isFeaturedMode ? "guide" : weatherTarget ? "place" : selectedChargingStation ? "charging" : selectedLeg ? "leg" : "planning";
   const pageKey = searchOpen ? (searchPreviewOpen ? "search-preview" : "search") : planningDetail ? (weatherTarget ? `place:${weatherTarget.id}` : selectedChargingStation ? `charging:${selectedChargingStation.id}` : `leg:${selectedLeg?.id}`) : guideDetail ? `guide-place:${featuredPlace?.id}` : business;
   const title = business === "discovery" ? "" : business === "catalog" ? "我的路线" : business === "guide" ? (featuredPlace?.name ?? activeFeaturedRoute?.name ?? "路线指南") : weatherTarget?.name ?? selectedChargingStation?.name ?? (selectedLeg ? `路段 ${workspace.route!.legs.indexOf(selectedLeg) + 1}` : routeTitle);
   const returnToParent = () => {
@@ -465,52 +466,7 @@ export function RoutePlanningWorkspace() {
 
       <WorkspaceTaskSheet pageKey={pageKey} title={title} searchOpen={searchOpen}
         onBack={business === "discovery" ? undefined : returnToParent} onOcclusionChange={setMapOcclusion}>
-        <WorkspaceSheetPage active={!searchOpen && planningDetail && Boolean(weatherTarget)}>
-          {selectedPlace ? <div className="workspace-place-detail workspace-mobile-only">
-            <p>{selectedPlace.address}</p>
-            <div className="workspace-place-detail__actions">
-              <Button asChild>
-                <a href={createMapNavigationUri({ provider: workspace.mapProvider, to: selectedPlace })}>
-                  <ArrowUpRight size={16} aria-hidden="true" />导航到这里
-                </a>
-              </Button>
-              <Button type="button" variant="ghost" className="workspace-place-detail__remove"
-                onClick={() => requestControlPointRemoval(selectedPlace.id)}>
-                <Trash2 size={16} aria-hidden="true" />删除途经点
-              </Button>
-            </div>
-          </div> : null}
-        <div className="workspace-weather-slot">
-          {!isFeaturedMode && weatherTarget ? (
-            <Suspense
-              fallback={(
-                <div data-glass="desktop" className="workspace-weather-loading" role="status">
-                  正在加载天气卡片…
-                </div>
-              )}
-            >
-              <WeatherForecastCard
-                key={weatherTarget.id}
-                target={weatherTarget}
-                onClose={closeWeatherForecast}
-              />
-            </Suspense>
-          ) : null}
-
-        </div>
-        </WorkspaceSheetPage>
         <div className="workspace-topbar">
-          <WorkspaceSheetPage active={!searchOpen && business === "catalog"}>
-          <RoutePlanSelector
-            catalog={workspace.catalog}
-            activePlan={workspace.activePlan}
-            onCreate={createPlan}
-            onLoad={loadPlan}
-            onRename={workspace.renamePlan}
-            onDelete={workspace.deletePlan}
-            onClearAll={workspace.clearPlans}
-          />
-          </WorkspaceSheetPage>
           <WorkspaceSheetPage active={searchOpen || business === "discovery"}>
           <GlobalSearch
             ref={searchRef}
@@ -555,15 +511,6 @@ export function RoutePlanningWorkspace() {
           </WorkspaceSheetPage>
         </div>
 
-        <WorkspaceSheetPage active={false}>
-        {workspace.catalogReady &&
-        !isFeaturedMode &&
-        !workspace.activePlan &&
-        workspace.catalog.length === 0 ? (
-          <RoutePlanWelcomePanel onCreate={workspace.createPlan} />
-        ) : null}
-
-        </WorkspaceSheetPage>
         <WorkspaceSheetPage active={!searchOpen && business === "discovery"} mobileOnly>
           <div className="workspace-discovery">
             <h2>你的路线</h2>
@@ -577,8 +524,62 @@ export function RoutePlanningWorkspace() {
             <button type="button" data-glass="inset" className="workspace-discovery__resume" onClick={() => searchRef.current?.open()}>探索热门自驾路线<span>›</span></button>
           </div>
         </WorkspaceSheetPage>
-        <div className={`workspace-route-panels${!isFeaturedMode && selectedChargingStation ? " is-charging" : ""}`}>
-        <WorkspaceSheetPage active={!searchOpen && business === "planning" && Boolean(selectedChargingStation)}>
+        <div data-glass="desktop" className={`workspace-route-panels${!isFeaturedMode && selectedChargingStation ? " is-charging" : ""}`} data-view={desktopPanelPage}>
+          <WorkspaceSheetPage active={!searchOpen && business === "catalog"} desktopActive>
+          <RoutePlanSelector
+            catalog={workspace.catalog}
+            catalogReady={workspace.catalogReady}
+            activePlan={workspace.activePlan}
+            open={desktopCatalogOpen}
+            onOpenChange={(open) => setBusiness(open ? "catalog" : isFeaturedMode ? "guide" : "planning")}
+            contextLabel={activeFeaturedRoute?.name}
+            resumeLabel={isFeaturedMode ? "返回路线指南" : workspace.activePlan ? "返回当前规划" : undefined}
+            onCreate={createPlan}
+            onLoad={loadPlan}
+            onRename={workspace.renamePlan}
+            onDelete={workspace.deletePlan}
+            onClearAll={workspace.clearPlans}
+          />
+          </WorkspaceSheetPage>
+        <WorkspaceSheetPage active={!searchOpen && planningDetail && Boolean(weatherTarget)} desktopActive={desktopPanelPage === "place"}>
+          {selectedPlace ? <div className="workspace-place-detail">
+            <button type="button" className="workspace-place-detail__back" onClick={closeWeatherForecast}>
+              <ChevronDownIcon />返回当前路线规划
+            </button>
+            <p>{selectedPlace.address}</p>
+            <div className="workspace-place-detail__actions">
+              <Button asChild>
+                <a href={createMapNavigationUri({ provider: workspace.mapProvider, to: selectedPlace })}>
+                  <ArrowUpRight size={16} aria-hidden="true" />导航到这里
+                </a>
+              </Button>
+              <Button type="button" variant="ghost" className="workspace-place-detail__remove"
+                onClick={() => requestControlPointRemoval(selectedPlace.id)}>
+                <Trash2 size={16} aria-hidden="true" />删除途经点
+              </Button>
+            </div>
+          </div> : null}
+        <div className="workspace-weather-slot">
+          {!isFeaturedMode && weatherTarget ? (
+            <Suspense
+              fallback={(
+                <div data-glass="desktop" className="workspace-weather-loading" role="status">
+                  正在加载天气卡片…
+                </div>
+              )}
+            >
+              <WeatherForecastCard
+                key={weatherTarget.id}
+                target={weatherTarget}
+                onClose={closeWeatherForecast}
+              />
+            </Suspense>
+          ) : null}
+
+        </div>
+        </WorkspaceSheetPage>
+
+        <WorkspaceSheetPage active={!searchOpen && business === "planning" && Boolean(selectedChargingStation)} desktopActive={desktopPanelPage === "charging"}>
         {!isFeaturedMode && selectedChargingStation ? (
           <Suspense fallback={<section className="route-charging-loading" role="status">正在加载充电站详情…</section>}>
             <RouteChargingPanel
@@ -590,8 +591,8 @@ export function RoutePlanningWorkspace() {
           </Suspense>
         ) : null}
         </WorkspaceSheetPage>
-        <WorkspaceSheetPage active={!searchOpen && business === "planning" && !planningDetail}>
-        {!isFeaturedMode && workspace.activePlan && !selectedChargingStation ? (
+        <WorkspaceSheetPage active={!searchOpen && business === "planning" && !planningDetail} desktopActive={desktopPanelPage === "planning"}>
+        {!isFeaturedMode && workspace.activePlan ? (
           <Suspense fallback={<div data-glass="desktop" className={`address-list widget workspace-section-loading${points.length === 0 ? " is-empty" : ""}`} style={{ height: points.length * 112 + 96 }} role="status">正在加载…</div>}>
             <RouteAddressList
               routeActions={points.length >= 2 ? <RouteChargingEntry
@@ -630,6 +631,7 @@ export function RoutePlanningWorkspace() {
               onShowWeather={selectMapControlPoint}
               onSelectRouteLeg={(id) => { charging.selectStation(null); workspace.selectRouteLeg(id); setWeatherTargetId(null); }}
               addWaypointDisabledReason={searchDisabledReason}
+              onAppendWaypoint={() => searchRef.current?.open()}
               onAddWaypoint={(fromId, toId) => {
                 if (!workspace.activePlan || searchDisabledReason) return;
                 const from = points.find((point) => point.id === fromId);
@@ -650,8 +652,8 @@ export function RoutePlanningWorkspace() {
 
           <button type="button" className="workspace-add-place workspace-mobile-only" onClick={() => searchRef.current?.open()} disabled={Boolean(searchDisabledReason)}>＋ 添加途经点</button>
         </WorkspaceSheetPage>
-        <WorkspaceSheetPage active={!searchOpen && business === "planning" && !weatherTarget}>
-        {selectedLeg ? <div className="workspace-leg-detail workspace-mobile-only"><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
+        <WorkspaceSheetPage active={!searchOpen && business === "planning" && !weatherTarget} desktopActive={desktopPanelPage === "planning" || desktopPanelPage === "leg"}>
+        {selectedLeg ? <div className="workspace-leg-detail"><button type="button" className="workspace-leg-detail__back" onClick={returnToParent}>返回当前规划</button><h2>路段 {workspace.route!.legs.indexOf(selectedLeg) + 1}</h2><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
         {!isFeaturedMode && points.length >= 2 && !workspace.route ? (
           <aside data-glass="desktop" className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
             <div className="workspace-metrics-loading__header">
@@ -687,11 +689,10 @@ export function RoutePlanningWorkspace() {
         ) : null}
 
         {!isFeaturedMode && workspace.activePlan && points.length === 0 ? (
-          <p className="workspace-route-empty">搜索地点或双击地图，添加路线起点。</p>
+          <p className="workspace-route-empty">搜索地点，添加路线起点。</p>
         ) : null}
         </WorkspaceSheetPage>
-        </div>
-        <WorkspaceSheetPage active={!searchOpen && business === "guide" && !guideDetail}>
+        <WorkspaceSheetPage active={!searchOpen && business === "guide" && !guideDetail} desktopActive={desktopPanelPage === "guide"}>
           <button type="button" className="workspace-add-place workspace-mobile-only" onClick={() => searchRef.current?.open()} disabled={Boolean(searchDisabledReason)}>＋ 添加我的标记</button>
         {activeFeaturedRoute ? (
           <Suspense fallback={<div data-glass="desktop" className="featured-route-panel widget workspace-section-loading" role="status">正在加载…</div>}>
@@ -711,6 +712,7 @@ export function RoutePlanningWorkspace() {
         ) : null}
 
         </WorkspaceSheetPage>
+        </div>
         <WorkspaceSheetPage active={!searchOpen && guideDetail} mobileOnly>
           {featuredPlace ? <div className="workspace-place-detail">
             <p>{"region" in featuredPlace ? featuredPlace.region : featuredPlace.address}</p>
