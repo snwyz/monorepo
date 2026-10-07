@@ -634,7 +634,8 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .planning-workspace:has(> .elevation-panel.is-open) .workspace-route-panels { max-height: max(0px, calc(100dvh - var(--rb-elevation-expanded-height) - 44px)); }
 }
 .elevation-panel__trigger { height: 48px; gap: 8px; padding: 4px 12px; }
-.elevation-panel__heading { flex: 1; min-width: 0; }
+.elevation-panel__header { position: relative; height: 48px; }
+.elevation-panel__heading { flex: 1; min-width: 0; padding-right: 48px; }
 .elevation-panel__trigger strong { font-size: 16px; line-height: 20px; }
 .elevation-panel__heading small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 18px; color: var(--rb-color-text); }
 .elevation-panel__status { flex-shrink: 0; font-size: 11px; color: var(--rb-color-muted); }
@@ -645,6 +646,27 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .elevation-panel button:disabled { opacity: .45; cursor: default; }
 .elevation-panel :is(button, input, summary, svg, [role="slider"]):focus-visible { outline: 2px solid var(--rb-color-focus); outline-offset: -2px; border-radius: 4px; }
 .elevation-panel p { margin: 0; }
+/* 海拔帮助为独立外溢表面，不参与面板尺寸与海拔查询。 */
+.elevation-panel .elevation-help__trigger { position: absolute; left: 114px; top: 2px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; color: var(--rb-color-muted); border-radius: 12px; }
+.elevation-help__trigger svg { width: 18px; height: 18px; }
+.elevation-panel .elevation-help__trigger[aria-expanded="true"] { color: var(--rb-color-text-strong); }
+.elevation-help { z-index: 60; width: min(400px, calc(100vw - 32px), var(--radix-popover-content-available-width)); height: min(520px, var(--radix-popover-content-available-height)); display: flex; flex-direction: column; border: 1px solid var(--rb-color-border); border-radius: 20px; overflow: hidden; color: var(--rb-color-text); font-size: 13px; line-height: 20px; outline: none; animation: elevation-help-appear 160ms var(--rb-ease); }
+.elevation-help__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 12px 12px 20px; flex: none; }
+.elevation-help__header h2 { margin: 0; font-size: 15px; line-height: 22px; font-weight: 600; color: var(--rb-color-text-strong); }
+.elevation-help__header p { margin: 3px 0 0; font-size: 11px; line-height: 17px; color: var(--rb-color-muted); }
+.elevation-help__header button { width: 44px; height: 44px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 12px; background: transparent; color: var(--rb-color-muted); cursor: pointer; }
+.elevation-help__header button svg { width: 16px; height: 16px; }
+.elevation-help__questions { flex: 1; min-height: 0; padding: 0 20px 12px; overflow-y: auto; overscroll-behavior: contain; }
+.elevation-help__questions details + details { border-top: 1px solid var(--rb-color-border); }
+.elevation-help__questions summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; font-weight: 500; color: var(--rb-color-text-strong); cursor: pointer; }
+.elevation-help__questions summary::-webkit-details-marker { display: none; }
+.elevation-help__questions summary svg { width: 14px; height: 14px; color: var(--rb-color-muted); transition: transform 160ms var(--rb-ease); }
+.elevation-help__questions details[open] summary svg { transform: rotate(180deg); }
+.elevation-help__questions details p { margin: 0; padding: 0 20px 14px 0; font-size: 12px; line-height: 20px; color: var(--rb-color-text); overflow-wrap: anywhere; }
+.elevation-help :is(button, summary):focus-visible { outline: 2px solid var(--rb-color-focus); outline-offset: -2px; border-radius: 6px; }
+@keyframes elevation-help-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .elevation-help { animation: none; } .elevation-help__questions summary svg { transition: none; } }
+@media (forced-colors: active) { .elevation-help { background: Canvas !important; color: CanvasText; border-color: CanvasText; } .elevation-help :is(button, summary):focus-visible { outline-color: Highlight; } }
 /* 海拔面板以图表为唯一主体，异步状态与图表共用固定正文高度。 */
 .elevation-placeholder { height: 100%; padding: 20px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
 .elevation-placeholder__icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 14px; background: var(--rb-color-surface-subtle); color: var(--rb-color-elevation-line); }
