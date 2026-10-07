@@ -31,7 +31,7 @@ import {
 } from "./featured-route-label";
 import {
   mapOverlayColors,
-  plannedRouteStrokeWidths,
+  getPlannedRouteStrokeWidths,
 } from "./map-overlay-style";
 import {
   areCoordinatesInsideViewport,
@@ -61,6 +61,7 @@ interface AmapEventTarget {
 interface AmapOverlay extends AmapEventTarget {
   setMap(map: AmapMapInstance | null): void;
   setPath?(path: AmapPosition[]): void;
+  setOptions?(options: Record<string, unknown>): void;
 }
 
 interface AmapMapInstance extends AmapEventTarget {
@@ -69,6 +70,7 @@ interface AmapMapInstance extends AmapEventTarget {
   setZoom(zoom: number): void;
   getZoom(): number;
   getCenter(): AmapLngLat;
+  lngLatToContainer?(coordinate: AmapPosition): { getX(): number; getY(): number };
   setBounds(bounds: unknown, immediately?: boolean, avoid?: number[]): void;
   setStatus(status: Record<string, boolean>): void;
   destroy(): void;
@@ -280,7 +282,11 @@ class AmapCanvasImpl implements WebMapCanvas {
   private roadLabelSignature = "";
   private roadLabelLegs: WebMapRouteLeg[] = [];
   private roadLabelPoints: WebMapControlPoint[] = [];
-  private readonly roadLabelsChangedHandler = () => this.updateRoadLabels();
+  private readonly roadLabelsChangedHandler = () => {
+    this.updateRouteStrokeWidths();
+    this.updateRoadLabels();
+  };
+  private routeStrokeSignature = "";
   private routeOutlineOverlays: AmapOverlay[] = [];
   private routeCoreOverlays: InteractiveOverlay[] = [];
   private routeOverlays: InteractiveOverlay[] = [];
@@ -507,10 +513,11 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.clearInteractiveOverlays(this.routeCoreOverlays);
     this.clearInteractiveOverlays(this.routeOverlays);
     const validLegs = routeLegs.filter((leg) => leg.path.length > 1);
+    const strokeWidths = getPlannedRouteStrokeWidths(this.map.getZoom());
     this.routeOutlineOverlays = validLegs.map((leg) => {
       const statusWidth = leg.failed
-        ? plannedRouteStrokeWidths.failed.outline
-        : plannedRouteStrokeWidths.stale.outline;
+        ? strokeWidths.failed.outline
+        : strokeWidths.stale.outline;
       const outline = new this.amap.Polyline({
         path: leg.path.map(toPosition),
         strokeColor: mapOverlayColors.surface,
@@ -518,8 +525,8 @@ class AmapCanvasImpl implements WebMapCanvas {
           leg.failed || leg.stale
             ? statusWidth
             : leg.selected
-              ? plannedRouteStrokeWidths.selected.outline
-              : plannedRouteStrokeWidths.normal.outline,
+              ? strokeWidths.selected.outline
+              : strokeWidths.normal.outline,
         strokeOpacity: 1,
         lineJoin: "round",
         lineCap: "round",
@@ -535,14 +542,14 @@ class AmapCanvasImpl implements WebMapCanvas {
           ? mapOverlayColors.failedRoute
           : leg.stale
             ? mapOverlayColors.staleRoute
-            : mapOverlayColors.routeBoundary,
+            : leg.isReturn ? mapOverlayColors.returnRouteCore : mapOverlayColors.routeBoundary,
         strokeWeight: leg.failed
-          ? plannedRouteStrokeWidths.failed.route
+          ? strokeWidths.failed.route
           : leg.stale
-            ? plannedRouteStrokeWidths.stale.route
+            ? strokeWidths.stale.route
             : leg.selected
-              ? plannedRouteStrokeWidths.selected.boundary
-              : plannedRouteStrokeWidths.normal.boundary,
+              ? strokeWidths.selected.boundary
+              : strokeWidths.normal.boundary,
         strokeStyle: leg.failed || leg.stale ? "dashed" : "solid",
         strokeDasharray: leg.failed ? [5, 5] : [8, 6],
         strokeOpacity: 1,
@@ -560,12 +567,12 @@ class AmapCanvasImpl implements WebMapCanvas {
       if (leg.failed || leg.stale) return [];
       const route = new this.amap.Polyline({
         path: leg.path.map(toPosition),
-        strokeColor: mapOverlayColors.routeCore,
-        // 箭头放在最上层内芯，避免被绿色主线遮挡；路径顺序即行驶方向。
+        strokeColor: leg.isReturn ? mapOverlayColors.returnRouteCore : mapOverlayColors.routeCore,
+        // 箭头放在最上层内芯，避免被路线主线遮挡；路径顺序即行驶方向。
         showDir: true,
         strokeWeight: leg.selected
-          ? plannedRouteStrokeWidths.selected.core
-          : plannedRouteStrokeWidths.normal.core,
+          ? strokeWidths.selected.core
+          : strokeWidths.normal.core,
         strokeOpacity: 1,
         lineJoin: "round",
         lineCap: "round",
@@ -579,23 +586,43 @@ class AmapCanvasImpl implements WebMapCanvas {
     });
   }
 
+  private updateRouteStrokeWidths() {
+    const widths = getPlannedRouteStrokeWidths(this.map.getZoom());
+    const signature = JSON.stringify(widths);
+    if (signature === this.routeStrokeSignature) return;
+    this.routeStrokeSignature = signature;
+    const legs = this.roadLabelLegs.filter((leg) => leg.path.length > 1);
+    legs.forEach((leg, index) => {
+      const style = leg.failed ? widths.failed : leg.stale ? widths.stale : leg.selected ? widths.selected : widths.normal;
+      this.routeOutlineOverlays[index]?.setOptions?.({ strokeWeight: style.outline });
+      this.routeOverlays[index]?.overlay.setOptions?.({ strokeWeight: "boundary" in style ? style.boundary : style.route });
+    });
+    legs.filter((leg) => !leg.failed && !leg.stale).forEach((leg, index) => {
+      this.routeCoreOverlays[index]?.overlay.setOptions?.({ strokeWeight: leg.selected ? widths.selected.core : widths.normal.core });
+    });
+  }
+
   private updateRoadLabels() {
     const labels = selectRoadLabels(this.roadLabelLegs, this.roadLabelPoints, {
       center: toCoordinate(this.map.getCenter()), zoom: this.map.getZoom(),
       width: this.container.clientWidth, height: this.container.clientHeight,
+      project: this.map.lngLatToContainer ? (coordinate) => {
+        const pixel = this.map.lngLatToContainer!(toPosition(coordinate));
+        return { x: pixel.getX(), y: pixel.getY() };
+      } : undefined,
     });
-    const signature = JSON.stringify(labels);
+    const signature = JSON.stringify(labels.map(({ name, coordinate, angle, isReturn }) => ({ name, coordinate, angle, isReturn })));
     if (signature === this.roadLabelSignature) return;
     this.roadLabelSignature = signature;
     this.clearOverlays(this.roadLabelOverlays);
-    this.roadLabelOverlays = labels.map(({ name, coordinate, visual }) => {
+    this.roadLabelOverlays = labels.map(({ name, coordinate, visual, angle }) => {
       const marker = new this.amap.Marker({
         position: toPosition(coordinate),
         content: markerContent(visual.source, visual.width, visual.height),
         title: name,
-        anchor: "top-left",
-        offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
-        zIndex: 90,
+        anchor: "center",
+        angle,
+        zIndex: 79,
         bubble: true,
         clickable: false,
       });

@@ -29,7 +29,7 @@ import {
   createFeaturedRoadLabelVisual,
   featuredRoadColor,
 } from "./featured-route-label";
-import { mapOverlayColors, plannedRouteStrokeWidths } from "./map-overlay-style";
+import { mapOverlayColors, getPlannedRouteStrokeWidths } from "./map-overlay-style";
 import {
   areCoordinatesInsideViewport,
   getCoordinateBounds,
@@ -58,6 +58,7 @@ interface TencentMapInstance {
   setZoom(zoom: number): void;
   getZoom(): number;
   getCenter(): TencentLatLng;
+  projectToContainer?(coordinate: TencentLatLng): { x: number; y: number };
   fitBounds(bounds: unknown, options?: { padding?: number; duration?: number }): void;
   destroy(): void;
 }
@@ -213,7 +214,11 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   private roadLabelSignature = "";
   private roadLabelLegs: WebMapRouteLeg[] = [];
   private roadLabelPoints: WebMapControlPoint[] = [];
-  private readonly roadLabelsChangedHandler = () => this.updateRoadLabels();
+  private readonly roadLabelsChangedHandler = () => {
+    this.updateRouteStrokeWidths();
+    this.updateRoadLabels();
+  };
+  private routeStrokeSignature = "";
   private readonly routeLegInsertionOutlineLayer: TencentOverlay;
   private readonly routeLegInsertionGuideLayer: TencentOverlay;
   private readonly routeLegInsertionHandleLayer: TencentOverlay;
@@ -391,83 +396,34 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       styles: {},
       geometries: [],
     });
+    const routeStyles = this.createRouteStyles();
     this.routeOutlineLayer = new tmap.MultiPolyline({
       map,
       zIndex: 40,
       disableInteractive: true,
-      styles: {
-        outline: new tmap.PolylineStyle({
-          color: mapOverlayColors.surface,
-          width: plannedRouteStrokeWidths.normal.outline,
-          borderWidth: 0,
-        }),
-        outlineSelected: new tmap.PolylineStyle({
-          color: mapOverlayColors.surface,
-          width: plannedRouteStrokeWidths.selected.outline,
-          borderWidth: 0,
-        }),
-        outlineStatus: new tmap.PolylineStyle({
-          color: mapOverlayColors.surface,
-          width: plannedRouteStrokeWidths.stale.outline,
-          borderWidth: 0,
-        }),
-      },
+      styles: routeStyles.outline,
       geometries: [],
     });
     this.routeLayer = new tmap.MultiPolyline({
       map,
       zIndex: 60,
       isStopPropagation: true,
-      styles: {
-        normal: new tmap.PolylineStyle({
-          color: mapOverlayColors.routeBoundary,
-          width: plannedRouteStrokeWidths.normal.boundary,
-          lineCap: "round",
-        }),
-        selected: new tmap.PolylineStyle({
-          color: mapOverlayColors.routeBoundary,
-          width: plannedRouteStrokeWidths.selected.boundary,
-          lineCap: "round",
-        }),
-        stale: new tmap.PolylineStyle({
-          color: mapOverlayColors.staleRoute,
-          width: plannedRouteStrokeWidths.stale.route,
-          dashArray: [8, 6],
-        }),
-        failed: new tmap.PolylineStyle({
-          color: mapOverlayColors.failedRoute,
-          width: plannedRouteStrokeWidths.failed.route,
-          dashArray: [5, 5],
-        }),
-      },
+      styles: routeStyles.boundary,
       geometries: [],
     });
     this.routeCoreLayer = new tmap.MultiPolyline({
       map,
       zIndex: 65,
       disableInteractive: true,
-      styles: {
-        normal: new tmap.PolylineStyle({
-          color: mapOverlayColors.routeCore,
-          width: plannedRouteStrokeWidths.normal.core,
-          lineCap: "round",
-          showArrow: true,
-          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
-        }),
-        selected: new tmap.PolylineStyle({
-          color: mapOverlayColors.routeCore,
-          width: plannedRouteStrokeWidths.selected.core,
-          lineCap: "round",
-          showArrow: true,
-          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
-        }),
-      },
+      styles: routeStyles.core,
       geometries: [],
     });
     this.roadLabelLayer = new tmap.MultiMarker({
-      map, zIndex: 90, disableInteractive: true, styles: {}, geometries: [],
+      map, zIndex: 79, disableInteractive: true, styles: {}, geometries: [],
     });
     map.on("idle", this.roadLabelsChangedHandler);
+    map.on("panend", this.roadLabelsChangedHandler);
+    map.on("resize", this.roadLabelsChangedHandler);
     this.routeLegInsertionOutlineLayer = new tmap.MultiPolyline({
       map,
       zIndex: 80,
@@ -679,7 +635,9 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
     this.roadLabelLegs = routeLegs;
     this.updateRoadLabels();
-    const outline = routeLegs
+    // 选中路段最后绘制，与路名的遮挡优先级保持一致。
+    const paintedLegs = [...routeLegs].sort((a, b) => Number(Boolean(a.selected)) - Number(Boolean(b.selected)));
+    const outline = paintedLegs
       .filter((leg) => leg.path.length > 1)
       .map((leg) => ({
         id: leg.id,
@@ -692,7 +650,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
           (point) => new this.tmap.LatLng(point.latitude, point.longitude),
         ),
       }));
-    const routes = routeLegs
+    const routes = paintedLegs
       .filter((leg) => leg.path.length > 1)
       .map((leg) => ({
         id: leg.id,
@@ -700,40 +658,140 @@ class TencentMapCanvasImpl implements WebMapCanvas {
           ? "failed"
           : leg.stale
             ? "stale"
-            : leg.selected
-              ? "selected"
-              : "normal",
+            : leg.isReturn
+              ? leg.selected ? "returnSelected" : "return"
+              : leg.selected ? "selected" : "normal",
         paths: leg.path.map(
           (point) => new this.tmap.LatLng(point.latitude, point.longitude),
         ),
       }));
     this.routeOutlineLayer.setGeometries(outline);
     this.routeLayer.setGeometries(routes);
-    this.routeCoreLayer.setGeometries(routeLegs
+    this.routeCoreLayer.setGeometries(paintedLegs
       .filter((leg) => leg.path.length > 1 && !leg.failed && !leg.stale)
       .map((leg) => ({
         id: `${leg.id}-core`,
-        styleId: leg.selected ? "selected" : "normal",
+        styleId: leg.isReturn
+          ? leg.selected ? "returnSelected" : "return"
+          : leg.selected ? "selected" : "normal",
         paths: leg.path.map(
           (point) => new this.tmap.LatLng(point.latitude, point.longitude),
         ),
       })));
   }
 
+  private createRouteStyles() {
+    const tmap = this.tmap;
+    const strokeWidths = getPlannedRouteStrokeWidths(this.map.getZoom());
+    return {
+      outline: {
+        outline: new tmap.PolylineStyle({
+          color: mapOverlayColors.surface,
+          width: strokeWidths.normal.outline,
+          borderWidth: 0,
+        }),
+        outlineSelected: new tmap.PolylineStyle({
+          color: mapOverlayColors.surface,
+          width: strokeWidths.selected.outline,
+          borderWidth: 0,
+        }),
+        outlineStatus: new tmap.PolylineStyle({
+          color: mapOverlayColors.surface,
+          width: strokeWidths.stale.outline,
+          borderWidth: 0,
+        }),
+      },
+      boundary: {
+        normal: new tmap.PolylineStyle({
+          color: mapOverlayColors.routeBoundary,
+          width: strokeWidths.normal.boundary,
+          lineCap: "round",
+        }),
+        selected: new tmap.PolylineStyle({
+          color: mapOverlayColors.routeBoundary,
+          width: strokeWidths.selected.boundary,
+          lineCap: "round",
+        }),
+        return: new tmap.PolylineStyle({
+          color: mapOverlayColors.returnRouteCore,
+          width: strokeWidths.normal.boundary,
+          lineCap: "round",
+        }),
+        returnSelected: new tmap.PolylineStyle({
+          color: mapOverlayColors.returnRouteCore,
+          width: strokeWidths.selected.boundary,
+          lineCap: "round",
+        }),
+        stale: new tmap.PolylineStyle({
+          color: mapOverlayColors.staleRoute,
+          width: strokeWidths.stale.route,
+          dashArray: [8, 6],
+        }),
+        failed: new tmap.PolylineStyle({
+          color: mapOverlayColors.failedRoute,
+          width: strokeWidths.failed.route,
+          dashArray: [5, 5],
+        }),
+      },
+      core: {
+        normal: new tmap.PolylineStyle({
+          color: mapOverlayColors.routeCore,
+          width: strokeWidths.normal.core,
+          lineCap: "round",
+          showArrow: true,
+          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
+        }),
+        selected: new tmap.PolylineStyle({
+          color: mapOverlayColors.routeCore,
+          width: strokeWidths.selected.core,
+          lineCap: "round",
+          showArrow: true,
+          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
+        }),
+        return: new tmap.PolylineStyle({
+          color: mapOverlayColors.returnRouteCore,
+          width: strokeWidths.normal.core,
+          lineCap: "round",
+          showArrow: true,
+          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
+        }),
+        returnSelected: new tmap.PolylineStyle({
+          color: mapOverlayColors.returnRouteCore,
+          width: strokeWidths.selected.core,
+          lineCap: "round",
+          showArrow: true,
+          arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
+        }),
+      },
+    };
+  }
+
+  private updateRouteStrokeWidths() {
+    const signature = JSON.stringify(getPlannedRouteStrokeWidths(this.map.getZoom()));
+    if (signature === this.routeStrokeSignature) return;
+    this.routeStrokeSignature = signature;
+    const styles = this.createRouteStyles();
+    this.routeOutlineLayer.setStyles?.(styles.outline);
+    this.routeLayer.setStyles?.(styles.boundary);
+    this.routeCoreLayer.setStyles?.(styles.core);
+  }
+
   private updateRoadLabels() {
     const labels = selectRoadLabels(this.roadLabelLegs, this.roadLabelPoints, {
       center: toCoordinate(this.map.getCenter()), zoom: this.map.getZoom(),
       width: this.container.clientWidth, height: this.container.clientHeight,
+      project: this.map.projectToContainer ? (coordinate) => this.map.projectToContainer!(new this.tmap.LatLng(coordinate.latitude, coordinate.longitude)) : undefined,
     });
-    const signature = JSON.stringify(labels);
+    const signature = JSON.stringify(labels.map(({ name, coordinate, angle, isReturn }) => ({ name, coordinate, angle, isReturn })));
     if (signature === this.roadLabelSignature) return;
     this.roadLabelSignature = signature;
     const styles: Record<string, unknown> = {};
-    const geometries = labels.map(({ coordinate, visual }, index) => {
+    const geometries = labels.map(({ coordinate, visual, angle }, index) => {
       const id = `road-label-${index}`;
       styles[id] = new this.tmap.MarkerStyle({
         width: visual.width, height: visual.height,
         anchor: visual.anchor, src: visual.source,
+        rotate: (360 - angle) % 360,
       });
       return { id, styleId: id, position: new this.tmap.LatLng(coordinate.latitude, coordinate.longitude) };
     });
@@ -902,6 +960,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
     this.map.off("click", this.mapClickHandler);
     this.map.off("tilesloaded", this.mapReadyHandler);
     this.map.off("idle", this.roadLabelsChangedHandler);
+    this.map.off("panend", this.roadLabelsChangedHandler);
+    this.map.off("resize", this.roadLabelsChangedHandler);
     this.roadLabelLayer.setMap?.(null);
     this.controlPointLayer.off?.("click", this.markerClickHandler);
     this.featuredControlPointLayer.off?.("click", this.featuredControlPointClickHandler);
@@ -1214,8 +1274,10 @@ export class TencentMapWebAdapter implements WebMapAdapter {
           durationMinutes: route.duration ?? 0,
           trafficLightCount: route.traffic_light_count ?? null,
           path,
-          roadSections: mergeRoadSections((route.steps ?? []).map((step) => ({
+          roadSections: mergeRoadSections((route.steps ?? []).map((step, index, steps) => ({
             name: step.road_name, path: getTencentRoadPath(path, step.polyline_idx),
+            // 腾讯相邻步骤可不共享端点，以原始索引连续性确认同一路径上的连接。
+            connectsToPrevious: step.polyline_idx?.[0] === (steps[index - 1]?.polyline_idx?.[1] ?? -2) + 1,
           }))),
         });
       }

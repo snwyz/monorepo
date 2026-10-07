@@ -343,10 +343,11 @@ export function RouteMap({
       fitPendingRoutePlan(nextCanvas);
       fitFeaturedRouteIfNeeded(nextCanvas);
       nextCanvas.setRouteLegs(
-        (routeRef.current?.legs ?? []).map((leg) => ({
+        (routeRef.current?.legs ?? []).map((leg, index) => ({
           id: leg.id,
           path: leg.path,
           roadSections: leg.roadSections,
+          isReturn: routeRef.current?.scope === "round-trip" && index === routeRef.current.legs.length - 1,
           selected: leg.id === selectedRouteLegIdRef.current,
           stale: routeUpdatingRef.current,
         })),
@@ -460,10 +461,11 @@ export function RouteMap({
 
   useEffect(() => {
     canvasRef.current?.setRouteLegs(
-      (route?.legs ?? []).map((leg) => ({
+      (route?.legs ?? []).map((leg, index) => ({
         id: leg.id,
         path: leg.path,
         roadSections: leg.roadSections,
+        isReturn: route?.scope === "round-trip" && index === route.legs.length - 1,
         selected: leg.id === selectedRouteLegId,
         stale: routeUpdating,
       })),

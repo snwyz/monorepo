@@ -84,6 +84,7 @@ export interface WebMapRouteLeg {
   id: string;
   path: MapCoordinate[];
   roadSections?: RouteRoadSection[];
+  isReturn?: boolean;
   selected?: boolean;
   stale?: boolean;
   failed?: boolean;
