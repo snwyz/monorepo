@@ -43,6 +43,9 @@
   --rb-color-route-stale: #8e8e93;
   --rb-color-route-failure: #ff3b30;
   --rb-color-location: #0a84ff;
+  --rb-color-elevation-line: #34845b;
+  --rb-color-elevation-fill: #64bc83;
+  --rb-elevation-expanded-height: min(276px, calc(100dvh - 112px));
   --rb-road-g219: #bf5af2;
   --rb-road-g331: #ff375f;
   --rb-road-g228: #0a84ff;
@@ -428,8 +431,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .metric-grid .metric-unit { font-size: 12px; font-weight: 500; font-style: normal; letter-spacing: 0; }
 .route-metrics footer { padding: 0 16px 12px; border: 0; color: var(--rb-color-muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.elevation-panel { position: absolute; z-index: 7; left: 50%; bottom: 16px; width: min(610px, calc(100vw - 720px)); min-width: 390px; height: 48px; transform: translateX(-50%); overflow: hidden; transition: height 240ms var(--rb-ease), transform 240ms var(--rb-ease); }
-.elevation-panel.is-open { height: 238px; }
+.elevation-panel { position: absolute; z-index: 7; height: 48px; overflow: hidden; }
 .elevation-panel__trigger { width: 100%; height: 47px; padding: 5px 12px; border: 0; background: transparent; display: flex; align-items: center; gap: 9px; color: var(--rb-color-text); text-align: left; }
 .elevation-panel__icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--rb-color-surface-subtle); }
 .elevation-panel__icon svg { width: 17px; }
@@ -619,84 +621,64 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
   .workspace-route-panels .metric-grid__item { min-height: 64px; }
   .workspace-route-panels .route-metrics footer { padding: 0 16px 12px; }
   .featured-route-panel { top: 88px; bottom: 24px; width: 324px; max-height: none; border-radius: 22px; }
-  .elevation-panel { left: 72px; transform: none; min-width: 0; width: min(320px, calc(100vw - 428px)); border-radius: 16px; }
   .planning-workspace .workspace-weather-loading { top: 88px; left: 16px; width: min(560px, calc(100vw - 372px)); transform: none; }
   .workspace-empty { width: min(330px, calc(100vw - 372px)); }
 }
 
 /* 路线高程卡片：单层外壳、固定异步空间；内部内容滚动，不改变地图尺寸。 */
-.elevation-panel { left: 72px; bottom: 16px; width: min(320px, calc(100vw - 428px)); min-width: 0; transform: none; border-radius: 16px; }
-.elevation-panel.is-open { height: min(320px, calc(100dvh - 112px)); }
+.elevation-panel { --highlight-opacity: 0 !important; left: max(72px, calc((100% - 920px) / 2)); bottom: 16px; width: min(920px, calc(100% - 88px)); min-width: 0; transform: none; border-radius: 16px; }
+.elevation-panel.is-open { height: var(--rb-elevation-expanded-height); }
+/* 宽度不足1600px时，海拔图与右侧路线面板共享横向区域，收起与展开均预留底部空间。 */
+@media (min-width: 761px) and (max-width: 1599px) {
+  .planning-workspace:has(> .elevation-panel) .workspace-route-panels { max-height: calc(100dvh - 92px); overflow-y: auto; }
+  .planning-workspace:has(> .elevation-panel.is-open) .workspace-route-panels { max-height: max(0px, calc(100dvh - var(--rb-elevation-expanded-height) - 44px)); }
+}
 .elevation-panel__trigger { height: 48px; gap: 8px; padding: 4px 12px; }
 .elevation-panel__heading { flex: 1; min-width: 0; }
 .elevation-panel__trigger strong { font-size: 16px; line-height: 20px; }
 .elevation-panel__heading small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; line-height: 18px; color: var(--rb-color-text); }
-.elevation-panel__status { flex-shrink: 0; font-size: 12px; color: var(--rb-color-text); }
-.elevation-panel__content { height: calc(100% - 48px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; font-size: 13px; line-height: 20px; color: var(--rb-color-text); font-variant-numeric: tabular-nums; background: var(--rb-color-canvas); }
+.elevation-panel__status { flex-shrink: 0; font-size: 11px; color: var(--rb-color-muted); }
+.elevation-panel__content { height: calc(100% - 48px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; font-size: 13px; line-height: 20px; color: var(--rb-color-text); font-variant-numeric: tabular-nums; background: transparent; }
 .elevation-panel:not(.is-open) .elevation-panel__content { visibility: hidden; }
 .elevation-panel button, .elevation-panel input, .elevation-panel [data-slot="select-trigger"], .elevation-panel summary { min-height: 44px; }
 .elevation-panel button { border: 0; background: transparent; color: var(--rb-color-text-strong); cursor: pointer; }
 .elevation-panel button:disabled { opacity: .45; cursor: default; }
-.elevation-panel button:hover:not(:disabled) { background: var(--rb-color-surface-subtle); }
 .elevation-panel :is(button, input, summary, svg, [role="slider"]):focus-visible { outline: 2px solid var(--rb-color-focus); outline-offset: -2px; border-radius: 4px; }
 .elevation-panel p { margin: 0; }
-.elevation-placeholder { min-height: 272px; padding: 16px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
-.elevation-placeholder progress { width: 100%; accent-color: var(--rb-color-text-strong); }
-.elevation-range-bar, .elevation-page-heading, .elevation-source-entry { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 8px; }
-.elevation-range-bar button { padding: 0 4px; text-align: left; font-size: 13px; }
-.elevation-range-bar button:last-child { flex-shrink: 0; }
-.elevation-chart { padding: 0 8px; }
-.elevation-chart svg { display: block; width: 100%; height: 104px; touch-action: none; overflow: visible; }
-.elevation-chart text { fill: var(--rb-color-text); font: 12px -apple-system, BlinkMacSystemFont, sans-serif; }
-.elevation-chart__grid { fill: none; stroke: var(--rb-color-border); stroke-width: 1; }
-.elevation-chart__line { fill: none; stroke: var(--rb-color-text-strong); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.elevation-chart__line--selected { stroke-width: 3.5; }
-.elevation-chart__section { fill: var(--rb-color-text); opacity: .045; }
-.elevation-chart__selected { fill: var(--rb-color-text); opacity: .12; }
-.elevation-chart__hatch { stroke: var(--rb-color-muted); stroke-width: 1; }
-.elevation-chart__point { fill: var(--rb-color-text-strong); }
-.elevation-chart__cursor { stroke: var(--rb-color-text); stroke-width: 1; stroke-dasharray: 3 3; }
-.elevation-chart__handle { stroke: var(--rb-color-text-strong); stroke-width: 2; }
-.elevation-chart__handle-grip { fill: var(--rb-color-text-strong); }
-.elevation-chart [role="slider"] { cursor: ew-resize; }
-.elevation-chart__readout { min-height: 36px; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
-.elevation-summary { padding: 4px 12px; }
-.elevation-summary__primary { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
-.elevation-summary__primary span { display: flex; flex-direction: column; font-size: 12px; }
-.elevation-summary__primary strong { font-size: 20px; line-height: 24px; color: var(--rb-color-text-strong); }
-.elevation-summary > p { font-size: 12px; }
-.elevation-panel details summary { display: flex; align-items: center; cursor: pointer; }
-.elevation-panel details summary::before { content: '＋'; margin-right: 4px; }
-.elevation-panel details[open] summary::before { content: '−'; }
-.elevation-slope-details { padding: 4px 12px; border-top: 1px solid var(--rb-color-border); }
-.elevation-slope-details__heading { display: flex; justify-content: space-between; align-items: center; }
-.elevation-slope-details__heading > div { display: flex; }
-.elevation-slope-details__heading button { min-width: 44px; padding: 0 4px; }
-.elevation-slope-details__heading strong { font-size: 14px; }
-.elevation-slope-details > button, .elevation-directory-entry { width: 100%; text-align: left; padding: 0 12px; }
-.elevation-range-editor { padding: 0 12px 12px; }
-.elevation-range-editor form { border-top: 1px solid var(--rb-color-border); padding: 8px 0; }
-.elevation-range-editor > button, .elevation-range-editor form > button { width: 100%; text-align: left; }
-.elevation-range-editor__fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
-.elevation-range-editor input { width: 100%; padding: 4px 8px; border: 1px solid var(--rb-color-border); border-radius: 8px; background: var(--rb-color-surface); }
-.elevation-range-editor [data-slot="select-trigger"] { width: 100%; min-width: 0; }
-.elevation-range-editor [data-slot="select-trigger"] > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.elevation-directory ol { list-style: none; padding: 0 12px; margin: 0; }
-.elevation-directory li button { width: 100%; display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 8px; }
-.elevation-source { padding: 0 12px 12px; }
-.elevation-source p { margin: 8px 0; }
-.elevation-source a { text-decoration: underline; }
-.elevation-source-entry { font-size: 12px; border-top: 1px solid var(--rb-color-border); }
-.elevation-selection-help { padding: 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
-.elevation-no-slopes, .elevation-warning { padding: 12px; }
-.elevation-warning { color: var(--rb-color-warning); }
+/* 海拔面板以图表为唯一主体，异步状态与图表共用固定正文高度。 */
+.elevation-placeholder { height: 100%; padding: 20px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+.elevation-placeholder__icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 14px; background: var(--rb-color-surface-subtle); color: var(--rb-color-elevation-line); }
+.elevation-placeholder__icon svg { width: 23px; height: 23px; }
+.elevation-placeholder__copy { display: flex; flex-direction: column; gap: 5px; }
+.elevation-placeholder__copy strong { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--rb-color-text-strong); }
+.elevation-placeholder__copy p { color: var(--rb-color-muted); font-size: 11px; line-height: 17px; overflow-wrap: anywhere; }
+.elevation-placeholder__progress { width: 100%; max-width: 224px; display: flex; flex-direction: column; gap: 8px; }
+.elevation-placeholder__progress-label { display: flex; justify-content: space-between; gap: 8px; color: var(--rb-color-muted); font-size: 11px; line-height: 16px; }
+.elevation-placeholder progress { display: block; width: 100%; height: 4px; overflow: hidden; border: 0; border-radius: 999px; appearance: none; background: var(--rb-color-border); color: var(--rb-color-elevation-line); accent-color: var(--rb-color-elevation-line); }
+.elevation-placeholder progress::-webkit-progress-bar { background: var(--rb-color-border); border-radius: 999px; }
+.elevation-placeholder progress::-webkit-progress-value { background: var(--rb-color-elevation-line); border-radius: 999px; }
+.elevation-placeholder progress::-moz-progress-bar { background: var(--rb-color-elevation-line); border-radius: 999px; }
+.elevation-panel .elevation-placeholder__retry { padding: 0 14px; border-radius: 10px; font-size: 12px; font-weight: 500; background: var(--rb-color-surface-subtle); }
+.elevation-analysis { height: 100%; position: relative; padding: 4px 4px 24px; }
+.elevation-chart { width: 100%; height: 100%; min-width: 0; position: relative; }
+.elevation-chart__unit { position: absolute; color: var(--rb-color-muted); font-size: 10px; line-height: 14px; pointer-events: none; }
+.elevation-chart__unit--height { top: 5px; left: 8px; }
+.elevation-chart__unit--distance { right: 10px; bottom: -13px; }
+.elevation-chart .recharts-surface { touch-action: pan-y; }
+.elevation-chart .recharts-cartesian-axis-tick text { fill: var(--rb-color-muted); font-size: 11px; }
+.elevation-chart :is(.recharts-wrapper, .recharts-surface):focus { outline: none; }
+.elevation-chart :is(.recharts-wrapper, .recharts-surface):focus-visible { outline: 2px solid var(--rb-color-focus); outline-offset: -2px; border-radius: 4px; }
+.elevation-chart__tooltip { max-width: 224px; display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--rb-color-border); border-radius: 10px; background: var(--rb-color-canvas); color: var(--rb-color-text); font-size: 11px; line-height: 16px; box-shadow: 0 3px 12px rgb(0 0 0 / .06); }
+.elevation-chart__tooltip strong { color: var(--rb-color-text-strong); font-size: 13px; font-weight: 600; }
+.elevation-chart__notice { position: absolute; left: 12px; right: 12px; bottom: 0; height: 24px; display: flex; align-items: center; justify-content: space-between; gap: 4px; color: var(--rb-color-muted); font-size: 11px; }
 @media (prefers-reduced-motion: reduce) { .elevation-panel, .elevation-panel__trigger > svg { transition: none; } }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) { .elevation-panel { background: var(--rb-color-canvas) !important; backdrop-filter: none !important; } }
 @media (forced-colors: active) {
   .elevation-panel, .elevation-panel__content { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
-  .elevation-chart__line, .elevation-chart__handle, .elevation-chart__cursor, .elevation-chart__hatch { stroke: CanvasText; }
-  .elevation-chart text, .elevation-chart__point, .elevation-chart__handle-grip { fill: CanvasText; }
-  .elevation-chart__selected { fill: Highlight; opacity: .3; }
+  .elevation-chart .recharts-area-curve { stroke: CanvasText; }
+  .elevation-chart .recharts-area-area { fill: CanvasText; fill-opacity: .1; }
+  .elevation-chart text { fill: CanvasText; }
+  .elevation-chart__tooltip { background: Canvas; color: CanvasText; border-color: CanvasText; }
   .elevation-panel :is(button, input, summary, svg, [role="slider"]):focus-visible { outline-color: Highlight; }
 }
 @media (max-width: 760px) { .elevation-panel { display: none; } }

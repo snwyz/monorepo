@@ -7,7 +7,7 @@ import { buildElevationGeometry } from "@/domain/elevation-analysis/geometry";
 import { sectionsInRange, summarizeElevation } from "@/domain/elevation-analysis/analyze";
 import type { ElevationProfile, ElevationProvider, RouteElevationRange } from "@/domain/elevation-analysis/model";
 import { HttpElevationProvider } from "@/infrastructure/elevation-analysis/http-elevation-provider";
-import { loadElevationProfile } from "@/infrastructure/elevation-analysis/profile-cache";
+import { getCachedElevationProfile, loadElevationProfile } from "@/infrastructure/elevation-analysis/profile-cache";
 
 const provider = new HttpElevationProvider();
 interface AnalysisState {
@@ -40,7 +40,8 @@ export function useRouteElevationAnalysis(context: RouteElevationContext, enable
   const [selection, setSelection] = useState<{ key: string; range: RouteElevationRange } | null>(null);
   const [slopeChoice, setSlopeChoice] = useState<{ key: string; id: string } | null>(null);
   const [localView, setLocalView] = useState<{ key: string; range: RouteElevationRange } | null>(null);
-  const profile = state?.key === key && state.status === "ready" ? state.profile : null;
+  const cachedProfile = useMemo(() => geometry ? getCachedElevationProfile(geometry, elevationProvider) : null, [geometry, elevationProvider]);
+  const profile = state?.key === key && state.status === "ready" ? state.profile : cachedProfile;
 
   useEffect(() => {
     if (!enabled || !geometry || !key) return;
@@ -49,7 +50,9 @@ export function useRouteElevationAnalysis(context: RouteElevationContext, enable
     const force = retryVersion !== handledRetry.current;
     queueMicrotask(() => {
       if (disposed) return;
-      setState({ key, status: "loading", profile: null, completed: 0, total: Math.ceil(geometry.samples.length / 100), message: null });
+      if (force || !getCachedElevationProfile(geometry, elevationProvider)) {
+        setState({ key, status: "loading", profile: null, completed: 0, total: 0, message: null });
+      }
       handledRetry.current = retryVersion;
       void loadElevationProfile(geometry, elevationProvider, controller.signal, (completed, total) => {
         if (!disposed) setState({ key, status: "loading", profile: null, completed, total, message: null });

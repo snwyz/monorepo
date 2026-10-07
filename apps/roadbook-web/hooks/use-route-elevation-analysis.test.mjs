@@ -73,6 +73,20 @@ test("已有路段选择同步范围；恢复全程不改路线或发起高程�
   fixture.setLegId(null); assert.equal(fixture.value.range.startMeters, 0); assert.equal(fixture.context.route, route); assert.equal(fixture.requests.length, 1);
   fixture.dispose();
 });
+test("往返只查询新增采样位置，切回已缓存范围同步保留曲线", async () => {
+  const fixture = setup(); const oneWay = fixture.route("round-trip");
+  fixture.context.route = oneWay; fixture.setEnabled(true); await settle();
+  fixture.requests[0].release(500); await settle(); const outboundProfile = fixture.value.profile;
+  const known = new Set(fixture.requests[0].coordinates.map((point) => `${point.latitude},${point.longitude}`));
+  const both = { ...oneWay, scope: "round-trip", distanceMeters: 600, legs: [...oneWay.legs, { id: "return", fromControlPointId: "b", toControlPointId: "a", path: oneWay.legs[0].path.slice().reverse() }] };
+  fixture.context.route = both; fixture.render(); await settle();
+  assert.equal(fixture.requests.length, 2);
+  assert.ok(fixture.requests[1].coordinates.every((point) => !known.has(`${point.latitude},${point.longitude}`)));
+  fixture.requests[1].release(500); await settle(); const returnProfile = fixture.value.profile;
+  fixture.context.route = oneWay; fixture.render(); assert.equal(fixture.value.profile, outboundProfile);
+  await settle(); fixture.context.route = both; fixture.render(); assert.equal(fixture.value.profile, returnProfile);
+  await settle(); assert.equal(fixture.requests.length, 2); fixture.dispose();
+});
 test("失败可独立重试，收起时终止请求并忽略迟到回写", async () => {
   const fixture = setup(); fixture.context.route = fixture.route("retry"); fixture.setEnabled(true); await settle(); fixture.requests[0].reject(new Error("试验服务超时")); await settle();
   assert.equal(fixture.value.state.status, "failed"); fixture.value.retry(); await settle(); assert.equal(fixture.requests.length, 2);
