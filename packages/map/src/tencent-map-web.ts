@@ -199,6 +199,8 @@ function routeLegInsertionHandleSvg() {
 }
 
 class TencentMapCanvasImpl implements WebMapCanvas {
+  private readonly elevationHighlightLayer: TencentOverlay;
+  private readonly elevationPositionLayer: TencentOverlay;
   private readonly featuredRoadOutlineLayer: TencentOverlay;
   private readonly featuredRoadLayer: TencentOverlay;
   private readonly featuredRoadLabelLayer: TencentOverlay;
@@ -478,6 +480,17 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       },
       geometries: [],
     });
+    this.elevationHighlightLayer = new tmap.MultiPolyline({
+      map, zIndex: 135, disableInteractive: true,
+      styles: {
+        outline: new tmap.PolylineStyle({ color: mapOverlayColors.surface, width: 10, lineCap: "round" }),
+        line: new tmap.PolylineStyle({ color: mapOverlayColors.routeBoundary, width: 5, lineCap: "round" }),
+      }, geometries: [],
+    });
+    this.elevationPositionLayer = new tmap.MultiMarker({
+      map, zIndex: 170, disableInteractive: true,
+      styles: { position: new tmap.MarkerStyle({ width: 32, height: 32, anchor: { x: 16, y: 16 }, src: locationMarkerSvg() }) }, geometries: [],
+    });
     map.on("dblclick", this.doubleClickHandler);
     map.on("click", this.mapClickHandler);
     map.on("tilesloaded", this.mapReadyHandler);
@@ -630,6 +643,17 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       id: station.id, styleId: station.selected ? "selected" : "normal",
       position: new this.tmap.LatLng(station.latitude, station.longitude),
     })));
+  }
+
+  setElevationHighlight(paths: MapCoordinate[][]) {
+    this.elevationHighlightLayer.setGeometries(paths.filter((path) => path.length > 1).flatMap((path, index) => {
+      const positions = path.map((coordinate) => new this.tmap.LatLng(coordinate.latitude, coordinate.longitude));
+      return [{ id: `elevation-outline:${index}`, styleId: "outline", paths: positions }, { id: `elevation:${index}`, styleId: "line", paths: positions }];
+    }));
+  }
+
+  setElevationPosition(coordinate: MapCoordinate | null) {
+    this.elevationPositionLayer.setGeometries(coordinate ? [{ id: "elevation-position", styleId: "position", position: new this.tmap.LatLng(coordinate.latitude, coordinate.longitude) }] : []);
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
@@ -955,6 +979,8 @@ class TencentMapCanvasImpl implements WebMapCanvas {
   }
 
   destroy() {
+    this.elevationHighlightLayer.setMap?.(null);
+    this.elevationPositionLayer.setMap?.(null);
     if (this.isRouteLegInsertionDragging) this.map.setDraggable(true);
     this.map.off("dblclick", this.doubleClickHandler);
     this.map.off("click", this.mapClickHandler);

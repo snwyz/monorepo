@@ -13,7 +13,7 @@ import type {
   WebMapProvider,
   WebMapRouteLegInsertion,
 } from "@roadbook/map/web";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 
 import {
   ROUTE_PLAN_CONTROL_POINT_LIMIT,
@@ -23,6 +23,7 @@ import { LocateIcon } from "@/components/route-presentation/tool-icons";
 import { bindMapViewportGestureGuard } from "@/components/route-presentation/map-viewport-gesture-guard";
 
 interface RouteMapProps {
+  elevationHandle?: Ref<RouteElevationMapHandle>;
   providerControl: ReactNode;
   mobileOcclusion: number;
   adapter: WebMapAdapter | null;
@@ -52,6 +53,12 @@ interface RouteMapProps {
     routeLegId: string,
     coordinate: MapCoordinate,
   ) => void;
+}
+
+export interface RouteElevationMapHandle {
+  highlight(paths: MapCoordinate[][]): void;
+  browse(coordinate: MapCoordinate | null): void;
+  focus(paths: MapCoordinate[][]): void;
 }
 
 const MOBILE_DISTANCE_FALLBACK_METERS = 2_000;
@@ -109,6 +116,7 @@ function getRouteLegInsertion(
 }
 
 export function RouteMap({
+  elevationHandle,
   providerControl,
   mobileOcclusion,
   adapter,
@@ -139,6 +147,19 @@ export function RouteMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mobileOcclusionRef = useRef(mobileOcclusion);
   const canvasRef = useRef<WebMapCanvas | null>(null);
+  useImperativeHandle(elevationHandle, () => ({
+    highlight: (paths) => canvasRef.current?.setElevationHighlight(paths),
+    browse: (coordinate) => canvasRef.current?.setElevationPosition(coordinate),
+    focus: (paths) => canvasRef.current?.fitCoordinates(paths.flat(), {
+      ...getMapFitOptions(mobileOcclusionRef.current),
+      padding: { top: 96, right: 356, bottom: 352, left: 72 },
+    }),
+  }), []);
+
+  useEffect(() => {
+    canvasRef.current?.setElevationHighlight([]);
+    canvasRef.current?.setElevationPosition(null);
+  }, [route, routeUpdating, provider, featuredRouteId]);
   const controlPointsRef = useRef(controlPoints);
   const routeRef = useRef(route);
   const routeUpdatingRef = useRef(routeUpdating);

@@ -62,6 +62,7 @@ interface AmapOverlay extends AmapEventTarget {
   setMap(map: AmapMapInstance | null): void;
   setPath?(path: AmapPosition[]): void;
   setOptions?(options: Record<string, unknown>): void;
+  setPosition?(position: AmapPosition): void;
 }
 
 interface AmapMapInstance extends AmapEventTarget {
@@ -271,6 +272,8 @@ interface InteractiveOverlay {
 }
 
 class AmapCanvasImpl implements WebMapCanvas {
+  private elevationHighlightOverlays: AmapOverlay[] = [];
+  private elevationPositionOverlay: AmapOverlay | null = null;
   private featuredRoadOutlineOverlays: AmapOverlay[] = [];
   private featuredRoadOverlays: AmapOverlay[] = [];
   private featuredRoadLabelOverlays: AmapOverlay[] = [];
@@ -504,6 +507,28 @@ class AmapCanvasImpl implements WebMapCanvas {
       this.map.add(marker);
       return { overlay: marker, handler };
     });
+  }
+
+  setElevationHighlight(paths: MapCoordinate[][]) {
+    this.clearOverlays(this.elevationHighlightOverlays);
+    this.elevationHighlightOverlays = paths.filter((path) => path.length > 1).flatMap((path) => {
+      const outline = new this.amap.Polyline({ path: path.map(toPosition), strokeColor: mapOverlayColors.surface, strokeWeight: 10, zIndex: 135, clickable: false, bubble: true, strokeOpacity: 0.95 });
+      const line = new this.amap.Polyline({ path: path.map(toPosition), strokeColor: mapOverlayColors.routeBoundary, strokeWeight: 5, zIndex: 136, clickable: false, bubble: true, strokeOpacity: 0.95 });
+      this.map.add(outline); this.map.add(line);
+      return [outline, line];
+    });
+  }
+
+  setElevationPosition(coordinate: MapCoordinate | null) {
+    if (coordinate && this.elevationPositionOverlay?.setPosition) {
+      this.elevationPositionOverlay.setPosition(toPosition(coordinate));
+      return;
+    }
+    this.elevationPositionOverlay?.setMap(null);
+    this.elevationPositionOverlay = null;
+    if (!coordinate) return;
+    const marker = new this.amap.Marker({ position: toPosition(coordinate), content: markerContent(locationMarkerSvg(), 32), anchor: "center", zIndex: 170, clickable: false, bubble: true });
+    this.map.add(marker); this.elevationPositionOverlay = marker;
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
@@ -786,6 +811,8 @@ class AmapCanvasImpl implements WebMapCanvas {
   }
 
   destroy() {
+    this.setElevationHighlight([]);
+    this.setElevationPosition(null);
     if (this.dragResetFrame !== null) cancelAnimationFrame(this.dragResetFrame);
     this.dragResetFrame = null;
     this.map.off("dblclick", this.doubleClickHandler);

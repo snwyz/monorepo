@@ -21,7 +21,7 @@ import { GlobalSearch, type GlobalSearchHandle } from "@/components/map-search/g
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
 import { RouteChargingEntry } from "@/components/route-charging/route-charging-entry";
-import { RouteMap } from "@/components/route-presentation/route-map";
+import { RouteMap, type RouteElevationMapHandle } from "@/components/route-presentation/route-map";
 import { RouteCalculationFeedback } from "@/components/route-planning/route-calculation-feedback";
 import { AlertIcon, ChevronDownIcon, LayersIcon } from "@/components/ui/icons";
 import { appToast } from "@/components/ui/toast-store";
@@ -58,6 +58,10 @@ const RouteChargingPanel = lazy(() => import("@/components/route-charging/route-
 
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
+  const elevationMapRef = useRef<RouteElevationMapHandle>(null);
+  const highlightElevation = useCallback((paths: MapCoordinate[][]) => elevationMapRef.current?.highlight(paths), []);
+  const browseElevation = useCallback((coordinate: MapCoordinate | null) => elevationMapRef.current?.browse(coordinate), []);
+  const focusElevation = useCallback((paths: MapCoordinate[][]) => elevationMapRef.current?.focus(paths), []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchPreviewOpen, setSearchPreviewOpen] = useState(false);
   const [mapOcclusion, setMapOcclusion] = useState(0);
@@ -413,6 +417,7 @@ export function RoutePlanningWorkspace() {
       className={`planning-workspace${isWeatherForecastOpen ? " is-weather-forecast-open" : ""}`}
     >
       <RouteMap
+        elevationHandle={elevationMapRef}
         providerControl={
           <MapProviderSwitch
             provider={workspace.mapProvider}
@@ -734,7 +739,18 @@ export function RoutePlanningWorkspace() {
         ) : null}
 
       </WorkspaceTaskSheet>
-      {!isFeaturedMode ? <ElevationPanel hasRoute={Boolean(workspace.route)} /> : null}
+      {!isFeaturedMode ? <ElevationPanel
+        route={workspace.routeStatus === "ready" ? workspace.route : null}
+        points={points}
+        planId={workspace.activePlan?.id ?? null}
+        revision={workspace.activePlan?.revision ?? 0}
+        mapProvider={workspace.mapProvider}
+        updating={workspace.routeStatus === "updating"}
+        selectedLegId={workspace.selectedRouteLegId}
+        onHighlight={highlightElevation}
+        onBrowse={browseElevation}
+        onFocus={focusElevation}
+      /> : null}
     </main>
   );
 }

@@ -133,6 +133,8 @@ export interface DrivingRoute {
 export type ClosedDrivingRoute = DrivingRoute;
 
 export interface WebMapCanvas {
+  setElevationHighlight(paths: MapCoordinate[][]): void;
+  setElevationPosition(coordinate: MapCoordinate | null): void;
   setControlPoints(controlPoints: WebMapControlPoint[]): void;
   setRouteLegs(routeLegs: WebMapRouteLeg[]): void;
   setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null): void;

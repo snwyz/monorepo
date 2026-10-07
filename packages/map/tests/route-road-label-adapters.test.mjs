@@ -72,7 +72,7 @@ async function setup(provider) {
   const adapter = await Adapter.create({ key: "test-key" });
   const canvas = adapter.createMap({ clientWidth: 1200, clientHeight: 720 }, { zoom: 15 });
   return {
-    canvas, map: maps[0],
+    canvas, map: maps[0], layers,
     labels: () => provider === "amap" ? layers.filter((layer) => layer.active && layer.options.zIndex === 79).map((layer) => layer.options)
       : layers.find((layer) => layer.options.zIndex === 79).geometries.map((geometry) => layers.find((layer) => layer.options.zIndex === 79).styles[geometry.styleId]),
     outline: () => layers.filter((layer) => layer.active && layer.options.zIndex === 40),
@@ -83,6 +83,29 @@ const path = [{ longitude: 110.01, latitude: 29.99 }, { longitude: 110.05, latit
 const leg = { id: "outbound", path, roadSections: [{ name: "107省道", path }] };
 
 for (const provider of ["amap", "tencent"]) {
+  test(`${provider}: 高程只读图层独立更新，浏览位置不平移且销毁后释放`, async () => {
+    const fixture = await setup(provider);
+    fixture.canvas.setRouteLegs([leg]);
+    const routeLayers = fixture.outline();
+    fixture.canvas.setElevationHighlight([path]);
+    fixture.canvas.setElevationPosition(path[0]);
+    fixture.canvas.setElevationPosition(path[1]);
+    const highlightLayers = fixture.layers.filter((layer) => layer.active && [135, 136].includes(layer.options.zIndex));
+    assert.ok(highlightLayers.length > 0);
+    assert.deepEqual(fixture.outline(), routeLayers);
+    if (provider === "amap") {
+      assert.equal(highlightLayers[0].options.clickable, false);
+      assert.equal(fixture.layers.filter((layer) => layer.active && layer.options.zIndex === 170).length, 1);
+    } else {
+      assert.equal(highlightLayers[0].options.disableInteractive, true);
+      assert.equal(highlightLayers[0].geometries.length, 2);
+    }
+    fixture.canvas.setElevationHighlight([]); fixture.canvas.setElevationPosition(null);
+    if (provider === "amap") assert.ok(highlightLayers.every((layer) => !layer.active));
+    else assert.equal(highlightLayers[0].geometries.length, 0);
+    fixture.canvas.destroy();
+    assert.ok(fixture.layers.every((layer) => !layer.active));
+  });
   test(`${provider}: 实际画布以供应商正确的角度旋转路名，保持固定字号且不参与点击`, async () => {
     const fixture = await setup(provider);
     fixture.canvas.setRouteLegs([leg]);
