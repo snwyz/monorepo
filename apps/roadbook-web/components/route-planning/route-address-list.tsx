@@ -31,6 +31,7 @@ interface RouteAddressListProps {
   routeActions?: ReactNode;
   provider: WebMapProvider;
   controlPoints: ControlPoint[];
+  includeReturn: boolean;
   selectedControlPointId: string | null;
   selectedRouteLegId: string | null;
   pendingControlPointId: string | null;
@@ -216,6 +217,7 @@ export function RouteAddressList({
   routeActions,
   provider,
   controlPoints,
+  includeReturn,
   selectedControlPointId,
   selectedRouteLegId,
   pendingControlPointId,
@@ -283,7 +285,7 @@ export function RouteAddressList({
         >
           <div className="address-list__body">
             {controlPoints.map((point, index) => {
-              const nextPoint = controlPoints[(index + 1) % controlPoints.length];
+              const nextPoint = controlPoints[index + 1] ?? (includeReturn ? controlPoints[0] : undefined);
               const legId = nextPoint ? `${point.id}:${nextPoint.id}` : null;
               return (
                 <SortableAddressSequence

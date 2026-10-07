@@ -85,3 +85,49 @@ for (const provider of ["amap", "tencent-map"]) {
     assert.equal(requests.length, 0);
   });
 }
+
+function resolveLeg(provider, request, distance = 1000) {
+  const route = provider === "amap"
+    ? { status: "1", route: { paths: [{ distance, duration: 120, traffic_lights: 2, steps: [{ polyline: "110,30;111,31" }] }] } }
+    : { status: 0, result: { routes: [{ distance, duration: 2, traffic_light_count: 2, polyline: [30, 110, 1000000, 1000000] }] } };
+  request.resolve({ ok: true, json: async () => route });
+}
+
+for (const provider of ["amap", "tencent-map"]) {
+  for (const scope of ["one-way", "round-trip"]) {
+    test(`${provider}: ${scope} 按控制点顺序请求并汇总，单程不请求返程`, async () => {
+      const { adapter, requests } = setup(provider);
+      const controls = [...points, { id: "c", latitude: 32, longitude: 112 }];
+      const pending = adapter.calculateDrivingRoute(controls, "recommend", scope);
+      const count = scope === "one-way" ? 2 : 3;
+      for (let index = 0; index < count; index += 1) {
+        await tick();
+        assert.equal(requests.length, index + 1);
+        const params = new URL(requests[index].url, "https://example.test").searchParams;
+        const from = controls[index];
+        const to = controls[(index + 1) % controls.length];
+        assert.equal(params.get("from"), `${from.latitude},${from.longitude}`);
+        assert.equal(params.get("to"), `${to.latitude},${to.longitude}`);
+        adapter.nextDrivingRequestAt = 0;
+        resolveLeg(provider, requests[index], (index + 1) * 1000);
+      }
+      const route = await pending;
+      assert.equal(route.scope, scope);
+      assert.equal(route.legs.length, count);
+      assert.equal(route.distanceMeters, count === 2 ? 3000 : 6000);
+      assert.equal(route.durationMinutes, count * 2);
+      assert.equal(route.trafficLightCount, count * 2);
+      assert.equal(requests.length, count);
+    });
+  }
+  test(`${provider}: 补算返程只发送末点到起点的一次请求`, async () => {
+    const { adapter, requests } = setup(provider);
+    const pending = adapter.calculateDrivingRoute([points[1], points[0]], "recommend", "one-way");
+    await tick();
+    assert.equal(requests.length, 1);
+    resolveLeg(provider, requests[0]);
+    const route = await pending;
+    assert.equal(route.legs[0].id, "b:a");
+    assert.equal(requests.length, 1);
+  });
+}

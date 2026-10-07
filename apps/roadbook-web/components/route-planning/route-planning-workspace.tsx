@@ -346,7 +346,7 @@ export function RoutePlanningWorkspace() {
   const selectedLeg = workspace.route?.legs.find((leg) => leg.id === workspace.selectedRouteLegId);
   const [chargingEnabled, setChargingEnabled] = useState(false);
   const charging = useRouteCharging(workspace.route,
-    `${workspace.activePlan?.id}:${workspace.mapProvider}`, workspace.activePlan?.revision ?? 0,
+    `${workspace.activePlan?.id}:${workspace.mapProvider}:${workspace.route?.scope ?? "one-way"}`, workspace.activePlan?.revision ?? 0,
     chargingEnabled && !isFeaturedMode && points.length >= 2, workspace.routeStatus === "ready");
   const [chargingFocusRequest, setChargingFocusRequest] = useState<{ coordinate: MapCoordinate; sequence: number } | null>(null);
   const chargingMarkers = useMemo(() => charging.result?.stations.map((station) => ({
@@ -606,6 +606,7 @@ export function RoutePlanningWorkspace() {
               )}
               provider={workspace.mapProvider}
               controlPoints={points}
+              includeReturn={workspace.route?.scope === "round-trip"}
               selectedControlPointId={workspace.selectedControlPointId}
               selectedRouteLegId={workspace.selectedRouteLegId}
               pendingControlPointId={workspace.pendingControlPointId}
@@ -669,6 +670,10 @@ export function RoutePlanningWorkspace() {
             provider={workspace.mapProvider}
             controlPoints={points}
             selectedRouteLegId={workspace.selectedRouteLegId}
+            includeReturn={workspace.includeReturn}
+            returnRouteLoading={workspace.returnRouteLoading}
+            returnRouteError={workspace.returnRouteError}
+            onToggleReturn={() => { cancelInsertion(); workspace.toggleReturnRoute(); }}
           />
         ) : null}
 

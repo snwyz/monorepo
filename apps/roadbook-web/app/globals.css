@@ -422,7 +422,7 @@ svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .metric-grid small { color: var(--rb-color-muted); font-size: 10px; }
 .metric-grid strong { color: var(--rb-color-text-strong); font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
 .metric-grid .metric-unit { font-size: 12px; font-weight: 500; font-style: normal; letter-spacing: 0; }
-.route-metrics footer { padding: 0 16px 12px; border: 0; color: var(--rb-color-muted); font-size: 9px; }
+.route-metrics footer { padding: 0 16px 12px; border: 0; color: var(--rb-color-muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .elevation-panel { position: absolute; z-index: 7; left: 50%; bottom: 16px; width: min(610px, calc(100vw - 720px)); min-width: 390px; height: 48px; transform: translateX(-50%); overflow: hidden; transition: height 240ms var(--rb-ease), transform 240ms var(--rb-ease); }
 .elevation-panel.is-open { height: 238px; }

@@ -3,7 +3,7 @@
 import {
   AmapWebAdapter,
   TencentMapWebAdapter,
-  type ClosedDrivingRoute,
+  type DrivingRoute,
   type MapCoordinate,
   type PlaceCandidate,
   type WebMapAdapter,
@@ -23,6 +23,7 @@ import {
   type RoutePlanSummary,
 } from "@/domain/route-planning/model";
 import { LocalRoutePlanRepository } from "@/infrastructure/route-plan/local-route-plan-repository";
+import { appendReturnLeg } from "@/domain/route-planning/route-travel-scope";
 
 function createId(prefix: string) {
   const value = typeof crypto !== "undefined" && crypto.randomUUID
@@ -38,7 +39,19 @@ export function useRoutePlanningWorkspace() {
   const [catalog, setCatalog] = useState<RoutePlanSummary[]>([]);
   const [catalogReady, setCatalogReady] = useState(false);
   const [activePlan, setActivePlan] = useState<RoutePlan | null>(null);
-  const [route, setRoute] = useState<ClosedDrivingRoute | null>(null);
+  const [route, setRoute] = useState<DrivingRoute | null>(null);
+  const [includeReturn, setIncludeReturn] = useState(false);
+  const [returnSnapshot, setReturnSnapshot] = useState<{
+    oneWayRoute: DrivingRoute;
+    route: DrivingRoute;
+  } | null>(null);
+  const [returnFailure, setReturnFailure] = useState<{
+    oneWayRoute: DrivingRoute;
+    message: string;
+  } | null>(null);
+  const returnRequestToken = useRef(0);
+  const cachedReturn = returnSnapshot?.oneWayRoute === route ? returnSnapshot.route : null;
+  const displayedRoute = includeReturn && cachedReturn ? cachedReturn : route;
   const [routeStatus, setRouteStatus] = useState<RouteCalculationStatus>("idle");
   const [calculationAttempt, setCalculationAttempt] = useState(0);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -56,7 +69,8 @@ export function useRoutePlanningWorkspace() {
   const [startPointStatus, setStartPointStatus] = useState<RouteStartPointStatus>("idle");
   const [startPointMessage, setStartPointMessage] = useState<string | null>(null);
   const activePlanRef = useRef<RoutePlan | null>(null);
-  const routeRef = useRef<ClosedDrivingRoute | null>(null);
+  const routeRef = useRef<DrivingRoute | null>(null);
+  const routeCalculationKeyRef = useRef<string | null>(null);
   const adapterRef = useRef<WebMapAdapter | null>(null);
   const pendingStartPointRef = useRef<{
     planId: string;
@@ -92,6 +106,10 @@ export function useRoutePlanningWorkspace() {
     cancelledCalculationKey.current = calculationKey;
     calculationToken.current += 1;
     calculationAbort.current?.();
+    returnRequestToken.current += 1;
+    setIncludeReturn(false);
+    setReturnSnapshot(null);
+    setReturnFailure(null);
     setRoute(null);
     setRouteError(null);
     setSelectedRouteLegId(null);
@@ -112,8 +130,8 @@ export function useRoutePlanningWorkspace() {
   }, [activePlan]);
 
   useEffect(() => {
-    routeRef.current = route;
-  }, [route]);
+    routeRef.current = displayedRoute;
+  }, [displayedRoute]);
 
   useEffect(() => {
     adapterRef.current = adapter;
@@ -202,9 +220,10 @@ export function useRoutePlanningWorkspace() {
       setRouteStatus("updating");
       setRouteError(null);
       adapter
-        .calculateClosedDrivingRoute(calculationPoints, calculationStrategy ?? "highway", controller.signal)
+        .calculateDrivingRoute(calculationPoints, calculationStrategy ?? "highway", "one-way", controller.signal)
         .then((nextRoute) => {
           if (calculationToken.current !== token) return;
+          routeCalculationKeyRef.current = calculationKey;
           setRoute(nextRoute);
           setRouteStatus("ready");
         })
@@ -226,7 +245,48 @@ export function useRoutePlanningWorkspace() {
     };
   }, [adapter, calculationAttempt, calculationKey, calculationPlanId, calculationPointsJson, calculationStrategy, mapProvider, mapStatus]);
 
+  useEffect(() => {
+    if (!includeReturn || !route || cachedReturn || routeStatus !== "ready" || !adapter
+      || routeCalculationKeyRef.current !== calculationKey) return;
+    const points = JSON.parse(calculationPointsJson) as Array<MapCoordinate & { id: string }>;
+    if (points.length < 2) return;
+    const controller = new AbortController();
+    const token = ++returnRequestToken.current;
+    const calculationVersion = calculationToken.current;
+    let disposed = false;
+    const current = () => !disposed
+      && returnRequestToken.current === token
+      && calculationToken.current === calculationVersion;
+    void adapter.calculateDrivingRoute(
+      [points[points.length - 1], points[0]], route.strategy, "one-way", controller.signal,
+    ).then((returnRoute) => {
+      if (!current()) return;
+      const returnLeg = returnRoute.legs[0];
+      if (!returnLeg) throw new Error("没有返回有效的返程路段");
+      setReturnSnapshot({ oneWayRoute: route, route: appendReturnLeg(route, returnLeg) });
+    }).catch((error: unknown) => {
+      if (!current()) return;
+      setIncludeReturn(false);
+      setReturnFailure({
+        oneWayRoute: route,
+        message: error instanceof Error ? error.message : "返程计算失败",
+      });
+    });
+    return () => { disposed = true; controller.abort(); };
+  }, [adapter, cachedReturn, calculationKey, calculationPointsJson, includeReturn, route, routeStatus]);
+
+  const toggleReturnRoute = useCallback(() => {
+    returnRequestToken.current += 1;
+    setSelectedRouteLegId(null);
+    setReturnFailure(null);
+    setIncludeReturn((current) => !current);
+  }, []);
+
   const initializePlan = useCallback(() => {
+    returnRequestToken.current += 1;
+    setIncludeReturn(false);
+    setReturnSnapshot(null);
+    setReturnFailure(null);
     const plan = createRoutePlan(createId("plan"));
     activePlanRef.current = plan;
     setActivePlan(plan);
@@ -345,6 +405,10 @@ export function useRoutePlanningWorkspace() {
     }
     calculationToken.current += 1;
     activePlanRef.current = plan;
+    returnRequestToken.current += 1;
+    setIncludeReturn(false);
+    setReturnSnapshot(null);
+    setReturnFailure(null);
     setRoute(null);
     setRouteStatus("updating");
     setActivePlan(plan);
@@ -553,6 +617,10 @@ export function useRoutePlanningWorkspace() {
 
   const resetActivePlan = useCallback(() => {
     calculationToken.current += 1;
+    returnRequestToken.current += 1;
+    setIncludeReturn(false);
+    setReturnSnapshot(null);
+    setReturnFailure(null);
     activePlanRef.current = null;
     routeRef.current = null;
     pendingStartPointRef.current = null;
@@ -618,7 +686,11 @@ export function useRoutePlanningWorkspace() {
     catalog,
     catalogReady,
     activePlan,
-    route,
+    route: displayedRoute,
+    includeReturn,
+    toggleReturnRoute,
+    returnRouteLoading: includeReturn && !cachedReturn && routeStatus === "ready",
+    returnRouteError: returnFailure?.oneWayRoute === route ? returnFailure.message : null,
     routeStatus,
     cancelRouteCalculation,
     retryRouteCalculation,

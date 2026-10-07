@@ -5,6 +5,8 @@ export { AmapWebError, TencentMapWebError } from "./web-types";
 export type {
   AmapWebAdapterOptions,
   ClosedDrivingRoute,
+  DrivingRoute,
+  DrivingRouteScope,
   DrivingRouteLeg,
   RouteRoadSection,
   DrivingStrategy,

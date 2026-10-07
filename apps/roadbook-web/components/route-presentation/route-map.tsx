@@ -1,7 +1,7 @@
 "use client";
 
 import type {
-  ClosedDrivingRoute,
+  DrivingRoute,
   MapCoordinate,
   WebMapAdapter,
   WebMapCanvas,
@@ -28,7 +28,7 @@ interface RouteMapProps {
   adapter: WebMapAdapter | null;
   provider: WebMapProvider;
   controlPoints: ControlPoint[];
-  route: ClosedDrivingRoute | null;
+  route: DrivingRoute | null;
   selectedControlPointId: string | null;
   selectedRouteLegId: string | null;
   routeUpdating: boolean;
@@ -78,12 +78,12 @@ function getCoordinateDistanceMeters(from: MapCoordinate, to: MapCoordinate) {
   return 2 * EARTH_RADIUS_METERS * Math.asin(Math.min(1, Math.sqrt(haversine)));
 }
 
-function getRouteCoordinates(route: ClosedDrivingRoute) {
+function getRouteCoordinates(route: DrivingRoute) {
   return route.legs.flatMap((leg) => leg.path);
 }
 
 function getRouteLegInsertion(
-  route: ClosedDrivingRoute | null,
+  route: DrivingRoute | null,
   controlPoints: ControlPoint[],
   selectedRouteLegId: string | null,
 ): WebMapRouteLegInsertion | null {
@@ -163,7 +163,7 @@ export function RouteMap({
   const appliedFitRoutePlanSequenceRef = useRef<number | null>(null);
   const appliedFeaturedRouteIdRef = useRef<string | null>(null);
   const previousControlPointIdsRef = useRef<string[]>([]);
-  const checkedRouteViewportRef = useRef<ClosedDrivingRoute | null>(null);
+  const checkedRouteViewportRef = useRef<DrivingRoute | null>(null);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [mapVisualReady, setMapVisualReady] = useState(false);
   useEffect(() => {
@@ -253,7 +253,7 @@ export function RouteMap({
 
   const fitRouteGeometryIfNeeded = useCallback((
     canvas: WebMapCanvas | null,
-    nextRoute: ClosedDrivingRoute | null,
+    nextRoute: DrivingRoute | null,
   ) => {
     if (!canvas || !nextRoute) return;
     const coordinates = getRouteCoordinates(nextRoute);

@@ -1,6 +1,8 @@
 import type {
   AmapWebAdapterOptions,
   ClosedDrivingRoute,
+  DrivingRoute,
+  DrivingRouteScope,
   DrivingRouteLeg,
   DrivingStrategy,
   MapCoordinate,
@@ -1000,6 +1002,15 @@ export class AmapWebAdapter implements WebMapAdapter {
     strategy: DrivingStrategy,
     signal?: AbortSignal,
   ): Promise<ClosedDrivingRoute> {
+    return this.calculateDrivingRoute(controlPoints, strategy, "round-trip", signal);
+  }
+
+  async calculateDrivingRoute(
+    controlPoints: Array<MapCoordinate & { id: string }>,
+    strategy: DrivingStrategy,
+    scope: DrivingRouteScope,
+    signal?: AbortSignal,
+  ): Promise<DrivingRoute> {
     if (controlPoints.length < 2) {
       throw new AmapWebError("至少需要两个控制点", "INVALID_RESULT");
     }
@@ -1009,11 +1020,13 @@ export class AmapWebAdapter implements WebMapAdapter {
       "avoid-highway": "13",
     };
     const calculationVersion = ++this.routeCalculationVersion;
-    const connections = controlPoints.map((from, index) => ({
-      from,
-      to: controlPoints[(index + 1) % controlPoints.length],
-      index,
-    }));
+    const connections = controlPoints
+      .slice(0, scope === "round-trip" ? controlPoints.length : -1)
+      .map((from, index) => ({
+        from,
+        to: controlPoints[(index + 1) % controlPoints.length],
+        index,
+      }));
 
     try {
       const legs: DrivingRouteLeg[] = [];
@@ -1063,6 +1076,7 @@ export class AmapWebAdapter implements WebMapAdapter {
       }
       const lightCounts = legs.map((leg) => leg.trafficLightCount);
       return {
+        scope,
         strategy,
         legs,
         distanceMeters: legs.reduce((sum, leg) => sum + leg.distanceMeters, 0),
@@ -1076,7 +1090,7 @@ export class AmapWebAdapter implements WebMapAdapter {
       };
     } catch (error) {
       throw new AmapWebError(
-        `闭合路线计算失败：${describeAmapServiceError(error)}`,
+        `${scope === "round-trip" ? "往返" : "单程"}路线计算失败：${describeAmapServiceError(error)}`,
         "SERVICE_FAILED",
         error,
       );

@@ -118,13 +118,18 @@ export interface DrivingRouteLeg {
   roadSections?: RouteRoadSection[];
 }
 
-export interface ClosedDrivingRoute {
+export type DrivingRouteScope = "one-way" | "round-trip";
+
+export interface DrivingRoute {
+  scope: DrivingRouteScope;
   strategy: DrivingStrategy;
   legs: DrivingRouteLeg[];
   distanceMeters: number;
   durationMinutes: number;
   trafficLightCount: number | null;
 }
+
+export type ClosedDrivingRoute = DrivingRoute;
 
 export interface WebMapCanvas {
   setControlPoints(controlPoints: WebMapControlPoint[]): void;
@@ -159,6 +164,12 @@ export interface WebMapAdapter {
     name: string;
     address: string;
   }>;
+  calculateDrivingRoute(
+    controlPoints: Array<MapCoordinate & { id: string }>,
+    strategy: DrivingStrategy,
+    scope: DrivingRouteScope,
+    signal?: AbortSignal,
+  ): Promise<DrivingRoute>;
   calculateClosedDrivingRoute(
     controlPoints: Array<MapCoordinate & { id: string }>,
     strategy: DrivingStrategy,

@@ -1,11 +1,11 @@
 "use client";
 
-import type { ClosedDrivingRoute } from "@roadbook/map/web";
+import type { DrivingRoute } from "@roadbook/map/web";
 import { useCallback, useEffect, useState } from "react";
 import type { WholeRouteChargingResult } from "@/domain/route-charging/model";
 
 interface Snapshot {
-  route: ClosedDrivingRoute;
+  route: DrivingRoute;
   revision: number;
   scope: string;
   attempt: number;
@@ -13,7 +13,7 @@ interface Snapshot {
   error: string | null;
 }
 
-export function useRouteCharging(route: ClosedDrivingRoute | null, scope: string, revision: number, enabled: boolean, ready: boolean) {
+export function useRouteCharging(route: DrivingRoute | null, scope: string, revision: number, enabled: boolean, ready: boolean) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [selection, setSelection] = useState<{ scope: string; id: string } | null>(null);
