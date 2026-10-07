@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { RotateCw } from "lucide-react";
+import { ArrowUpRight, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PlaceCandidate, MapCoordinate } from "@roadbook/map/web";
 
@@ -468,8 +468,17 @@ export function RoutePlanningWorkspace() {
         <WorkspaceSheetPage active={!searchOpen && planningDetail && Boolean(weatherTarget)}>
           {selectedPlace ? <div className="workspace-place-detail workspace-mobile-only">
             <p>{selectedPlace.address}</p>
-            <a href={createMapNavigationUri({ provider: workspace.mapProvider, to: selectedPlace })}>导航到这里</a>
-            <button type="button" onClick={() => requestControlPointRemoval(selectedPlace.id)}>删除途经点</button>
+            <div className="workspace-place-detail__actions">
+              <Button asChild>
+                <a href={createMapNavigationUri({ provider: workspace.mapProvider, to: selectedPlace })}>
+                  <ArrowUpRight size={16} aria-hidden="true" />导航到这里
+                </a>
+              </Button>
+              <Button type="button" variant="ghost" className="workspace-place-detail__remove"
+                onClick={() => requestControlPointRemoval(selectedPlace.id)}>
+                <Trash2 size={16} aria-hidden="true" />删除途经点
+              </Button>
+            </div>
           </div> : null}
         <div className="workspace-weather-slot">
           {!isFeaturedMode && weatherTarget ? (

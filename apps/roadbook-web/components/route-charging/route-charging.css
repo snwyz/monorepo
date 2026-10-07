@@ -18,10 +18,10 @@
 .charging-details__tags { display: flex; gap: 4px; flex-wrap: wrap; align-content: flex-start; min-height: 48px; }
 .charging-details__tags > span { font-size: 10px; line-height: 16px; padding: 3px 7px; border-radius: 6px; background: rgba(118,118,128,.07); color: var(--rb-color-text); }
 .charging-details__note { font-size: 11px; line-height: 17px; color: var(--rb-color-muted); margin: 10px 0 0; }
-.charging-details__actions { display: flex; gap: 8px; margin-top: 16px; }
-.charging-details__actions > * { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 40px; border: 0; padding: 8px 10px; border-radius: 12px; font-size: 11px; text-decoration: none; font-weight: 500; }
-.charging-details__actions button { flex: 1; background: var(--rb-color-ink); color: white; }
-.charging-details__actions a { background: rgba(118,118,128,.08); color: var(--rb-color-text-strong); }
+.charging-details__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.charging-details__actions > * { min-width: 0; min-height: 44px; padding-inline: 12px; font-size: 13px; text-decoration: none; }
+.charging-details__actions svg { width: 16px; height: 16px; }
+.charging-details__actions > :focus-visible { outline-color: var(--rb-color-focus); }
 .route-charging__footer { flex-shrink: 0; padding: 12px 18px; border-top: 1px solid rgba(60,60,67,.07); color: var(--rb-color-muted); font-size: 10px; line-height: 16px; }
 .route-charging__footer strong { display: block; font-weight: 400; color: var(--rb-color-warning); margin-bottom: 4px; }
 .route-charging__footer p { margin: 3px 0 0; font-size: 9px; }
@@ -41,7 +41,6 @@
   .charging-details__metrics span, .charging-details__freshness { font-size: 11px; }
   .charging-details__freshness, .charging-details__freshness button { height: 44px; }
   .charging-details__freshness button { width: 44px; }
-  .charging-details__actions > * { min-height: 44px; font-size: 13px; }
   .route-charging__footer { padding: 12px 4px; }
 }
 @media (prefers-reduced-transparency: reduce) { .workspace-route-panels.is-charging { background: #f7f8fa; backdrop-filter: none; -webkit-backdrop-filter: none; } }

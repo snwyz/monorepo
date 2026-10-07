@@ -218,7 +218,11 @@
   .workspace-discovery .workspace-discovery__resume { width: 100%; margin: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; }
   .workspace-place-detail { order: 1; padding: 0 4px 16px; }
   .workspace-place-detail p, .workspace-leg-detail p { margin: 0 0 18px; line-height: 1.7; color: var(--rb-color-muted); }
-  .workspace-place-detail a, .workspace-place-detail button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; margin: 0 10px 8px 0; border: 0; border-radius: 14px; background: var(--glass-control-fill); color: var(--rb-color-text-strong); font-size: 14px; text-decoration: none; }
+  .workspace-place-detail__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .workspace-place-detail__actions > * { min-width: 0; min-height: 44px; padding-inline: 12px; font-size: 13px; text-decoration: none; }
+  .workspace-place-detail__actions svg { width: 16px; height: 16px; }
+  .workspace-place-detail__actions > :focus-visible { outline-color: var(--rb-color-focus); }
+  .workspace-place-detail__actions .workspace-place-detail__remove { color: var(--rb-color-danger); }
   .planning-workspace .map-controls { bottom: calc(var(--sheet-bottom) + 30px); transform: translateY(calc(0px - var(--sheet-visible) + var(--sheet-drag))); }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -3,6 +3,7 @@
 import { ArrowUpRight, Plus, RotateCw } from "lucide-react";
 import type { WebMapProvider } from "@roadbook/map/web";
 import type { RouteChargingCandidate } from "@/domain/route-charging/model";
+import { Button } from "@/components/ui/button";
 import { useChargingStationDetails } from "@/hooks/use-charging-station-details";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
 
@@ -36,8 +37,10 @@ export function ChargingStationDetails({ station, provider, addDisabledReason, o
     </div>
     {station.note ? <p className="charging-details__note">{station.note}</p> : null}
     <div className="charging-details__actions">
-      <button type="button" onClick={() => onAdd(station)} disabled={Boolean(addDisabledReason)} title={addDisabledReason ?? "加入路线对应位置并重新规划"}><Plus size={15} aria-hidden="true" />加入途经点</button>
-      <a href={createMapNavigationUri({ provider, to: { name: station.name, ...station.coordinate } })}><ArrowUpRight size={15} aria-hidden="true" />导航到这里</a>
+      <Button type="button" onClick={() => onAdd(station)} disabled={Boolean(addDisabledReason)} title={addDisabledReason ?? "加入路线对应位置并重新规划"}><Plus size={16} aria-hidden="true" />加入途经点</Button>
+      <Button asChild variant="outline">
+        <a href={createMapNavigationUri({ provider, to: { name: station.name, ...station.coordinate } })}><ArrowUpRight size={16} aria-hidden="true" />导航到这里</a>
+      </Button>
     </div>
     {addDisabledReason ? <p className="charging-details__note">{addDisabledReason}</p> : null}
   </div>;
