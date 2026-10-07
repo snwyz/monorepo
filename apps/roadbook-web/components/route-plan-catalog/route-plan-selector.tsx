@@ -185,6 +185,7 @@ export function RoutePlanSelector({
   const activePlanLabel = activePlan
     ? formatPlanDisplayName(activePlanSummary ?? activePlan)
     : "选择路线";
+  const canToggleCatalog = !open || Boolean(resumeLabel);
   const isRenamingActivePlan = Boolean(
     activePlan && renameDraft?.planId === activePlan.id,
   );
@@ -245,27 +246,38 @@ export function RoutePlanSelector({
   return (
     <section className="plan-selector" data-catalog-open={open} aria-label="路线方案">
       <div data-glass="desktop" className="plan-selector__header">
-        <button
-          className="plan-selector__trigger"
-          type="button"
-          disabled={open && !resumeLabel}
-          onClick={toggleSelector}
-          aria-expanded={open}
-          aria-controls={catalogId}
-          aria-label={`${open ? "返回当前任务" : "查看我的路线"}，${contextLabel ?? activePlanLabel}`}
-        >
-          <span className="plan-selector__brand"><RoadbookMark /></span>
-          <span className="plan-selector__copy">
-            <small className="plan-selector__eyebrow">
-              <span>我的路线</span>
-              {catalog.length > 0 ? <span className="plan-selector__count">{catalog.length}</span> : null}
-            </small>
-            <span className="plan-selector__title">
-              <strong title={contextLabel ?? activePlanLabel}>{contextLabel ?? activePlanLabel}</strong>
-              <ChevronDownIcon className={open ? "is-rotated" : ""} />
+        {canToggleCatalog ? (
+          <button
+            className="plan-selector__trigger"
+            type="button"
+            onClick={toggleSelector}
+            aria-expanded={open}
+            aria-controls={catalogId}
+            aria-label={`${open ? "返回当前任务" : "查看我的路线"}，${contextLabel ?? activePlanLabel}`}
+          >
+            <span className="plan-selector__brand"><RoadbookMark /></span>
+            <span className="plan-selector__copy">
+              <small className="plan-selector__eyebrow">
+                <span>我的路线</span>
+                {catalog.length > 0 ? <span className="plan-selector__count">{catalog.length}</span> : null}
+              </small>
+              <span className="plan-selector__title">
+                <strong title={contextLabel ?? activePlanLabel}>{contextLabel ?? activePlanLabel}</strong>
+                <ChevronDownIcon className={open ? "is-rotated" : ""} />
+              </span>
             </span>
-          </span>
-        </button>
+          </button>
+        ) : (
+          <div className="plan-selector__heading">
+            <span className="plan-selector__brand"><RoadbookMark /></span>
+            <span className="plan-selector__copy">
+              <span className="plan-selector__title">
+                <strong>我的路线</strong>
+                {catalog.length > 0 ? <span className="plan-selector__count">{catalog.length}</span> : null}
+              </span>
+            </span>
+          </div>
+        )}
         <Button type="button" variant="secondary" className="plan-selector__create" onClick={() => { onCreate(); closeSelector(); }}>
           <PlusIcon />新建规划
         </Button>

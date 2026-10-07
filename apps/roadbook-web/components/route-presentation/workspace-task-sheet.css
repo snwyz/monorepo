@@ -80,7 +80,7 @@
   .workspace-task-sheet__navigation button { flex: none; min-height: 44px; border: 0; padding: 0 8px; border-radius: 12px; background: transparent; color: var(--rb-color-text); font-size: 12px; }
   .workspace-task-sheet .plan-selector { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 8px; order: 2; width: 100%; min-height: 0; background: transparent; border: 0; box-shadow: none; }
   .workspace-task-sheet .plan-selector__header { display: contents; }
-  .workspace-task-sheet .plan-selector__trigger { display: none; }
+  .workspace-task-sheet .plan-selector__trigger, .workspace-task-sheet .plan-selector__heading { display: none; }
   .workspace-task-sheet .plan-selector__menu { display: contents; position: static; width: 100%; max-height: none; overflow: visible; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; animation: none; }
   .workspace-task-sheet .plan-selector__list { grid-column: 1 / -1; max-height: none; overflow: visible; }
   .workspace-task-sheet .plan-selector__menu-head { grid-column: 1; grid-row: 1; min-width: 0; padding: 0; }
