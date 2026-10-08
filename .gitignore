@@ -10,3 +10,7 @@ dist/
 .DS_Store
 prisma/migrations/*.sql.bak
 data/
+coverage/
+playwright-report/
+test-results/
+blob-report/
