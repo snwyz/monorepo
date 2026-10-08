@@ -4,6 +4,7 @@ import type {
   RoutePlanSummary,
 } from "@/domain/route-planning/model";
 import type { RoutePlanRepository } from "@/domain/route-planning/repository";
+import { getRoutePlanThumbnail, isRoutePlanThumbnail } from "@/domain/route-planning/route-plan-thumbnail";
 
 const CATALOG_KEY = "roadbook.route-plan-catalog.v1";
 const SNAPSHOT_PREFIX = "roadbook.route-plan.v1.";
@@ -43,7 +44,11 @@ export class LocalRoutePlanRepository implements RoutePlanRepository {
       if (!Array.isArray(parsed)) return [];
       return parsed
         .filter(isSummary)
-        .map((summary) => ({ ...summary, loadable: summary.loadable !== false }))
+        .map((summary) => ({
+          ...summary,
+          thumbnail: isRoutePlanThumbnail(summary.thumbnail) ? summary.thumbnail : undefined,
+          loadable: summary.loadable !== false,
+        }))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     } catch {
       return [];
@@ -55,14 +60,18 @@ export class LocalRoutePlanRepository implements RoutePlanRepository {
       const raw = window.localStorage.getItem(`${SNAPSHOT_PREFIX}${id}`);
       if (!raw) return null;
       const parsed: unknown = JSON.parse(raw);
-      return isRoutePlan(parsed) ? { ...parsed, strategy: normalizeRoutePlanStrategy(parsed.strategy) } : null;
+      if (!isRoutePlan(parsed)) return null;
+      const plan = { ...parsed, strategy: normalizeRoutePlanStrategy(parsed.strategy) };
+      if (plan.thumbnail !== undefined) plan.thumbnail = getRoutePlanThumbnail(plan);
+      return plan;
     } catch {
       return null;
     }
   }
 
   save(plan: RoutePlan) {
-    window.localStorage.setItem(`${SNAPSHOT_PREFIX}${plan.id}`, JSON.stringify(plan));
+    const thumbnail = getRoutePlanThumbnail(plan);
+    window.localStorage.setItem(`${SNAPSHOT_PREFIX}${plan.id}`, JSON.stringify({ ...plan, thumbnail }));
     const summary: RoutePlanSummary = {
       id: plan.id,
       name: plan.name,
@@ -74,6 +83,7 @@ export class LocalRoutePlanRepository implements RoutePlanRepository {
       updatedAt: plan.updatedAt,
       schemaVersion: 1,
       loadable: true,
+      thumbnail,
     };
     const catalog = this.list().filter((item) => item.id !== plan.id);
     window.localStorage.setItem(CATALOG_KEY, JSON.stringify([summary, ...catalog]));

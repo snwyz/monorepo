@@ -2,6 +2,8 @@ import { createStore } from "zustand/vanilla";
 import { reviseRoutePlan, type RoutePlan, type RoutePlanSummary } from "@/domain/route-planning/model";
 import type { RoutePlanRepository } from "@/domain/route-planning/repository";
 import type { RoutePlanPersistence } from "./route-plan-persistence";
+import { routeCalculationIdentity, type PublishedRouteContext } from "@/domain/route-planning/calculation-context";
+import { createRoutePlanThumbnail, getRoutePlanThumbnail } from "@/domain/route-planning/route-plan-thumbnail";
 
 interface RoutePlanSessionState {
   activePlan: RoutePlan | null;
@@ -12,6 +14,7 @@ interface RoutePlanSessionState {
 }
 
 export function createRoutePlanSession(repository: RoutePlanRepository, persistence: RoutePlanPersistence) {
+  let capturedRoute: PublishedRouteContext["route"] | null = null;
   const state = createStore<RoutePlanSessionState>(() => ({
     activePlan: null, history: [], catalog: [], catalogReady: false, activation: 0,
   }));
@@ -32,6 +35,7 @@ export function createRoutePlanSession(repository: RoutePlanRepository, persiste
     const changed = change(activePlan);
     if (changed === activePlan) return null;
     const next = reviseRoutePlan(activePlan, () => changed);
+    next.thumbnail = getRoutePlanThumbnail(next);
     state.setState({ activePlan: next, history: recordHistory ? [...history.slice(-19), activePlan] : history });
     persistence.schedule(next);
     return next;
@@ -39,6 +43,20 @@ export function createRoutePlanSession(repository: RoutePlanRepository, persiste
   const reset = () => state.setState((current) => ({ activePlan: null, history: [], activation: current.activation + 1 }));
   return {
     state, refreshCatalog, edit,
+    captureThumbnail(published: PublishedRouteContext | null) {
+      const plan = state.getState().activePlan;
+      if (!published || !plan || published.route.scope !== "one-way"
+        || (capturedRoute === published.route && getRoutePlanThumbnail(plan)?.inputIdentity === published.inputIdentity)
+        || published.planId !== plan.id
+        || published.inputIdentity !== routeCalculationIdentity(plan, published.mapProvider)) return;
+      const thumbnail = createRoutePlanThumbnail(published.route, published.inputIdentity, published.mapProvider);
+      capturedRoute = published.route;
+      if (!thumbnail && !plan.thumbnail) return;
+      // 衍生展示数据不增加编辑修订、不改变排序时间、不进入撤销历史。
+      const next = { ...plan, thumbnail };
+      state.setState({ activePlan: next });
+      persistence.schedule(next);
+    },
     create: (plan: RoutePlan) => activate(plan, true),
     load(id: string) {
       // 同一活动方案重新加载也不能读回尚未暂存的旧内容。
@@ -55,6 +73,7 @@ export function createRoutePlanSession(repository: RoutePlanRepository, persiste
       const previous = history[history.length - 1];
       if (!activePlan || !previous) return;
       const restored = reviseRoutePlan(activePlan, () => previous);
+      restored.thumbnail = getRoutePlanThumbnail(restored);
       state.setState({ activePlan: restored, history: history.slice(0, -1) });
       persistence.schedule(restored);
     },

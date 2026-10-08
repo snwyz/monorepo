@@ -3,6 +3,7 @@
 import { lazy, Suspense, type CSSProperties, useId, useState } from "react";
 
 import { RoadbookMark } from "@/components/branding/roadbook-mark";
+import { RoutePlanThumbnail } from "./route-plan-thumbnail";
 import { Button } from "@/components/ui/button";
 import { CheckIcon, ChevronDownIcon, EditIcon, MoreIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
@@ -120,7 +121,7 @@ function RoutePlanRow({ plan, isActive, onLoad, onLoaded, onRequestDelete }: Rou
         aria-current={isActive ? "true" : undefined}
         aria-label={`加载路线${planLabel}，${planTime}，${plan.controlPointCount} 个途经点`}
       >
-        <span className="plan-row__route"><RoadbookMark /></span>
+        <span className="plan-row__route"><RoutePlanThumbnail thumbnail={plan.thumbnail} /></span>
         <span className="plan-row__copy">
           <strong>{planLabel}</strong>
           <small>

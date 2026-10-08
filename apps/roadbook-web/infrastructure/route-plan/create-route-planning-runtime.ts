@@ -1,6 +1,6 @@
 import { AmapWebAdapter, TencentMapWebAdapter } from "@roadbook/map/web";
 import { createMapConnection } from "@/application/map-platform/map-connection";
-import { createRouteCalculationActor } from "@/application/route-calculation/route-calculation-actor";
+import { createRouteCalculationActor, queryRouteCalculation } from "@/application/route-calculation/route-calculation-actor";
 import { createRoutePlanPersistence } from "@/application/route-plan/route-plan-persistence";
 import { createRoutePlanSession } from "@/application/route-plan/route-plan-session";
 import { LocalRoutePlanRepository } from "./local-route-plan-repository";
@@ -26,7 +26,10 @@ export function createRoutePlanningRuntime() {
     start() {
       // Effect 重挂载创建新流程，避免复用已经停止的 actor。
       actor = createRouteCalculationActor();
-      const observer = actor.subscribe(() => listeners.forEach((listener) => listener()));
+      const observer = actor.subscribe((snapshot) => {
+        session.captureThumbnail(queryRouteCalculation(snapshot).published);
+        listeners.forEach((listener) => listener());
+      });
       actor.start();
       const syncInput = () => {
         const { activePlan, activation } = session.state.getState();

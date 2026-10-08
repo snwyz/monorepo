@@ -1,4 +1,10 @@
-import type { DrivingStrategy, MapCoordinate } from "@roadbook/map/web";
+import type { DrivingStrategy, MapCoordinate, WebMapProvider } from "@roadbook/map/web";
+
+export interface RoutePlanThumbnail {
+  inputIdentity: string;
+  mapProvider: WebMapProvider;
+  paths: [number, number][][];
+}
 
 export type RoutePlanStrategy = Exclude<DrivingStrategy, "recommend">;
 
@@ -20,6 +26,7 @@ export interface RoutePlan {
   revision: number;
   updatedAt: string;
   schemaVersion: 1;
+  thumbnail?: RoutePlanThumbnail;
 }
 
 export interface RoutePlanSummary {
@@ -31,6 +38,7 @@ export interface RoutePlanSummary {
   updatedAt: string;
   schemaVersion: 1;
   loadable: boolean;
+  thumbnail?: RoutePlanThumbnail;
 }
 
 export type RouteCalculationStatus =
