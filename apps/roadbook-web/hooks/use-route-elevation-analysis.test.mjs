@@ -93,3 +93,23 @@ test("失败可独立重试，收起时终止请求并忽略迟到回写", async
   fixture.setEnabled(false); assert.equal(fixture.requests[1].signal.aborted, true); fixture.requests[1].release(0); await settle(); assert.equal(fixture.value.profile, null);
   fixture.dispose();
 });
+
+test("名称和保存修订变化不取消正在进行的采样，展示名称同步更新", async () => {
+  const fixture = setup();
+  fixture.context.route = fixture.route("metadata");
+  fixture.context.points = [{ id: "a", name: "原起点" }, { id: "b", name: "原终点" }];
+  fixture.setEnabled(true);
+  await settle();
+  const request = fixture.requests[0];
+  fixture.context.revision++;
+  fixture.context.points = [{ id: "a", name: "新起点" }, { id: "b", name: "新终点" }];
+  fixture.render();
+  await settle();
+  assert.equal(request.signal.aborted, false);
+  assert.equal(fixture.requests.length, 1);
+  assert.equal(fixture.value.geometry.controlPoints[0].name, "新起点");
+  request.release(100);
+  await settle();
+  assert.equal(fixture.value.state.status, "ready");
+  fixture.dispose();
+});

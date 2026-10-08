@@ -1,306 +1,75 @@
 "use client";
 
+import type { MapCoordinate, PlaceCandidate } from "@roadbook/map/web";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  AmapWebAdapter,
-  TencentMapWebAdapter,
-  type DrivingRoute,
-  type MapCoordinate,
-  type PlaceCandidate,
-  type WebMapAdapter,
-  type WebMapProvider,
-} from "@roadbook/map/web";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import {
-  createRoutePlan,
-  insertControlPointIntoRouteLeg,
-  reviseRoutePlan,
-  ROUTE_PLAN_CONTROL_POINT_LIMIT,
-  type ControlPoint,
-  type DraftStatus,
-  type RouteCalculationStatus,
-  type RoutePlan,
-  type RoutePlanSummary,
+  createRoutePlan, insertControlPointIntoRouteLeg, ROUTE_PLAN_CONTROL_POINT_LIMIT,
+  type ControlPoint, type RoutePlan,
 } from "@/domain/route-planning/model";
-import { LocalRoutePlanRepository } from "@/infrastructure/route-plan/local-route-plan-repository";
-import { appendReturnLeg } from "@/domain/route-planning/route-travel-scope";
+import type { PublishedRouteContext } from "@/domain/route-planning/calculation-context";
+import { queryRouteCalculation } from "@/application/route-calculation/route-calculation-actor";
+import { createRoutePlanningRuntime } from "@/infrastructure/route-plan/create-route-planning-runtime";
 
 function createId(prefix: string) {
   const value = typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `${prefix}-${value}`;
 }
-
 type RouteStartPointStatus = "idle" | "locating" | "ready" | "manual-required";
 
 export function useRoutePlanningWorkspace() {
-  const repository = useMemo(() => new LocalRoutePlanRepository(), []);
-  const [catalog, setCatalog] = useState<RoutePlanSummary[]>([]);
-  const [catalogReady, setCatalogReady] = useState(false);
-  const [activePlan, setActivePlan] = useState<RoutePlan | null>(null);
-  const [route, setRoute] = useState<DrivingRoute | null>(null);
-  const [includeReturn, setIncludeReturn] = useState(false);
-  const [returnSnapshot, setReturnSnapshot] = useState<{
-    oneWayRoute: DrivingRoute;
-    route: DrivingRoute;
-  } | null>(null);
-  const [returnFailure, setReturnFailure] = useState<{
-    oneWayRoute: DrivingRoute;
-    message: string;
-  } | null>(null);
-  const returnRequestToken = useRef(0);
-  const cachedReturn = returnSnapshot?.oneWayRoute === route ? returnSnapshot.route : null;
-  const displayedRoute = includeReturn && cachedReturn ? cachedReturn : route;
-  const [routeStatus, setRouteStatus] = useState<RouteCalculationStatus>("idle");
-  const [calculationAttempt, setCalculationAttempt] = useState(0);
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const [draftStatus, setDraftStatus] = useState<DraftStatus>("idle");
-  const [mapProvider, setMapProviderState] = useState<WebMapProvider>("amap");
-  const [adapter, setAdapter] = useState<WebMapAdapter | null>(null);
-  const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "unavailable">("loading");
-  const [mapMessage, setMapMessage] = useState("正在连接高德地图…");
-  const [selectedControlPointId, setSelectedControlPointId] = useState<string | null>(null);
-  const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
-  const [pendingControlPointId, setPendingControlPointId] = useState<string | null>(null);
+  const [runtime] = useState(createRoutePlanningRuntime);
+  const { activePlan, catalog, catalogReady, history, activation } = useSyncExternalStore(
+    runtime.session.state.subscribe, runtime.session.state.getState, runtime.session.state.getInitialState,
+  );
+  const map = useSyncExternalStore(runtime.map.state.subscribe, runtime.map.state.getState, runtime.map.state.getInitialState);
+  const receipt = useSyncExternalStore(runtime.persistence.state.subscribe, runtime.persistence.state.getState, runtime.persistence.state.getInitialState);
+  const calculation = useSyncExternalStore(runtime.calculation.subscribe, runtime.calculation.getSnapshot, runtime.calculation.getSnapshot);
+  const result = queryRouteCalculation(calculation);
+  const adapter = map.adapter;
+  const mapMessage = map.message;
+  const [selection, setSelection] = useState<{
+    activation: number; pointId: string | null; legId: string | null; pendingId: string | null;
+  }>({ activation: 0, pointId: null, legId: null, pendingId: null });
+  const selectedControlPointId = selection.activation === activation ? selection.pointId : null;
+  const selectedRouteLegId = selection.activation === activation && result.routeStatus === "ready" ? selection.legId : null;
+  const pendingControlPointId = selection.activation === activation ? selection.pendingId : null;
+  const setSelectedControlPointId = useCallback((next: string | null | ((id: string | null) => string | null)) => setSelection((s) => ({ ...s, activation: runtime.session.state.getState().activation, pointId: typeof next === "function" ? next(s.pointId) : next })), [runtime]);
+  const setSelectedRouteLegId = useCallback((next: string | null | ((id: string | null) => string | null)) => setSelection((s) => ({ ...s, activation: runtime.session.state.getState().activation, legId: typeof next === "function" ? next(s.legId) : next })), [runtime]);
+  const setPendingControlPointId = useCallback((next: string | null | ((id: string | null) => string | null)) => setSelection((s) => ({ ...s, activation: runtime.session.state.getState().activation, pendingId: typeof next === "function" ? next(s.pendingId) : next })), [runtime]);
   const [mapFocusRequest, setMapFocusRequest] = useState<{ id: string; sequence: number } | null>(null);
   const [fitRoutePlanRequest, setFitRoutePlanRequest] = useState<{ planId: string; sequence: number } | null>(null);
-  const [history, setHistory] = useState<RoutePlan[]>([]);
-  const [startPointStatus, setStartPointStatus] = useState<RouteStartPointStatus>("idle");
-  const [startPointMessage, setStartPointMessage] = useState<string | null>(null);
-  const activePlanRef = useRef<RoutePlan | null>(null);
-  const routeRef = useRef<DrivingRoute | null>(null);
-  const routeCalculationKeyRef = useRef<string | null>(null);
-  const adapterRef = useRef<WebMapAdapter | null>(null);
-  const pendingStartPointRef = useRef<{
-    planId: string;
-    promise: Promise<boolean>;
-  } | null>(null);
-  const calculationToken = useRef(0);
-  const calculationAbort = useRef<(() => void) | null>(null);
-  const cancelledCalculationKey = useRef<string | null>(null);
+  const [startPoint, setStartPoint] = useState<{ activation: number; generation: number; status: RouteStartPointStatus; message: string | null }>({ activation: 0, generation: 0, status: "idle", message: null });
+  const startPointCurrent = startPoint.activation === activation && startPoint.generation === map.generation;
+  const startPointStatus = startPointCurrent ? startPoint.status : activePlan?.controlPoints.length ? "ready" : activePlan ? "manual-required" : "idle";
+  const startPointMessage = startPointCurrent ? startPoint.message : activePlan && !activePlan.controlPoints.length ? "请搜索地点添加起点" : null;
+  const setStartPointStatus = useCallback((status: RouteStartPointStatus) => setStartPoint((current) => ({ ...current, status,
+    activation: runtime.session.state.getState().activation, generation: runtime.map.state.getState().generation,
+  })), [runtime]);
+  const setStartPointMessage = useCallback((message: string | null) => setStartPoint((current) => ({ ...current, message,
+    activation: runtime.session.state.getState().activation, generation: runtime.map.state.getState().generation,
+  })), [runtime]);
+  const pendingStartPointRef = useRef<{ planId: string; activation: number; generation: number; promise: Promise<boolean> } | null>(null);
   const mapFocusSequence = useRef(0);
   const fitRoutePlanSequence = useRef(0);
-  const changeMapProvider = useCallback((provider: WebMapProvider) => {
-    calculationToken.current += 1;
-    setAdapter(null);
-    setMapStatus("loading");
-    setMapMessage(`正在连接${provider === "amap" ? "高德地图" : "腾讯地图"}…`);
-    setRouteStatus((status) => status === "idle" || status === "waiting-for-points"
-      ? status
-      : "updating");
-    setMapProviderState(provider);
-  }, []);
-  const calculationPlanId = activePlan?.id;
-  const calculationStrategy = activePlan?.strategy;
-  const calculationPointsJson = JSON.stringify(
-    activePlan?.controlPoints.map(({ id, latitude, longitude }) => ({
-      id,
-      latitude,
-      longitude,
-    })) ?? [],
-  );
-
-  const calculationKey = JSON.stringify([calculationPlanId, calculationStrategy, calculationPointsJson, mapProvider]);
-  const cancelRouteCalculation = useCallback(() => {
-    cancelledCalculationKey.current = calculationKey;
-    calculationToken.current += 1;
-    calculationAbort.current?.();
-    returnRequestToken.current += 1;
-    setIncludeReturn(false);
-    setReturnSnapshot(null);
-    setReturnFailure(null);
-    setRoute(null);
-    setRouteError(null);
-    setSelectedRouteLegId(null);
-    setRouteStatus("cancelled");
-  }, [calculationKey]);
-
-  const retryRouteCalculation = useCallback(() => {
-    if (routeStatus !== "cancelled" || !adapter || mapStatus !== "ready") return;
-    if (!activePlanRef.current || activePlanRef.current.controlPoints.length < 2) return;
-    cancelledCalculationKey.current = null;
-    setRouteError(null);
-    setRouteStatus("updating");
-    setCalculationAttempt((attempt) => attempt + 1);
-  }, [adapter, mapStatus, routeStatus]);
-
-  useEffect(() => {
-    activePlanRef.current = activePlan;
-  }, [activePlan]);
-
-  useEffect(() => {
-    routeRef.current = displayedRoute;
-  }, [displayedRoute]);
-
-  useEffect(() => {
-    adapterRef.current = adapter;
-  }, [adapter]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setCatalog(repository.list());
-      setCatalogReady(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [repository]);
-
-  useEffect(() => {
-    let current = true;
-    const providerName = mapProvider === "amap" ? "高德地图" : "腾讯地图";
-    const adapterRequest = mapProvider === "amap"
-      ? AmapWebAdapter.create({
-        key: process.env.NEXT_PUBLIC_AMAP_KEY ?? "",
-      })
-      : TencentMapWebAdapter.create({
-        key: process.env.NEXT_PUBLIC_TENCENT_MAP_KEY ?? "",
-      });
-    adapterRequest
-      .then((nextAdapter) => {
-        if (!current) return;
-        setAdapter(nextAdapter);
-        setMapStatus("ready");
-        setMapMessage(`${providerName}已连接`);
-        setRouteStatus((status) => status === "failed" ? "updating" : status);
-      })
-      .catch((error: unknown) => {
-        if (!current) return;
-        setMapStatus("unavailable");
-        setMapMessage(error instanceof Error ? error.message : `${providerName}暂不可用`);
-      });
-    return () => {
-      current = false;
-    };
-  }, [mapProvider]);
-
-  useEffect(() => {
-    if (!activePlan) return;
-    const timer = window.setTimeout(() => {
-      try {
-        repository.save(activePlan);
-        setCatalog(repository.list());
-        setDraftStatus("saved");
-      } catch {
-        setDraftStatus("failed");
-      }
-    }, 360);
-    return () => window.clearTimeout(timer);
-  }, [activePlan, repository]);
-
-  useEffect(() => {
-    const token = ++calculationToken.current;
-    if (cancelledCalculationKey.current === calculationKey) return;
-    cancelledCalculationKey.current = null;
-    const calculationPoints = JSON.parse(calculationPointsJson) as Array<
-      MapCoordinate & { id: string }
-    >;
-    if (!calculationPlanId || calculationPoints.length < 2) {
-      const timer = window.setTimeout(() => {
-        setRoute(null);
-        setRouteError(null);
-        setRouteStatus(calculationPlanId ? "waiting-for-points" : "idle");
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-    if (!adapter) {
-      const timer = window.setTimeout(() => {
-        if (calculationToken.current !== token) return;
-        if (mapStatus === "loading") {
-          setRouteStatus("updating");
-          setRouteError(null);
-        } else {
-          setRouteStatus("failed");
-          setRouteError(`${mapProvider === "amap" ? "高德" : "腾讯"}地图服务未连接，控制点已保留但暂时无法算路。`);
-        }
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      setRouteStatus("updating");
-      setRouteError(null);
-      adapter
-        .calculateDrivingRoute(calculationPoints, calculationStrategy ?? "highway", "one-way", controller.signal)
-        .then((nextRoute) => {
-          if (calculationToken.current !== token) return;
-          routeCalculationKeyRef.current = calculationKey;
-          setRoute(nextRoute);
-          setRouteStatus("ready");
-        })
-        .catch((error: unknown) => {
-          if (calculationToken.current !== token) return;
-          setRouteStatus("failed");
-          setRouteError(error instanceof Error ? error.message : "路线计算失败");
-        });
-    }, 400);
-    const abort = () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-    calculationAbort.current = abort;
-    return () => {
-      calculationToken.current += 1;
-      abort();
-      if (calculationAbort.current === abort) calculationAbort.current = null;
-    };
-  }, [adapter, calculationAttempt, calculationKey, calculationPlanId, calculationPointsJson, calculationStrategy, mapProvider, mapStatus]);
-
-  useEffect(() => {
-    if (!includeReturn || !route || cachedReturn || routeStatus !== "ready" || !adapter
-      || routeCalculationKeyRef.current !== calculationKey) return;
-    const points = JSON.parse(calculationPointsJson) as Array<MapCoordinate & { id: string }>;
-    if (points.length < 2) return;
-    const controller = new AbortController();
-    const token = ++returnRequestToken.current;
-    const calculationVersion = calculationToken.current;
-    let disposed = false;
-    const current = () => !disposed
-      && returnRequestToken.current === token
-      && calculationToken.current === calculationVersion;
-    void adapter.calculateDrivingRoute(
-      [points[points.length - 1], points[0]], route.strategy, "one-way", controller.signal,
-    ).then((returnRoute) => {
-      if (!current()) return;
-      const returnLeg = returnRoute.legs[0];
-      if (!returnLeg) throw new Error("没有返回有效的返程路段");
-      setReturnSnapshot({ oneWayRoute: route, route: appendReturnLeg(route, returnLeg) });
-    }).catch((error: unknown) => {
-      if (!current()) return;
-      setIncludeReturn(false);
-      setReturnFailure({
-        oneWayRoute: route,
-        message: error instanceof Error ? error.message : "返程计算失败",
-      });
-    });
-    return () => { disposed = true; controller.abort(); };
-  }, [adapter, cachedReturn, calculationKey, calculationPointsJson, includeReturn, route, routeStatus]);
-
-  const toggleReturnRoute = useCallback(() => {
-    returnRequestToken.current += 1;
-    setSelectedRouteLegId(null);
-    setReturnFailure(null);
-    setIncludeReturn((current) => !current);
-  }, []);
-
-  const initializePlan = useCallback(() => {
-    returnRequestToken.current += 1;
-    setIncludeReturn(false);
-    setReturnSnapshot(null);
-    setReturnFailure(null);
-    const plan = createRoutePlan(createId("plan"));
-    activePlanRef.current = plan;
-    setActivePlan(plan);
-    setRoute(null);
-    setSelectedControlPointId(null);
-    setSelectedRouteLegId(null);
-    setPendingControlPointId(null);
-    setMapFocusRequest(null);
-    setFitRoutePlanRequest(null);
-    setHistory([]);
-    setDraftStatus("saving");
-    setRouteStatus("waiting-for-points");
-    return plan;
-  }, []);
+  useEffect(() => { runtime.start(); return runtime.dispose; }, [runtime]);
+  const resetSelection = useCallback(() => {
+    setSelection({ activation: runtime.session.state.getState().activation, pointId: null, legId: null, pendingId: null });
+    pendingStartPointRef.current = null;
+    setMapFocusRequest(null); setFitRoutePlanRequest(null);
+    setStartPointStatus("idle"); setStartPointMessage(null);
+  }, [runtime, setStartPointMessage, setStartPointStatus]);
+  const completeAddress = useCallback(async (planId: string, pointId: string, coordinate: MapCoordinate, fallback: string) => {
+    const inputActivation = runtime.session.state.getState().activation;
+    const inputGeneration = runtime.map.state.getState().generation;
+    let address = { name: fallback, address: "未识别地址" };
+    try { address = await runtime.map.state.getState().adapter?.reverseGeocode(coordinate) ?? address; }
+    catch { /* 地址失败保留坐标，不影响路线编辑和计算。 */ }
+    if (runtime.session.state.getState().activation !== inputActivation || runtime.map.state.getState().generation !== inputGeneration) return;
+    runtime.session.edit((plan) => plan.id === planId && plan.controlPoints.some((point) => point.id === pointId)
+      ? { ...plan, controlPoints: plan.controlPoints.map((point) => point.id === pointId ? { ...point, ...address } : point) }
+      : plan, false);
+  }, [runtime]);
 
   const appendControlPoint = useCallback((
     planId: string,
@@ -311,7 +80,7 @@ export function useRoutePlanningWorkspace() {
     },
     recordHistory = true,
   ) => {
-    const current = activePlanRef.current;
+    const current = runtime.session.state.getState().activePlan;
     if (
       !current
       || current.id !== planId
@@ -323,18 +92,11 @@ export function useRoutePlanningWorkspace() {
       address: candidate.address,
       ...candidate.coordinate,
     };
-    if (recordHistory) {
-      setHistory((items) => [...items.slice(-19), current]);
-    }
-    const nextPlan = reviseRoutePlan(current, (plan) => ({
-      ...plan,
-      controlPoints: [...plan.controlPoints, controlPoint],
-    }));
-    activePlanRef.current = nextPlan;
-    setActivePlan(nextPlan);
-    setDraftStatus("saving");
+    runtime.session.edit((plan) => ({
+      ...plan, controlPoints: [...plan.controlPoints, controlPoint],
+    }), recordHistory);
     return controlPoint.id;
-  }, []);
+  }, [runtime]);
 
   const startPlanAtCurrentLocation = useCallback((planId: string) => {
     if (!adapter) {
@@ -342,6 +104,10 @@ export function useRoutePlanningWorkspace() {
       setStartPointMessage("地图服务尚未连接，请搜索地点添加起点");
       return Promise.resolve(false);
     }
+    const originActivation = runtime.session.state.getState().activation;
+    const originGeneration = runtime.map.state.getState().generation;
+    const current = () => runtime.session.state.getState().activation === originActivation
+      && runtime.map.state.getState().generation === originGeneration;
     setStartPointStatus("locating");
     setStartPointMessage("正在获取当前位置作为起点…");
     const promise = (async () => {
@@ -357,6 +123,7 @@ export function useRoutePlanningWorkspace() {
         } catch {
           // 精确坐标已可用时，逆地址失败不应阻断起点创建。
         }
+        if (!current()) return false;
         const controlPointId = appendControlPoint(planId, {
           name: "当前位置",
           address,
@@ -370,7 +137,7 @@ export function useRoutePlanningWorkspace() {
         setStartPointMessage(null);
         return true;
       } catch (error) {
-        if (activePlanRef.current?.id === planId) {
+        if (current() && runtime.session.state.getState().activePlan?.id === planId) {
           const reason = error instanceof Error ? error.message : "无法获取精确位置";
           setStartPointStatus("manual-required");
           setStartPointMessage(
@@ -380,86 +147,59 @@ export function useRoutePlanningWorkspace() {
         return false;
       }
     })();
-    pendingStartPointRef.current = { planId, promise };
+    pendingStartPointRef.current = { planId, activation: originActivation, generation: originGeneration, promise };
     void promise.finally(() => {
-      if (pendingStartPointRef.current?.planId === planId) {
+      if (pendingStartPointRef.current?.promise === promise) {
         pendingStartPointRef.current = null;
       }
     });
     return promise;
-  }, [adapter, appendControlPoint]);
+  }, [adapter, appendControlPoint, runtime, setSelectedControlPointId, setStartPointMessage, setStartPointStatus]);
 
   const createPlan = useCallback(() => {
-    const plan = initializePlan();
+    const plan = createRoutePlan(createId("plan"));
+    if (!runtime.session.create(plan)) return null;
+    resetSelection();
     void startPlanAtCurrentLocation(plan.id);
     return plan;
-  }, [initializePlan, startPlanAtCurrentLocation]);
+  }, [resetSelection, runtime, startPlanAtCurrentLocation]);
 
   const loadPlan = useCallback((id: string) => {
-    const plan = repository.load(id);
-    if (!plan) {
-      setCatalog((current) => current.map((item) => item.id === id
-        ? { ...item, loadable: false }
-        : item));
-      return false;
-    }
-    calculationToken.current += 1;
-    activePlanRef.current = plan;
-    returnRequestToken.current += 1;
-    setIncludeReturn(false);
-    setReturnSnapshot(null);
-    setReturnFailure(null);
-    setRoute(null);
-    setRouteStatus("updating");
-    setActivePlan(plan);
+    const plan = runtime.session.load(id);
+    if (!plan) return false;
+    resetSelection();
     setSelectedControlPointId(plan.controlPoints[0]?.id ?? null);
-    setSelectedRouteLegId(null);
-    setPendingControlPointId(null);
-    setMapFocusRequest(null);
     fitRoutePlanSequence.current += 1;
-    setFitRoutePlanRequest({
-      planId: plan.id,
-      sequence: fitRoutePlanSequence.current,
-    });
-    setHistory([]);
-    setDraftStatus("saved");
-    if (plan.controlPoints.length === 0) {
-      void startPlanAtCurrentLocation(plan.id);
-    } else {
-      setStartPointStatus("ready");
-      setStartPointMessage(null);
-    }
+    setFitRoutePlanRequest({ planId: plan.id, sequence: fitRoutePlanSequence.current });
+    if (plan.controlPoints.length === 0) void startPlanAtCurrentLocation(plan.id);
+    else { setStartPointStatus("ready"); setStartPointMessage(null); }
     return true;
-  }, [repository, startPlanAtCurrentLocation]);
+  }, [resetSelection, runtime, setSelectedControlPointId, setStartPointMessage, setStartPointStatus, startPlanAtCurrentLocation]);
 
   const mutatePlan = useCallback((change: (plan: RoutePlan) => RoutePlan) => {
-    setDraftStatus("saving");
-    setActivePlan((current) => {
-      if (!current) return current;
-      setHistory((items) => [...items.slice(-19), current]);
-      const nextPlan = reviseRoutePlan(current, change);
-      activePlanRef.current = nextPlan;
-      return nextPlan;
-    });
-  }, []);
+    runtime.session.edit(change);
+  }, [runtime]);
 
   const ensurePlanReadyForControlPoint = useCallback(async () => {
-    let plan = activePlanRef.current;
+    let plan = runtime.session.state.getState().activePlan;
     if (!plan) plan = createPlan();
+    if (!plan) return null;
     let pendingStartPoint = pendingStartPointRef.current;
+    if (pendingStartPoint?.activation !== runtime.session.state.getState().activation
+      || pendingStartPoint?.generation !== runtime.map.state.getState().generation) pendingStartPoint = null;
     if (
       !pendingStartPoint
       && plan.controlPoints.length === 0
       && startPointStatus !== "manual-required"
     ) {
       const promise = startPlanAtCurrentLocation(plan.id);
-      pendingStartPoint = { planId: plan.id, promise };
+      pendingStartPoint = { planId: plan.id, activation: runtime.session.state.getState().activation, generation: runtime.map.state.getState().generation, promise };
     }
     if (pendingStartPoint?.planId === plan.id) {
       await pendingStartPoint.promise;
     }
-    return activePlanRef.current?.id === plan.id ? plan.id : null;
-  }, [createPlan, startPlanAtCurrentLocation, startPointStatus]);
+    return runtime.session.state.getState().activePlan?.id === plan.id ? plan.id : null;
+  }, [createPlan, runtime, startPlanAtCurrentLocation, startPointStatus]);
 
   const addCoordinate = useCallback(async (coordinate: MapCoordinate) => {
     const planId = await ensurePlanReadyForControlPoint();
@@ -472,22 +212,8 @@ export function useRoutePlanningWorkspace() {
     if (!controlPointId) return;
     setSelectedControlPointId(controlPointId);
     setPendingControlPointId(controlPointId);
-    const address = adapter
-      ? await adapter.reverseGeocode(coordinate)
-      : { name: "地图选点", address: "未识别地址" };
-    setDraftStatus("saving");
-    setActivePlan((current) => {
-      if (!current || !current.controlPoints.some((point) => point.id === controlPointId)) return current;
-      const nextPlan = reviseRoutePlan(current, (plan) => ({
-        ...plan,
-        controlPoints: plan.controlPoints.map((point) => point.id === controlPointId
-          ? { ...point, ...address }
-          : point),
-      }));
-      activePlanRef.current = nextPlan;
-      return nextPlan;
-    });
-  }, [adapter, appendControlPoint, ensurePlanReadyForControlPoint]);
+    await completeAddress(planId, controlPointId, coordinate, "地图选点");
+  }, [appendControlPoint, completeAddress, ensurePlanReadyForControlPoint, setPendingControlPointId, setSelectedControlPointId]);
 
   const addPlaceCandidate = useCallback(async (candidate: PlaceCandidate) => {
     const planId = await ensurePlanReadyForControlPoint();
@@ -498,14 +224,18 @@ export function useRoutePlanningWorkspace() {
     setSelectedControlPointId(controlPointId);
     mapFocusSequence.current += 1;
     setMapFocusRequest({ id: controlPointId, sequence: mapFocusSequence.current });
-  }, [appendControlPoint, ensurePlanReadyForControlPoint]);
+  }, [appendControlPoint, ensurePlanReadyForControlPoint, setPendingControlPointId, setSelectedControlPointId]);
 
   const insertPlaceCandidate = useCallback((
-    target: { planId: string; fromId: string; toId: string },
+    target: { planId: string; fromId: string; toId: string; routeContext?: PublishedRouteContext },
     candidate: PlaceCandidate,
   ) => {
-    const current = activePlanRef.current;
+    const current = runtime.session.state.getState().activePlan;
     if (!current || current.id !== target.planId) return false;
+    if (target.routeContext) {
+      const published = queryRouteCalculation(runtime.calculation.getSnapshot()).published;
+      if (!published || published.requestBatch !== target.routeContext.requestBatch || published.route !== target.routeContext.route) return false;
+    }
     const point: ControlPoint = {
       id: createId("point"),
       name: candidate.name,
@@ -516,25 +246,21 @@ export function useRoutePlanningWorkspace() {
       current.controlPoints, target.fromId, target.toId, point,
     );
     if (!controlPoints) return false;
-    setHistory((items) => [...items.slice(-19), current]);
-    const nextPlan = reviseRoutePlan(current, (plan) => ({ ...plan, controlPoints }));
-    activePlanRef.current = nextPlan;
-    setActivePlan(nextPlan);
-    setDraftStatus("saving");
+    runtime.session.edit((plan) => ({ ...plan, controlPoints }));
     setPendingControlPointId(null);
     setSelectedControlPointId(point.id);
     setSelectedRouteLegId(null);
     mapFocusSequence.current += 1;
     setMapFocusRequest({ id: point.id, sequence: mapFocusSequence.current });
     return true;
-  }, []);
+  }, [runtime, setPendingControlPointId, setSelectedControlPointId, setSelectedRouteLegId]);
 
   const insertRouteLegControlPoint = useCallback(async (
     routeLegId: string,
     coordinate: MapCoordinate,
   ) => {
-    const current = activePlanRef.current;
-    const leg = routeRef.current?.legs.find((item) => item.id === routeLegId);
+    const current = runtime.session.state.getState().activePlan;
+    const leg = queryRouteCalculation(runtime.calculation.getSnapshot()).published?.route?.legs.find((item) => item.id === routeLegId);
     if (!current || !leg) return;
 
     const controlPoint: ControlPoint = {
@@ -550,35 +276,14 @@ export function useRoutePlanningWorkspace() {
       controlPoint,
     );
     if (!nextControlPoints) return;
-    setHistory((items) => [...items.slice(-19), current]);
-    const nextPlan = reviseRoutePlan(current, (plan) => ({
-      ...plan,
-      controlPoints: nextControlPoints,
-    }));
-    activePlanRef.current = nextPlan;
-    setActivePlan(nextPlan);
+    const nextPlan = runtime.session.edit((plan) => ({ ...plan, controlPoints: nextControlPoints }));
+    if (!nextPlan) return;
     setSelectedControlPointId(controlPoint.id);
     setSelectedRouteLegId(null);
     setPendingControlPointId(controlPoint.id);
-    setDraftStatus("saving");
 
-    const addressAdapter = adapterRef.current;
-    const address = addressAdapter
-      ? await addressAdapter.reverseGeocode(coordinate)
-      : { name: "路线调整点", address: "未识别地址" };
-    setActivePlan((plan) => {
-      if (!plan || plan.id !== nextPlan.id) return plan;
-      if (!plan.controlPoints.some((point) => point.id === controlPoint.id)) return plan;
-      const resolvedPlan = reviseRoutePlan(plan, (draft) => ({
-        ...draft,
-        controlPoints: draft.controlPoints.map((point) => point.id === controlPoint.id
-          ? { ...point, ...address }
-          : point),
-      }));
-      activePlanRef.current = resolvedPlan;
-      return resolvedPlan;
-    });
-  }, []);
+    await completeAddress(nextPlan.id, controlPoint.id, coordinate, "路线调整点");
+  }, [completeAddress, runtime, setPendingControlPointId, setSelectedControlPointId, setSelectedRouteLegId]);
 
   const searchPlaces = useCallback((keyword: string): Promise<PlaceCandidate[]> => {
     if (!adapter) return Promise.reject(new Error(mapMessage));
@@ -592,7 +297,7 @@ export function useRoutePlanningWorkspace() {
     }));
     setSelectedControlPointId((current) => current === id ? null : current);
     setPendingControlPointId((current) => current === id ? null : current);
-  }, [mutatePlan]);
+  }, [mutatePlan, setPendingControlPointId, setSelectedControlPointId]);
 
   const reorderControlPoint = useCallback((activeId: string, overId: string) => {
     mutatePlan((plan) => {
@@ -615,114 +320,52 @@ export function useRoutePlanningWorkspace() {
     mutatePlan((plan) => ({ ...plan, name: normalized }));
   }, [mutatePlan]);
 
-  const resetActivePlan = useCallback(() => {
-    calculationToken.current += 1;
-    returnRequestToken.current += 1;
-    setIncludeReturn(false);
-    setReturnSnapshot(null);
-    setReturnFailure(null);
-    activePlanRef.current = null;
-    routeRef.current = null;
-    pendingStartPointRef.current = null;
-    setActivePlan(null);
-    setRoute(null);
-    setRouteStatus("idle");
-    setRouteError(null);
-    setDraftStatus("idle");
-    setHistory([]);
-    setSelectedControlPointId(null);
-    setSelectedRouteLegId(null);
-    setPendingControlPointId(null);
-    setMapFocusRequest(null);
-    setFitRoutePlanRequest(null);
-    setStartPointStatus("idle");
-    setStartPointMessage(null);
-  }, []);
-
-  const deletePlan = useCallback((id: string) => {
-    repository.delete(id);
-    setCatalog(repository.list());
-    if (activePlan?.id === id) {
-      resetActivePlan();
-    }
-  }, [activePlan?.id, repository, resetActivePlan]);
-
-  const clearPlans = useCallback(() => {
-    repository.clearAll();
-    setCatalog([]);
-    resetActivePlan();
-  }, [repository, resetActivePlan]);
-
-  const undo = useCallback(() => {
-    const previous = history.at(-1);
-    if (!previous) return;
-    const nextPlan = reviseRoutePlan(previous, (plan) => plan);
-    activePlanRef.current = nextPlan;
-    setActivePlan(nextPlan);
-    setHistory((items) => items.slice(0, -1));
-  }, [history]);
-
   const selectControlPoint = useCallback((id: string) => {
     setSelectedControlPointId(id);
     setSelectedRouteLegId(null);
     setPendingControlPointId((current) => current === id ? current : null);
     mapFocusSequence.current += 1;
     setMapFocusRequest({ id, sequence: mapFocusSequence.current });
-  }, []);
+  }, [setPendingControlPointId, setSelectedControlPointId, setSelectedRouteLegId]);
 
   const selectRouteLeg = useCallback((id: string) => {
     setSelectedRouteLegId((current) => current === id ? null : id);
     setSelectedControlPointId(null);
     setPendingControlPointId(null);
-  }, []);
+  }, [setPendingControlPointId, setSelectedControlPointId, setSelectedRouteLegId]);
 
   const clearRouteLegSelection = useCallback(() => {
     setSelectedRouteLegId(null);
-  }, []);
+  }, [setSelectedRouteLegId]);
 
+  const deletePlan = useCallback((id: string) => {
+    runtime.session.delete(id);
+    if (!runtime.session.state.getState().activePlan) resetSelection();
+  }, [resetSelection, runtime]);
+  const clearPlans = useCallback(() => { runtime.session.clear(); resetSelection(); }, [resetSelection, runtime]);
+  const undo = useCallback(() => runtime.session.undo(), [runtime]);
+  const toggleReturnRoute = useCallback(() => {
+    setSelectedRouteLegId(null); runtime.calculation.send({ type: "TOGGLE_RETURN" });
+  }, [runtime, setSelectedRouteLegId]);
+  const cancelRouteCalculation = useCallback(() => runtime.calculation.send({ type: "CANCEL" }), [runtime]);
+  const retryRouteCalculation = useCallback(() => runtime.calculation.send({ type: "RETRY" }), [runtime]);
+  const retrySave = useCallback(() => {
+    const plan = runtime.session.state.getState().activePlan;
+    if (plan) runtime.persistence.flush(plan.id);
+  }, [runtime]);
+  const draftStatus = !activePlan ? "idle" : receipt.planId === activePlan.id && receipt.revision === activePlan.revision
+    ? receipt.status : runtime.persistence.hasPending(activePlan.id) ? "saving" : "saved";
   return {
-    adapter,
-    mapProvider,
-    catalog,
-    catalogReady,
-    activePlan,
-    route: displayedRoute,
-    includeReturn,
-    toggleReturnRoute,
-    returnRouteLoading: includeReturn && !cachedReturn && routeStatus === "ready",
-    returnRouteError: returnFailure?.oneWayRoute === route ? returnFailure.message : null,
-    routeStatus,
-    cancelRouteCalculation,
-    retryRouteCalculation,
-    routeError,
-    draftStatus,
-    mapStatus,
-    mapMessage,
-    setMapProvider: changeMapProvider,
-    selectedControlPointId,
-    selectedRouteLegId,
-    pendingControlPointId,
-    mapFocusRequest,
-    fitRoutePlanRequest,
-    startPointStatus,
-    startPointMessage,
-    canUndo: history.length > 0,
-    createPlan,
-    loadPlan,
-    renamePlan,
-    deletePlan,
-    clearPlans,
-    addPlaceCandidate,
-    addCoordinate,
-    insertRouteLegControlPoint,
-    insertPlaceCandidate,
-    searchPlaces,
-    removeControlPoint,
-    reorderControlPoint,
-    setStrategy,
-    undo,
-    selectControlPoint,
-    selectRouteLeg,
-    clearRouteLegSelection,
+    ...result, routeContext: result.published,
+    adapter, mapProvider: map.provider, mapStatus: map.status, mapMessage: map.message,
+    setMapProvider: runtime.map.select,
+    activePlan, catalog, catalogReady, draftStatus, retrySave,
+    selectedControlPointId, selectedRouteLegId, pendingControlPointId,
+    mapFocusRequest, fitRoutePlanRequest, startPointStatus, startPointMessage,
+    canUndo: history.length > 0, createPlan, loadPlan, renamePlan, deletePlan, clearPlans,
+    addPlaceCandidate, addCoordinate, insertRouteLegControlPoint, insertPlaceCandidate,
+    searchPlaces, removeControlPoint, reorderControlPoint, setStrategy, undo,
+    selectControlPoint, selectRouteLeg, clearRouteLegSelection,
+    toggleReturnRoute, cancelRouteCalculation, retryRouteCalculation,
   };
 }

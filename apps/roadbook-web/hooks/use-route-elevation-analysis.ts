@@ -26,14 +26,24 @@ export interface RouteElevationContext {
   mapProvider: WebMapProvider;
 }
 export function useRouteElevationAnalysis(context: RouteElevationContext, enabled: boolean, selectedLegId: string | null, elevationProvider: ElevationProvider = provider) {
-  const { route, points, planId, revision, mapProvider } = context;
+  const { route, points, planId, mapProvider } = context;
   const geometryResult = useMemo(() => {
     if (!route) return { geometry: null, error: null };
-    try { return { geometry: buildElevationGeometry(route, new Map(points.map((point) => [point.id, point.name]))), error: null }; }
+    try { return { geometry: buildElevationGeometry(route, new Map()), error: null }; }
     catch (error) { return { geometry: null, error: error instanceof Error ? error.message : "道路几何不足" }; }
-  }, [route, points]);
+  }, [route]);
   const geometry = geometryResult.geometry;
-  const key = geometry ? `${planId}:${revision}:${mapProvider}:${geometry.signature}` : "";
+  const key = geometry ? `${planId}:${mapProvider}:${geometry.signature}` : "";
+  // 地点文字只投影到展示几何，不重启正在进行的高程采样。
+  const displayGeometry = useMemo(() => {
+    if (!geometry || !route) return null;
+    const names = new Map(points.map((point) => [point.id, point.name]));
+    return { ...geometry, controlPoints: geometry.controlPoints.map((point, index) => ({
+      ...point,
+      name: index === route.legs.length && route.scope === "round-trip" ? "返回起点"
+        : names.get(index === 0 ? route.legs[0].fromControlPointId : route.legs[index - 1].toControlPointId) ?? point.name,
+    })) };
+  }, [geometry, route, points]);
   const [state, setState] = useState<AnalysisState | null>(null);
   const [retryVersion, setRetryVersion] = useState(0);
   const handledRetry = useRef(0);
@@ -84,7 +94,7 @@ export function useRouteElevationAnalysis(context: RouteElevationContext, enable
     return true;
   }, [geometry, key, selectedLegId]);
   return {
-    geometry, profile, summary, sections, selectedSection, range, viewRange,
+    geometry: displayGeometry, profile, summary, sections, selectedSection, range, viewRange,
     isLocalView: Boolean(localView?.key === key && rangeLegSource === selectedLegId),
     state: state?.key === key ? state : null,
     error: geometryResult.error,

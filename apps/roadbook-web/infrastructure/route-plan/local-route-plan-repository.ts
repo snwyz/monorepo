@@ -3,6 +3,7 @@ import type {
   RoutePlan,
   RoutePlanSummary,
 } from "@/domain/route-planning/model";
+import type { RoutePlanRepository } from "@/domain/route-planning/repository";
 
 const CATALOG_KEY = "roadbook.route-plan-catalog.v1";
 const SNAPSHOT_PREFIX = "roadbook.route-plan.v1.";
@@ -33,7 +34,7 @@ function isSummary(value: unknown): value is RoutePlanSummary {
   );
 }
 
-export class LocalRoutePlanRepository {
+export class LocalRoutePlanRepository implements RoutePlanRepository {
   list(): RoutePlanSummary[] {
     try {
       const raw = window.localStorage.getItem(CATALOG_KEY);

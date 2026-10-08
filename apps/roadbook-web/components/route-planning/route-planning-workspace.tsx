@@ -58,6 +58,11 @@ const RouteChargingPanel = lazy(() => import("@/components/route-charging/route-
 
 export function RoutePlanningWorkspace() {
   const workspace = useRoutePlanningWorkspace();
+  useEffect(() => {
+    if (workspace.draftStatus === "failed") {
+      appToast.fail("本机暂存失败，最新编辑仍保留。请返回当前规划重试暂存后，再切换路线。");
+    }
+  }, [workspace.draftStatus]);
   const elevationMapRef = useRef<RouteElevationMapHandle>(null);
   const highlightElevation = useCallback((paths: MapCoordinate[][]) => elevationMapRef.current?.highlight(paths), []);
   const browseElevation = useCallback((coordinate: MapCoordinate | null) => elevationMapRef.current?.browse(coordinate), []);
@@ -247,16 +252,19 @@ export function RoutePlanningWorkspace() {
   }, [openFeaturedRoute, workspace]);
 
   const createPlan = useCallback(() => {
+    const plan = workspace.createPlan();
+    if (!plan) return null;
     setWeatherTargetId(null);
     closeFeaturedRoute();
     revealRoute();
-    return workspace.createPlan();
+    return plan;
   }, [closeFeaturedRoute, revealRoute, workspace]);
 
   const loadPlan = useCallback((id: string) => {
+    const loaded = workspace.loadPlan(id);
+    if (!loaded) return false;
     setWeatherTargetId(null);
     closeFeaturedRoute();
-    const loaded = workspace.loadPlan(id);
     if (loaded) revealRoute();
     return loaded;
   }, [closeFeaturedRoute, revealRoute, workspace]);
@@ -349,7 +357,7 @@ export function RoutePlanningWorkspace() {
   const selectedLeg = workspace.route?.legs.find((leg) => leg.id === workspace.selectedRouteLegId);
   const [chargingEnabled, setChargingEnabled] = useState(false);
   const charging = useRouteCharging(workspace.route,
-    `${workspace.activePlan?.id}:${workspace.mapProvider}:${workspace.route?.scope ?? "one-way"}`, workspace.activePlan?.revision ?? 0,
+    `${workspace.activePlan?.id}:${workspace.mapProvider}:${workspace.route?.scope ?? "one-way"}`, workspace.routeContext?.sourceRevision ?? 0,
     chargingEnabled && !isFeaturedMode && points.length >= 2, workspace.routeStatus === "ready");
   const [chargingFocusRequest, setChargingFocusRequest] = useState<{ coordinate: MapCoordinate; sequence: number } | null>(null);
   const chargingMarkers = useMemo(() => charging.result?.stations.map((station) => ({
@@ -373,9 +381,10 @@ export function RoutePlanningWorkspace() {
     : controlPointLimitReached ? controlPointLimitMessage
     : !charging.current || workspace.routeStatus !== "ready" ? "等待沿途站点更新后再添加" : undefined;
   const addChargingStation = (station: RouteChargingCandidate) => {
-    if (!workspace.activePlan || chargingAddDisabledReason) return;
+    if (!workspace.activePlan || !workspace.routeContext || chargingAddDisabledReason) return;
     const inserted = workspace.insertPlaceCandidate({
       planId: workspace.activePlan.id, fromId: station.fromControlPointId, toId: station.toControlPointId,
+      routeContext: workspace.routeContext,
     }, { id: station.id, name: station.name, address: station.address, coordinate: station.coordinate });
     if (inserted) { charging.selectStation(null); revealRoute(); appToast.info("已加入途经点，正在更新路线"); }
     else appToast.info("路线已变化，请等待沿途站点更新");
@@ -501,6 +510,7 @@ export function RoutePlanningWorkspace() {
               strategy={workspace.activePlan.strategy}
               routeStatus={workspace.routeStatus}
               draftStatus={workspace.draftStatus}
+              onRetrySave={workspace.retrySave}
               error={workspace.routeError}
               canUndo={workspace.canUndo}
               onStrategyChange={workspace.setStrategy}
@@ -612,6 +622,7 @@ export function RoutePlanningWorkspace() {
                     strategy={workspace.activePlan.strategy}
                     routeStatus={workspace.routeStatus}
                     draftStatus={workspace.draftStatus}
+                    onRetrySave={workspace.retrySave}
                     error={workspace.routeError}
                     canUndo={workspace.canUndo}
                     onStrategyChange={workspace.setStrategy}
@@ -743,7 +754,7 @@ export function RoutePlanningWorkspace() {
         route={workspace.routeStatus === "ready" ? workspace.route : null}
         points={points}
         planId={workspace.activePlan?.id ?? null}
-        revision={workspace.activePlan?.revision ?? 0}
+        revision={workspace.routeContext?.sourceRevision ?? 0}
         mapProvider={workspace.mapProvider}
         updating={workspace.routeStatus === "updating"}
         selectedLegId={workspace.selectedRouteLegId}

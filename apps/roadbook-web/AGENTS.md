@@ -41,7 +41,7 @@ Roadbook Web 是一个以全屏地图为工作区、以地图控制点为路线�
 
 | 场景                           | 路径                                                                              |
 | ------------------------------ | --------------------------------------------------------------------------------- |
-| 讨论或实施整个 Web 的职责边界与状态架构重构 | `apps/roadbook-web/docs/迭代文档/2026-10-07-Web职责边界与状态架构重构方案.md`（方案已确认，尚未实施；不代表迁移或安装授权） |
+| 讨论或实施整个 Web 的职责边界与状态架构重构 | `apps/roadbook-web/docs/迭代文档/2026-10-07-Web职责边界与状态架构重构方案.md`（核心试点已实施；外围迁移与独立性能验收尚未完成；不代表安装授权） |
 | 了解当前腾讯地图和路线规划实现 | `apps/roadbook-web/docs/迭代文档/2026-09-18-腾讯地图Web适配与路线规划体验迭代.md` |
 | 了解桌面目录、规划与详情的统一面板 | `apps/roadbook-web/docs/迭代文档/2026-10-07-桌面路线工作面板整合.md` |
 | 设计、实现或验证路线海拔与持续坡段 | `apps/roadbook-web/docs/需求文档/路线海拔与持续坡段分析需求_V1.0.md`；`apps/roadbook-web/docs/迭代文档/2026-10-07-路线起伏与持续坡段分析迭代准备.md` |
@@ -129,6 +129,10 @@ App Router 页面
 | ---------------------- | ----------------------------------------------------------------------------------------------------- |
 | 页面工作台组合         | `apps/roadbook-web/components/route-planning/route-planning-workspace.tsx`                            |
 | 应用用例编排           | `apps/roadbook-web/hooks/use-route-planning-workspace.ts`                                             |
+| 路线方案状态与命令     | `apps/roadbook-web/application/route-plan/route-plan-session.ts`                                      |
+| 自动暂存与方案交接     | `apps/roadbook-web/application/route-plan/route-plan-persistence.ts`                                  |
+| 单程与返程计算流程     | `apps/roadbook-web/application/route-calculation/route-calculation-actor.ts`                          |
+| 核心能力装配           | `apps/roadbook-web/infrastructure/route-plan/create-route-planning-runtime.ts`                        |
 | 路线规划领域模型       | `apps/roadbook-web/domain/route-planning/model.ts`                                                    |
 | 本地路线仓储           | `apps/roadbook-web/infrastructure/route-plan/local-route-plan-repository.ts`                          |
 | 地图展示组件           | `apps/roadbook-web/components/route-presentation/route-map.tsx`                                       |
@@ -284,6 +288,7 @@ App Router 页面
 - 可由 Props 推导的值不得重复保存为本地状态。
 - SDK 实例使用 Ref；会影响视图的状态仍使用 React State。
 - 搜索需要防抖并忽略过期响应。
+- 核心方案由 Zustand Store 唯一拥有，保存快照由独立暂存模块管理，单程／返程由 XState actor 管理；Hook 通过公开查询与命令接入，不复制三者状态。切换方案前同步交接未保存内容；失败保留当前编辑并提供重试。撤销基于当前修订递增。名称／地址等元数据不参与算路失效，高程和充电只消费当前有效路线。
 - 天气预报按坐标使用客户端内存缓存、Next 服务端缓存和标准 HTTP 缓存；供应商响应在服务端归一化，错误不缓存，切换 Marker 时取消旧请求。
 - 海拔按来源实例与版本复用精确坐标的原始读数；开启往返只查询未缓存的位置，完整分析命中时直接切换曲线。去返程的里程、经过序号与坡段统计仍独立保留，返程道路继续真实算路。
 - 海拔标题问号提供8条FAQ非模态浮层，独立于收放与查询，复用共享材质和Radix Popover；浮层吸附入口并自动避让，固定外框内逐条向下展开、短窗口内部滚动，外部点击／焦点、再次点击、关闭按钮与Esc关闭，Esc归还问号焦点且不收起图表。≤760px入口隐藏时卸载帮助。

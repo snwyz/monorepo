@@ -22,6 +22,7 @@ interface RouteStrategySelectorProps {
   canUndo: boolean;
   onStrategyChange: (strategy: RoutePlanStrategy) => void;
   onUndo: () => void;
+  onRetrySave: () => void;
 }
 
 const labels: Record<RoutePlanStrategy, string> = {
@@ -29,16 +30,19 @@ const labels: Record<RoutePlanStrategy, string> = {
   "avoid-highway": "不走高速",
 };
 
-export function RouteStrategySelector({ compact = false, strategy, routeStatus, draftStatus, error, canUndo, onStrategyChange, onUndo }: RouteStrategySelectorProps) {
-  const feedback = routeStatus === "updating"
+export function RouteStrategySelector({ compact = false, strategy, routeStatus, draftStatus, error, canUndo, onStrategyChange, onUndo, onRetrySave }: RouteStrategySelectorProps) {
+  const feedback = draftStatus === "failed"
+    ? { label: "暂存失败，最新编辑仍保留；请重试后切换路线", className: "is-error" }
+    : routeStatus === "updating"
     ? { label: "路线更新中", className: "is-loading" }
     : routeStatus === "failed"
       ? { label: error ?? "路线计算失败", className: "is-error" }
       : draftStatus === "saving"
         ? { label: "暂存中", className: "is-loading" }
-        : draftStatus === "failed"
-          ? { label: "暂存失败", className: "is-error" }
-          : { label: "已暂存至本机", className: "is-success" };
+        : { label: "已暂存至本机", className: "is-success" };
+
+  const retrySave = draftStatus === "failed"
+    ? <button type="button" className="undo-button" onClick={onRetrySave}>重试暂存</button> : null;
 
   const strategyControl = (
     <Select value={strategy} onValueChange={(value) => onStrategyChange(value as RoutePlanStrategy)}>
@@ -61,6 +65,7 @@ export function RouteStrategySelector({ compact = false, strategy, routeStatus, 
       {feedback.className === "is-error" ? (
         <span className="address-list__strategy-error" role="status">{feedback.label}</span>
       ) : null}
+      {retrySave}
     </>
   );
 
@@ -71,6 +76,7 @@ export function RouteStrategySelector({ compact = false, strategy, routeStatus, 
         {strategyControl}
       </label>
       <span className="strategy-selector__divider" />
+      {retrySave}
       <span className={`route-feedback ${feedback.className}`} title={feedback.label}>
         {feedback.className === "is-error" ? <AlertIcon /> : feedback.className === "is-success" ? <CheckIcon /> : <Spinner />}
         <span>{feedback.label}</span>
