@@ -10,6 +10,7 @@
 ## 子项目规范
 
 - 开始任何 Roadbook Web 需求、设计、实现、诊断或评审前，先读取 `apps/roadbook-web/AGENTS.md`，并按其中的路由读取相关正式规范。
+- Web 页面与 API 当前确定部署到 Vercel，暂不推进 Web Dockerfile、容器镜像或自托管改造；数据库、Redis 与对象存储通过基础设施适配保留更换供应商的能力。部署决策见 [Web 数据架构与部署推进方案](apps/backend/docs/Web数据架构与部署推进方案.md)。
 
 ## Roadbook Web 数据库分库分表与建表规范
 

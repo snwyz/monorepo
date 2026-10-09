@@ -2,7 +2,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 版本 | V1.4 |
+| 版本 | V1.5 |
 | 更新日期 | 2026-10-09 |
 | 状态 | 设计提案；文档已落盘，服务与数据库改造尚未实施 |
 | 范围 | 仅 Web；数据服务、多来源路线导入与派生、会员、未来短信登录与 AI |
@@ -56,10 +56,13 @@ flowchart TD
 ```
 
 - Next.js 是首期唯一部署的应用服务；现有 NestJS 不作为 Web 上线前置条件。
+- 用户已确认 Web 页面与 API 继续采用 Vercel；当前不推进 Web 容器化，不将 Dockerfile、镜像构建或自托管验收加入本阶段工作。
 - PostgreSQL、Redis 使用托管服务，不能依赖应用实例本地文件或内存持久化。
 - 路线文件/链接快照/文本及权威几何采用私有对象存储，作为导入能力上线前置条件；现有公共专题几何继续静态分发。
 - `apps/backend/docs` 只承担方案归档；生产代码优先在 `apps/roadbook-web` 现有领域目录内组织，数据库适配放在 `packages/db`。
 - 不将旧 NestJS 模块整体搬入 Next.js；只迁移已经确认需要的 Web 用例。
+
+更换服务商的准备集中在数据与基础设施边界：PostgreSQL 使用标准连接、版本化迁移与导出恢复；Redis 的缓存/限流接口封装供应商客户端；对象存储通过适配器管理私有对象与访问签名。切换时核对协议、权限、数据、任务和备份，不能承诺只改连接地址即可完成迁移。若未来考虑自托管数据库或 Redis，再单独评估容器部署与运维责任，不因此要求 Web 同时迁出 Vercel。
 
 Vercel 支持 monorepo；构建应限定 Web 及其依赖，不运行包含无关应用的根目录全量构建。数据库与 Redis 可通过外部托管服务或 Marketplace 接入。[官方 monorepo 说明](https://vercel.com/docs/monorepos)、[存储集成说明](https://vercel.com/docs/marketplace-storage)
 
