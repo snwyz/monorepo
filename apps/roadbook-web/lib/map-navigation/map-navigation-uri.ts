@@ -1,4 +1,4 @@
-import type { WebMapProvider } from "@roadbook/map/web";
+import type { RouteTravelMode, WebMapProvider } from "@roadbook/map/web";
 
 interface MapNavigationPoint {
   latitude: number;
@@ -10,16 +10,18 @@ interface CreateMapNavigationUriOptions {
   provider: WebMapProvider;
   from?: MapNavigationPoint;
   to: MapNavigationPoint;
+  travelMode?: RouteTravelMode;
 }
 
 export function createMapNavigationUri({
   provider,
   from,
   to,
+  travelMode = "driving",
 }: CreateMapNavigationUriOptions) {
   if (provider === "tencent") {
     const params = new URLSearchParams({
-      type: "drive",
+      type: travelMode === "cycling" ? "bike" : travelMode === "walking" ? "walk" : "drive",
       fromcoord: from
         ? `${from.latitude},${from.longitude}`
         : "CurrentLocation",
@@ -37,7 +39,7 @@ export function createMapNavigationUri({
     dlon: String(to.longitude),
     dname: to.name,
     dev: "0",
-    t: "0",
+    t: travelMode === "cycling" ? "3" : travelMode === "walking" ? "2" : "0",
   });
   if (from) {
     params.set("slat", String(from.latitude));

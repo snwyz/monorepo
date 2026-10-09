@@ -5,6 +5,7 @@ import type {
   DrivingRouteScope,
   DrivingRouteLeg,
   DrivingStrategy,
+  RouteLegTravelModes,
   MapCoordinate,
   PlaceCandidate,
   WebMapAdapter,
@@ -21,6 +22,7 @@ import type {
   WebMapViewportPadding,
 } from "./web-types";
 import { AmapWebError } from "./web-types";
+import { RouteLegCache } from "./route-leg-cache";
 import { createControlPointLabelVisual } from "./control-point-label";
 import { createChargingStationMarkerVisual } from "./charging-station-marker";
 import {
@@ -539,6 +541,7 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.clearInteractiveOverlays(this.routeOverlays);
     const validLegs = routeLegs.filter((leg) => leg.path.length > 1);
     const strokeWidths = getPlannedRouteStrokeWidths(this.map.getZoom());
+    const hasSelection = validLegs.some((leg) => leg.selected);
     this.routeOutlineOverlays = validLegs.map((leg) => {
       const statusWidth = leg.failed
         ? strokeWidths.failed.outline
@@ -552,10 +555,10 @@ class AmapCanvasImpl implements WebMapCanvas {
             : leg.selected
               ? strokeWidths.selected.outline
               : strokeWidths.normal.outline,
-        strokeOpacity: 1,
+        strokeOpacity: hasSelection && !leg.selected ? 0.3 : 1,
         lineJoin: "round",
         lineCap: "round",
-        zIndex: 40,
+        zIndex: leg.selected ? 70 : 40,
       });
       this.map.add(outline);
       return outline;
@@ -577,10 +580,10 @@ class AmapCanvasImpl implements WebMapCanvas {
               : strokeWidths.normal.boundary,
         strokeStyle: leg.failed || leg.stale ? "dashed" : "solid",
         strokeDasharray: leg.failed ? [5, 5] : [8, 6],
-        strokeOpacity: 1,
+        strokeOpacity: hasSelection && !leg.selected ? 0.3 : 1,
         lineJoin: "round",
         lineCap: "round",
-        zIndex: leg.selected ? 70 : 60,
+        zIndex: leg.selected ? 74 : 60,
         bubble: false,
       });
       const handler = () => this.onRouteLegSelect?.(leg.id);
@@ -598,10 +601,10 @@ class AmapCanvasImpl implements WebMapCanvas {
         strokeWeight: leg.selected
           ? strokeWidths.selected.core
           : strokeWidths.normal.core,
-        strokeOpacity: 1,
+        strokeOpacity: hasSelection && !leg.selected ? 0.3 : 1,
         lineJoin: "round",
         lineCap: "round",
-        zIndex: leg.selected ? 75 : 65,
+        zIndex: leg.selected ? 76 : 65,
         bubble: false,
       });
       const handler = () => this.onRouteLegSelect?.(leg.id);
@@ -911,6 +914,7 @@ export class AmapWebAdapter implements WebMapAdapter {
   private drivingRequestQueue: Promise<void> = Promise.resolve();
   private nextDrivingRequestAt = 0;
   private routeCalculationVersion = 0;
+  private readonly routeLegCache = new RouteLegCache();
 
   private constructor(
     private readonly amap: AmapNamespace,
@@ -1065,6 +1069,16 @@ export class AmapWebAdapter implements WebMapAdapter {
     scope: DrivingRouteScope,
     signal?: AbortSignal,
   ): Promise<DrivingRoute> {
+    return this.calculateRoute(controlPoints, strategy, scope, {}, signal);
+  }
+
+  async calculateRoute(
+    controlPoints: Array<MapCoordinate & { id: string }>,
+    strategy: DrivingStrategy,
+    scope: DrivingRouteScope,
+    travelModes: RouteLegTravelModes,
+    signal?: AbortSignal,
+  ): Promise<DrivingRoute> {
     if (controlPoints.length < 2) {
       throw new AmapWebError("至少需要两个控制点", "INVALID_RESULT");
     }
@@ -1085,21 +1099,25 @@ export class AmapWebAdapter implements WebMapAdapter {
     try {
       const legs: DrivingRouteLeg[] = [];
       for (const { from, to, index } of connections) {
+        const travelMode = travelModes[`${from.id}:${to.id}`] ?? "driving";
         if (signal?.aborted) throw new Error("路线计算已取消");
         if (calculationVersion !== this.routeCalculationVersion) {
           throw new Error("路线计算已被更新");
         }
+        const cacheKey = this.routeLegCache.key(from, to, strategy, travelMode);
+        const cachedLeg = this.routeLegCache.get(cacheKey);
+        if (cachedLeg) { legs.push(cachedLeg); continue; }
         const params = new URLSearchParams({
           from: `${from.latitude},${from.longitude}`,
           to: `${to.latitude},${to.longitude}`,
-          strategy: strategyCode[strategy],
+          ...(travelMode === "driving" ? { strategy: strategyCode[strategy] } : { mode: travelMode }),
         });
         const response = await this.scheduleDrivingRequest(() =>
           requestAmapProxy<
             AmapServiceResponse & {
               route?: { paths?: AmapDrivingPath[] };
             }
-          >(`/api/amap/driving?${params.toString()}`, signal),
+          >(`/api/amap/${travelMode === "driving" ? "driving" : "route"}?${params.toString()}`, signal),
           signal,
         );
         if (signal?.aborted) throw new Error("路线计算已取消");
@@ -1119,7 +1137,8 @@ export class AmapWebAdapter implements WebMapAdapter {
           durationMinutes: Number.isFinite(durationSeconds)
             ? Math.max(1, Math.round(durationSeconds / 60))
             : 0,
-          trafficLightCount: Number.isFinite(trafficLightCount)
+          travelMode,
+          trafficLightCount: travelMode === "driving" && Number.isFinite(trafficLightCount)
             ? trafficLightCount
             : null,
           path,
@@ -1127,6 +1146,7 @@ export class AmapWebAdapter implements WebMapAdapter {
             name: step.road, path: decodePolyline(step.polyline),
           }))),
         });
+        this.routeLegCache.put(cacheKey, legs[legs.length - 1]);
       }
       const lightCounts = legs.map((leg) => leg.trafficLightCount);
       return {

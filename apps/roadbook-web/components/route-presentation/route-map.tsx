@@ -374,7 +374,7 @@ export function RouteMap({
         })),
       );
       nextCanvas.setRouteLegInsertion(getRouteLegInsertion(
-        routeRef.current,
+        routeUpdatingRef.current ? null : routeRef.current,
         controlPointsRef.current,
         selectedRouteLegIdRef.current,
       ));
@@ -496,17 +496,19 @@ export function RouteMap({
       return;
     }
     if (routeUpdating || checkedRouteViewportRef.current === route) return;
-    fitRouteGeometryIfNeeded(canvasRef.current, route);
     checkedRouteViewportRef.current = route;
+    // 路段选择只改变高亮；方式重算后也保留正在观察的视野。
+    if (selectedRouteLegId) return;
+    fitRouteGeometryIfNeeded(canvasRef.current, route);
   }, [fitRouteGeometryIfNeeded, route, routeUpdating, selectedRouteLegId]);
 
   useEffect(() => {
     canvasRef.current?.setRouteLegInsertion(getRouteLegInsertion(
-      route,
+      routeUpdating ? null : route,
       controlPoints,
       selectedRouteLegId,
     ));
-  }, [controlPoints, route, selectedRouteLegId]);
+  }, [controlPoints, route, routeUpdating, selectedRouteLegId]);
 
   const locate = async () => {
     try {

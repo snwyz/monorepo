@@ -4,6 +4,7 @@ import type { RoutePlanRepository } from "@/domain/route-planning/repository";
 import type { RoutePlanPersistence } from "./route-plan-persistence";
 import { routeCalculationIdentity, type PublishedRouteContext } from "@/domain/route-planning/calculation-context";
 import { createRoutePlanThumbnail, getRoutePlanThumbnail } from "@/domain/route-planning/route-plan-thumbnail";
+import { normalizeRouteLegTravelModes } from "@/domain/route-planning/route-leg-travel-mode";
 
 interface RoutePlanSessionState {
   activePlan: RoutePlan | null;
@@ -35,6 +36,7 @@ export function createRoutePlanSession(repository: RoutePlanRepository, persiste
     const changed = change(activePlan);
     if (changed === activePlan) return null;
     const next = reviseRoutePlan(activePlan, () => changed);
+    next.legTravelModes = normalizeRouteLegTravelModes(next);
     next.thumbnail = getRoutePlanThumbnail(next);
     state.setState({ activePlan: next, history: recordHistory ? [...history.slice(-19), activePlan] : history });
     persistence.schedule(next);

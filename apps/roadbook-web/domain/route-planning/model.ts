@@ -1,4 +1,4 @@
-import type { DrivingStrategy, MapCoordinate, WebMapProvider } from "@roadbook/map/web";
+import type { DrivingStrategy, MapCoordinate, RouteLegTravelModes, WebMapProvider } from "@roadbook/map/web";
 
 export interface RoutePlanThumbnail {
   inputIdentity: string;
@@ -27,6 +27,7 @@ export interface RoutePlan {
   updatedAt: string;
   schemaVersion: 1;
   thumbnail?: RoutePlanThumbnail;
+  legTravelModes?: RouteLegTravelModes;
 }
 
 export interface RoutePlanSummary {

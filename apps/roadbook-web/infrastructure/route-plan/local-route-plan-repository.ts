@@ -1,4 +1,5 @@
 import { normalizeRoutePlanStrategy } from "@/domain/route-planning/model";
+import { normalizeRouteLegTravelModes } from "@/domain/route-planning/route-leg-travel-mode";
 import type {
   RoutePlan,
   RoutePlanSummary,
@@ -62,6 +63,7 @@ export class LocalRoutePlanRepository implements RoutePlanRepository {
       const parsed: unknown = JSON.parse(raw);
       if (!isRoutePlan(parsed)) return null;
       const plan = { ...parsed, strategy: normalizeRoutePlanStrategy(parsed.strategy) };
+      plan.legTravelModes = normalizeRouteLegTravelModes(plan);
       if (plan.thumbnail !== undefined) plan.thumbnail = getRoutePlanThumbnail(plan);
       return plan;
     } catch {

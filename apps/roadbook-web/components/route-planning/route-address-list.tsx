@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { WebMapProvider } from "@roadbook/map/web";
+import type { RouteLegTravelModes, RouteTravelMode, WebMapProvider } from "@roadbook/map/web";
 import { CloudSunIcon, GripVerticalIcon } from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
 
@@ -25,6 +25,8 @@ import { ChevronDownIcon, CloseIcon, NavigationIcon, PlusIcon, TrashIcon } from 
 import { useMobileSwipeRemoval } from "@/components/ui/use-mobile-swipe-removal";
 import type { ControlPoint } from "@/domain/route-planning/model";
 import { createMapNavigationUri } from "@/lib/map-navigation/map-navigation-uri";
+import { getRouteLegTravelMode, routeTravelModeLabels } from "@/domain/route-planning/route-leg-travel-mode";
+import { RouteTravelModeIcon } from "./route-travel-mode-icon";
 
 interface RouteAddressListProps {
   strategyControl?: ReactNode;
@@ -32,6 +34,7 @@ interface RouteAddressListProps {
   provider: WebMapProvider;
   controlPoints: ControlPoint[];
   includeReturn: boolean;
+  legTravelModes?: RouteLegTravelModes;
   selectedControlPointId: string | null;
   selectedRouteLegId: string | null;
   pendingControlPointId: string | null;
@@ -54,6 +57,8 @@ interface SortableAddressSequenceProps {
   isSelected: boolean;
   isLegSelected: boolean;
   isPending: boolean;
+  travelMode: RouteTravelMode;
+  navigationMode: RouteTravelMode;
   onSelectControlPoint: (id: string) => void;
   onShowWeather: (id: string) => void;
   onSelectRouteLeg: (id: string) => void;
@@ -71,6 +76,8 @@ function SortableAddressSequence({
   isSelected,
   isLegSelected,
   isPending,
+  travelMode,
+  navigationMode,
   onSelectControlPoint,
   onShowWeather,
   onSelectRouteLeg,
@@ -167,7 +174,7 @@ function SortableAddressSequence({
           </button>
           <a
             className="address-row__navigation"
-            href={createMapNavigationUri({ provider, to: point })}
+            href={createMapNavigationUri({ provider, to: point, travelMode: navigationMode })}
             aria-label={`使用${provider === "amap" ? "高德" : "腾讯"}地图导航到${point.name}`}
             title={`在${provider === "amap" ? "高德" : "腾讯"}地图中导航到此点`}
             onPointerDown={(event) => event.stopPropagation()}
@@ -194,8 +201,9 @@ function SortableAddressSequence({
             className="leg-link"
             onClick={() => onSelectRouteLeg(legId)}
             aria-label={`选择第 ${index + 1} 路段`}
+            aria-pressed={isLegSelected}
           >
-            <span /><small>{index === controlPointCount - 1 ? "返回起点" : `路段 ${index + 1}`}</small>
+            <span className="leg-link__connector" aria-hidden="true" /><RouteTravelModeIcon mode={travelMode} /><small>{index === controlPointCount - 1 ? "返回起点" : `路段 ${index + 1}`} · {routeTravelModeLabels[travelMode]}</small>
           </button>
           <button
             type="button"
@@ -219,6 +227,7 @@ export function RouteAddressList({
   provider,
   controlPoints,
   includeReturn,
+  legTravelModes,
   selectedControlPointId,
   selectedRouteLegId,
   pendingControlPointId,
@@ -300,6 +309,8 @@ export function RouteAddressList({
                   isSelected={selectedControlPointId === point.id}
                   isLegSelected={Boolean(legId && selectedRouteLegId === legId)}
                   isPending={pendingControlPointId === point.id}
+                  travelMode={getRouteLegTravelMode({ legTravelModes }, legId ?? "")}
+                  navigationMode={getRouteLegTravelMode({ legTravelModes }, index > 0 ? `${controlPoints[index - 1].id}:${point.id}` : includeReturn ? `${controlPoints[controlPoints.length - 1].id}:${point.id}` : legId ?? "")}
                   onSelectControlPoint={onSelectControlPoint}
                   onShowWeather={onShowWeather}
                   onSelectRouteLeg={onSelectRouteLeg}

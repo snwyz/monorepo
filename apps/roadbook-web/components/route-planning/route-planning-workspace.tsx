@@ -19,6 +19,7 @@ import { FeaturedRouteModeBadge } from "@/components/featured-driving-route/feat
 import { MapProviderSwitch } from "@/components/map-provider/map-provider-switch";
 import { GlobalSearch, type GlobalSearchHandle } from "@/components/map-search/global-search";
 import { RoutePlanSelector } from "@/components/route-plan-catalog/route-plan-selector";
+import { getRouteLegTravelMode } from "@/domain/route-planning/route-leg-travel-mode";
 import { RouteMetricsPanel } from "@/components/route-metrics/route-metrics-panel";
 import { RouteChargingEntry } from "@/components/route-charging/route-charging-entry";
 import { RouteMap, type RouteElevationMapHandle } from "@/components/route-presentation/route-map";
@@ -37,6 +38,7 @@ import type { WeatherForecastTarget } from "@/domain/weather-forecast/model";
 
 const RouteAddressList = lazy(() => import("@/components/route-planning/route-address-list").then((module) => ({ default: module.RouteAddressList })));
 
+const RouteLegDetail = lazy(() => import("@/components/route-planning/route-leg-detail").then((module) => ({ default: module.RouteLegDetail })));
 const RouteStrategySelector = lazy(() => import("@/components/route-planning/route-strategy-selector").then((module) => ({ default: module.RouteStrategySelector })));
 
 const FeaturedRoutePanel = lazy(() => import("@/components/featured-driving-route/featured-route-panel").then((module) => ({ default: module.FeaturedRoutePanel })));
@@ -339,7 +341,7 @@ export function RoutePlanningWorkspace() {
       const target = event.target as HTMLElement | null;
       const isEditing =
         target?.isContentEditable ||
-        target instanceof HTMLInputElement ||
+        (target instanceof HTMLInputElement && target.type !== "radio") ||
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement;
       const isDialogOpen = Boolean(
@@ -441,7 +443,7 @@ export function RoutePlanningWorkspace() {
         route={isFeaturedMode ? null : workspace.route}
         selectedControlPointId={isFeaturedMode ? null : workspace.selectedControlPointId}
         selectedRouteLegId={isFeaturedMode ? null : workspace.selectedRouteLegId}
-        routeUpdating={!isFeaturedMode && workspace.routeStatus === "updating"}
+        routeUpdating={!isFeaturedMode && workspace.routeStatus !== "ready"}
         focusControlPointRequest={isFeaturedMode ? null : workspace.mapFocusRequest}
         fitRoutePlanRequest={isFeaturedMode ? null : workspace.fitRoutePlanRequest}
         featuredRouteId={activeFeaturedRoute?.id ?? null}
@@ -633,6 +635,7 @@ export function RoutePlanningWorkspace() {
               provider={workspace.mapProvider}
               controlPoints={points}
               includeReturn={workspace.route?.scope === "round-trip"}
+              legTravelModes={workspace.activePlan?.legTravelModes}
               selectedControlPointId={workspace.selectedControlPointId}
               selectedRouteLegId={workspace.selectedRouteLegId}
               pendingControlPointId={workspace.pendingControlPointId}
@@ -669,7 +672,19 @@ export function RoutePlanningWorkspace() {
           <button type="button" className="workspace-add-place workspace-mobile-only" onClick={() => searchRef.current?.open()} disabled={Boolean(searchDisabledReason)}>＋ 添加途经点</button>
         </WorkspaceSheetPage>
         <WorkspaceSheetPage active={!searchOpen && business === "planning" && !weatherTarget} desktopActive={desktopPanelPage === "planning" || desktopPanelPage === "leg"}>
-        {selectedLeg ? <div className="workspace-leg-detail"><button type="button" className="workspace-leg-detail__back" onClick={returnToParent}>返回当前规划</button><h2>路段 {workspace.route!.legs.indexOf(selectedLeg) + 1}</h2><p>{points.find((point) => point.id === selectedLeg.fromControlPointId)?.name} → {points.find((point) => point.id === selectedLeg.toControlPointId)?.name}</p></div> : null}
+        {selectedLeg && workspace.activePlan ? (
+          <Suspense fallback={<div className="workspace-leg-detail route-leg-loading" role="status">正在加载路段…</div>}>
+            <RouteLegDetail
+              index={workspace.route!.legs.indexOf(selectedLeg)}
+              from={points.find((point) => point.id === selectedLeg.fromControlPointId)!}
+              to={points.find((point) => point.id === selectedLeg.toControlPointId)!}
+              mode={getRouteLegTravelMode(workspace.activePlan, selectedLeg.id)}
+              provider={workspace.mapProvider} status={workspace.routeStatus}
+              error={workspace.routeError} onRetry={workspace.retryRouteCalculation} onBack={returnToParent}
+              onModeChange={(mode) => workspace.setRouteLegTravelMode(selectedLeg.id, mode)}
+            />
+          </Suspense>
+        ) : null}
         {!isFeaturedMode && points.length >= 2 && !workspace.route ? (
           <aside data-glass="desktop" className="route-metrics widget workspace-metrics-loading" aria-label="路线摘要" role="status">
             <div className="workspace-metrics-loading__header">
@@ -700,6 +715,7 @@ export function RoutePlanningWorkspace() {
             includeReturn={workspace.includeReturn}
             returnRouteLoading={workspace.returnRouteLoading}
             returnRouteError={workspace.returnRouteError}
+            stale={workspace.routeStatus !== "ready"}
             onToggleReturn={() => { cancelInsertion(); workspace.toggleReturnRoute(); }}
           />
         ) : null}

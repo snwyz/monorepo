@@ -17,9 +17,9 @@ export const plannedRouteStrokeWidths = {
     core: 7,
   },
   selected: {
-    outline: 16,
-    boundary: 13,
-    core: 9,
+    outline: 22,
+    boundary: 18,
+    core: 12,
   },
   stale: {
     outline: 9,

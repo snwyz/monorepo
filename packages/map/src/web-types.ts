@@ -106,6 +106,9 @@ export interface PlaceCandidate {
 
 export type DrivingStrategy = "recommend" | "highway" | "avoid-highway";
 
+export type RouteTravelMode = "driving" | "cycling" | "walking";
+export type RouteLegTravelModes = Readonly<Record<string, RouteTravelMode>>;
+
 export type WebMapProvider = "amap" | "tencent";
 
 export interface DrivingRouteLeg {
@@ -117,6 +120,7 @@ export interface DrivingRouteLeg {
   trafficLightCount: number | null;
   path: MapCoordinate[];
   roadSections?: RouteRoadSection[];
+  travelMode?: RouteTravelMode;
 }
 
 export type DrivingRouteScope = "one-way" | "round-trip";
@@ -171,6 +175,13 @@ export interface WebMapAdapter {
     controlPoints: Array<MapCoordinate & { id: string }>,
     strategy: DrivingStrategy,
     scope: DrivingRouteScope,
+    signal?: AbortSignal,
+  ): Promise<DrivingRoute>;
+  calculateRoute(
+    controlPoints: Array<MapCoordinate & { id: string }>,
+    strategy: DrivingStrategy,
+    scope: DrivingRouteScope,
+    travelModes: RouteLegTravelModes,
     signal?: AbortSignal,
   ): Promise<DrivingRoute>;
   calculateClosedDrivingRoute(

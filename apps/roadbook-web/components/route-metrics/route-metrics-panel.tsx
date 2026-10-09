@@ -4,6 +4,7 @@ import type { DrivingRoute, WebMapProvider } from "@roadbook/map/web";
 
 import { ClockIcon, DistanceIcon } from "@/components/ui/icons";
 import type { ControlPoint } from "@/domain/route-planning/model";
+import { routeTravelModeLabels } from "@/domain/route-planning/route-leg-travel-mode";
 
 interface RouteMetricsPanelProps {
   route: DrivingRoute;
@@ -14,6 +15,7 @@ interface RouteMetricsPanelProps {
   returnRouteLoading: boolean;
   returnRouteError: string | null;
   onToggleReturn: () => void;
+  stale?: boolean;
 }
 
 function formatDistance(meters: number) {
@@ -36,6 +38,7 @@ export function RouteMetricsPanel({
   returnRouteLoading,
   returnRouteError,
   onToggleReturn,
+  stale = false,
 }: RouteMetricsPanelProps) {
   const selectedLeg = route.legs.find((leg) => leg.id === selectedRouteLegId) ?? null;
   const distance = selectedLeg?.distanceMeters ?? route.distanceMeters;
@@ -43,11 +46,12 @@ export function RouteMetricsPanel({
   const travelScopeLabel = route.scope === "round-trip" ? "往返" : "单程";
   const nextTravelScopeLabel = includeReturn ? "单程" : "往返";
   const distanceLabel = selectedLeg ? "路段里程" : `${travelScopeLabel}里程`;
-  const durationLabel = selectedLeg ? "预计驾驶" : `${travelScopeLabel}用时`;
+  const durationLabel = selectedLeg ? `预计${selectedLeg.travelMode === "cycling" || selectedLeg.travelMode === "walking" ? routeTravelModeLabels[selectedLeg.travelMode] : "驾驶"}` : `${travelScopeLabel}用时`;
   return (
     <aside
       data-glass="desktop" className={`route-metrics widget${selectedLeg ? " is-leg-selected" : ""}`}
       aria-label="路线摘要"
+      aria-busy={stale}
     >
       <header className="widget-title">
         <div><small>{selectedLeg ? "当前路段" : `${travelScopeLabel}路线`}</small><h2>{selectedLeg ? `路段 ${route.legs.indexOf(selectedLeg) + 1}` : `${controlPoints.length} 个途经点`}</h2></div>
@@ -74,7 +78,7 @@ export function RouteMetricsPanel({
         <div className="metric-grid__item"><ClockIcon /><span><small>{durationLabel}</small><strong aria-live="polite">{formatDuration(duration)}</strong></span></div>
       </div>
       <footer role="status" title={returnRouteError ?? undefined}>
-        {returnRouteLoading ? "正在计算返程 · 再次点击可取消" : returnRouteError ? "返程计算失败，保留单程 · 点击里程重试" : `数据来自${provider === "amap" ? "高德" : "腾讯"}地图 · 预计值`}
+        {stale ? "上次计算结果 · 等待当前路线更新" : returnRouteLoading ? "正在计算返程 · 再次点击可取消" : returnRouteError ? "返程计算失败，保留单程 · 点击里程重试" : `数据来自${provider === "amap" ? "高德" : "腾讯"}地图 · 预计值`}
       </footer>
     </aside>
   );

@@ -81,6 +81,27 @@ export function getPaddedMapCenter(coordinate: MapCoordinate, zoom: number, padd
   };
 }
 
+/** 按真实可视区计算道路视野，避免供应商把非对称避让压缩为统一边距。 */
+export function getCoordinateFitView(coordinates: MapCoordinate[], width: number, height: number, padding: WebMapViewportPadding) {
+  const bounds = getCoordinateBounds(coordinates);
+  const availableWidth = width - padding.left - padding.right;
+  const availableHeight = height - padding.top - padding.bottom;
+  if (!bounds || availableWidth <= 0 || availableHeight <= 0) return null;
+  const southwest = projectCoordinate(bounds.southwest, TILE_SIZE);
+  const northeast = projectCoordinate(bounds.northeast, TILE_SIZE);
+  const spanX = Math.abs(northeast.x - southwest.x);
+  const spanY = Math.abs(northeast.y - southwest.y);
+  const zoom = Math.max(3, Math.min(18, Math.floor(Math.log2(Math.min(
+    spanX > 0 ? availableWidth / spanX : Infinity,
+    spanY > 0 ? availableHeight / spanY : Infinity,
+  )) - 0.25)));
+  const center = {
+    longitude: (bounds.southwest.longitude + bounds.northeast.longitude) / 2,
+    latitude: Math.atan(Math.sinh(Math.PI * (1 - (southwest.y + northeast.y) / TILE_SIZE))) * 180 / Math.PI,
+  };
+  return { center: getPaddedMapCenter(center, zoom, padding), zoom };
+}
+
 function wrappedHorizontalDelta(value: number, center: number, worldSize: number) {
   let delta = value - center;
   if (delta > worldSize / 2) delta -= worldSize;

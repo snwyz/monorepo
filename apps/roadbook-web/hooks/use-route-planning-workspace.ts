@@ -1,12 +1,13 @@
 "use client";
 
-import type { MapCoordinate, PlaceCandidate } from "@roadbook/map/web";
+import type { MapCoordinate, PlaceCandidate, RouteTravelMode } from "@roadbook/map/web";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   createRoutePlan, insertControlPointIntoRouteLeg, ROUTE_PLAN_CONTROL_POINT_LIMIT,
   type ControlPoint, type RoutePlan,
 } from "@/domain/route-planning/model";
 import type { PublishedRouteContext } from "@/domain/route-planning/calculation-context";
+import { changeRouteLegTravelMode, getRouteLegIds, inheritInsertedRouteLegTravelMode } from "@/domain/route-planning/route-leg-travel-mode";
 import { queryRouteCalculation } from "@/application/route-calculation/route-calculation-actor";
 import { createRoutePlanningRuntime } from "@/infrastructure/route-plan/create-route-planning-runtime";
 
@@ -32,7 +33,8 @@ export function useRoutePlanningWorkspace() {
     activation: number; pointId: string | null; legId: string | null; pendingId: string | null;
   }>({ activation: 0, pointId: null, legId: null, pendingId: null });
   const selectedControlPointId = selection.activation === activation ? selection.pointId : null;
-  const selectedRouteLegId = selection.activation === activation && result.routeStatus === "ready" ? selection.legId : null;
+  const selectedRouteLegId = selection.activation === activation && activePlan && selection.legId
+    && getRouteLegIds(activePlan.controlPoints).includes(selection.legId) ? selection.legId : null;
   const pendingControlPointId = selection.activation === activation ? selection.pendingId : null;
   const setSelectedControlPointId = useCallback((next: string | null | ((id: string | null) => string | null)) => setSelection((s) => ({ ...s, activation: runtime.session.state.getState().activation, pointId: typeof next === "function" ? next(s.pointId) : next })), [runtime]);
   const setSelectedRouteLegId = useCallback((next: string | null | ((id: string | null) => string | null)) => setSelection((s) => ({ ...s, activation: runtime.session.state.getState().activation, legId: typeof next === "function" ? next(s.legId) : next })), [runtime]);
@@ -246,7 +248,7 @@ export function useRoutePlanningWorkspace() {
       current.controlPoints, target.fromId, target.toId, point,
     );
     if (!controlPoints) return false;
-    runtime.session.edit((plan) => ({ ...plan, controlPoints }));
+    runtime.session.edit((plan) => inheritInsertedRouteLegTravelMode(plan, target.fromId, target.toId, point, controlPoints));
     setPendingControlPointId(null);
     setSelectedControlPointId(point.id);
     setSelectedRouteLegId(null);
@@ -276,7 +278,7 @@ export function useRoutePlanningWorkspace() {
       controlPoint,
     );
     if (!nextControlPoints) return;
-    const nextPlan = runtime.session.edit((plan) => ({ ...plan, controlPoints: nextControlPoints }));
+    const nextPlan = runtime.session.edit((plan) => inheritInsertedRouteLegTravelMode(plan, leg.fromControlPointId, leg.toControlPointId, controlPoint, nextControlPoints));
     if (!nextPlan) return;
     setSelectedControlPointId(controlPoint.id);
     setSelectedRouteLegId(null);
@@ -314,6 +316,11 @@ export function useRoutePlanningWorkspace() {
   const setStrategy = useCallback((strategy: RoutePlan["strategy"]) => {
     mutatePlan((plan) => ({ ...plan, strategy }));
   }, [mutatePlan]);
+
+  const setRouteLegTravelMode = useCallback((legId: string, mode: RouteTravelMode) => {
+    // 交通方式编辑保留当前详情；流程隔离旧结果并更新同一方案修订。
+    runtime.session.edit((plan) => changeRouteLegTravelMode(plan, legId, mode));
+  }, [runtime]);
 
   const renamePlan = useCallback((name: string) => {
     const normalized = name.trim() || "未命名路线";
@@ -365,7 +372,7 @@ export function useRoutePlanningWorkspace() {
     canUndo: history.length > 0, createPlan, loadPlan, renamePlan, deletePlan, clearPlans,
     addPlaceCandidate, addCoordinate, insertRouteLegControlPoint, insertPlaceCandidate,
     searchPlaces, removeControlPoint, reorderControlPoint, setStrategy, undo,
-    selectControlPoint, selectRouteLeg, clearRouteLegSelection,
+    selectControlPoint, selectRouteLeg, clearRouteLegSelection, setRouteLegTravelMode,
     toggleReturnRoute, cancelRouteCalculation, retryRouteCalculation,
   };
 }

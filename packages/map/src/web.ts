@@ -10,6 +10,8 @@ export type {
   DrivingRouteLeg,
   RouteRoadSection,
   DrivingStrategy,
+  RouteTravelMode,
+  RouteLegTravelModes,
   MapCoordinate,
   PlaceCandidate,
   TencentMapWebAdapterOptions,

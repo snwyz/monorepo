@@ -160,7 +160,7 @@ describe("缩略轮廓与方案交接", () => {
     returning.legs[0].fromControlPointId = "end";
     returning.legs[0].toControlPointId = "start";
     const calculateDrivingRoute = vi.fn(async () => makeRoute()).mockResolvedValueOnce(makeRoute()).mockResolvedValueOnce(returning);
-    const adapter = { calculateDrivingRoute } as unknown as WebMapAdapter;
+    const adapter = { calculateRoute: calculateDrivingRoute } as unknown as WebMapAdapter;
     const actor = createRouteCalculationActor();
     const syncInput = () => actor.send({ type: "INPUT", input: {
       plan: session.state.getState().activePlan, activation: 1, provider: "amap", adapter, connection: "ready",
