@@ -3,9 +3,10 @@ export const chargingStationBoltPath = "M24.5 10 14 24h7l-1.5 10L30 20h-7l1.5-10
 
 export function createChargingStationMarkerVisual(selected = false) {
   const scale = 2 / 3;
-  const width = 44 * scale;
-  const height = 54 * scale;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 44 54" preserveAspectRatio="xMidYMid meet">
+  // SDK 图片尺寸采用整数；补齐画布留白，保持图形缩放与尖端锚点。
+  const width = Math.ceil(44 * scale);
+  const height = Math.ceil(54 * scale);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width / scale} ${height / scale}" preserveAspectRatio="xMidYMid meet">
     <defs><filter id="shadow" x="-30%" y="-20%" width="160%" height="150%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#75151a" flood-opacity=".22"/></filter></defs>
     <path d="${chargingStationPinPath}" fill="#ff3b40" stroke="${selected ? "#1c1c1e" : "#ffffff"}" stroke-width="${selected ? 2.5 : 1.5}" stroke-linejoin="round" filter="url(#shadow)"/>
     <path d="${chargingStationBoltPath}" fill="#ffffff"/>

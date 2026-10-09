@@ -176,6 +176,12 @@ function locationDebug(
 }
 
 function debugError(error: unknown) {
+  if (error instanceof TencentMapWebError) {
+    const cause = error.cause;
+    const causeCode = cause && typeof cause === "object" && "code" in cause
+      && typeof cause.code === "number" ? cause.code : undefined;
+    return { name: error.name, message: error.message, code: error.code, causeCode };
+  }
   return error instanceof Error
     ? { name: error.name, message: error.message }
     : { value: String(error) };
@@ -1206,7 +1212,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
       locationDebug("info", "authorized:precise-success", { coordinate });
       return coordinate;
     } catch (error) {
-      locationDebug("error", "authorized:precise-failed", {
+      locationDebug("warn", "authorized:precise-failed", {
         error: debugError(error),
       });
       return null;
@@ -1441,7 +1447,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
       locationDebug("info", "permission:state", { state: permission.state });
       return permission.state === "granted";
     } catch (error) {
-      locationDebug("error", "permission:query-failed", {
+      locationDebug("warn", "permission:query-failed", {
         error: debugError(error),
       });
       return false;
@@ -1460,7 +1466,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
       return this.preciseLocationRequest;
     }
     if (!navigator.geolocation) {
-      locationDebug("error", "geolocation:api-unavailable");
+      locationDebug("warn", "geolocation:api-unavailable");
       return Promise.reject(
         new TencentMapWebError("当前浏览器不支持定位", "SERVICE_FAILED"),
       );
@@ -1530,7 +1536,7 @@ export class TencentMapWebAdapter implements WebMapAdapter {
           }
           settled = true;
           window.clearTimeout(timeout);
-          locationDebug("error", "geolocation:error-callback", {
+          locationDebug("warn", "geolocation:error-callback", {
             code: error.code,
             message: error.message,
           });
