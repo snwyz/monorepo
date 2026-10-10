@@ -81,7 +81,15 @@ test("长道路重复显示固定字号路名，屏幕外中点不影响可见�
   assert.ok(labels.every((label) => label.angle === 0 && label.visual.height === 16));
   const reverse = { ...route, id: "return", isReturn: true, roadSections: [{ name: "107省道", path: [...route.path].reverse() }] };
   assert.equal(selectRoadLabels([route, reverse], [], screenViewport).length, labels.length);
-  assert.equal(selectRoadLabels([route], [], { ...screenViewport, zoom: 13.99 }).length, 0);
+  assert.equal(selectRoadLabels([route], [], { ...screenViewport, zoom: 10.99 }).length, 0);
+  for (const zoom of [11, 12, 13, 14]) {
+    const zoomLabels = selectRoadLabels([route], [], { ...screenViewport, zoom });
+    assert.ok(zoomLabels.length > 0);
+    assert.ok(zoomLabels.every((label) => label.visual.height === 16));
+    const source = decodeURIComponent(zoomLabels[0].visual.source);
+    assert.ok(source.includes('font-size="12"'));
+    assert.equal(source.includes('<rect'), zoom >= 14);
+  }
 });
 
 test("沿斜线旋转并保持正向，反向路径不会倒置文字", () => {
@@ -109,7 +117,7 @@ test("文字不跨急弯，控制点和相交道路保留避让空间", () => {
   assert.equal(labels[0].name, "交叉路");
 });
 
-test("平移保留重复标注相位，去程和返程各用自身内芯遮住箭头", () => {
+test("平移保留重复标注相位，宽内芯背景跟随去返程，窄内芯保留透明底与细描边", () => {
   const route = screenLeg([[-2000, 300], [2000, 300]]);
   const first = selectRoadLabels([route], [], screenViewport);
   const moved = selectRoadLabels([route], [], { ...screenViewport, project: (coordinate) => {
@@ -120,9 +128,19 @@ test("平移保留重复标注相位，去程和返程各用自身内芯遮住�
   assert.ok(common.length >= 2);
   const outboundSource = decodeURIComponent(createRoadLabelVisual("107省道").source);
   const returnSource = decodeURIComponent(createRoadLabelVisual("107省道", true).source);
-  assert.ok(outboundSource.includes('#30d158'));
+  assert.ok(outboundSource.includes('#008d95'));
   assert.ok(returnSource.includes('#1297ff'));
   assert.equal(outboundSource.includes('<path'), false);
+  for (const isReturn of [false, true]) {
+    for (const coreWidth of [7, 12, 15]) {
+      const narrow = decodeURIComponent(createRoadLabelVisual("107省道", isReturn, coreWidth).source);
+      assert.equal(narrow.includes('<rect'), false);
+      assert.ok(narrow.includes(isReturn ? '#0060b5' : '#00656d'));
+      assert.ok(narrow.includes('stroke-width="1.5"'));
+    }
+    const wide = decodeURIComponent(createRoadLabelVisual("107省道", isReturn, 16).source);
+    assert.ok(wide.includes('<rect'));
+  }
 });
 
 test("桌面和手机均限制可见标注数量，长名称保持固定宽度边界", () => {

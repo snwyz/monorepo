@@ -73,7 +73,10 @@ interface AmapMapInstance extends AmapEventTarget {
   setZoom(zoom: number): void;
   getZoom(): number;
   getCenter(): AmapLngLat;
-  lngLatToContainer?(coordinate: AmapPosition): { getX(): number; getY(): number };
+  lngLatToContainer?(coordinate: AmapPosition): {
+    getX(): number;
+    getY(): number;
+  };
   setBounds(bounds: unknown, immediately?: boolean, avoid?: number[]): void;
   setStatus(status: Record<string, boolean>): void;
   destroy(): void;
@@ -208,7 +211,10 @@ function describeAmapServiceError(error: unknown) {
   return "服务暂不可用";
 }
 
-async function requestAmapProxy<T extends AmapServiceResponse>(url: string, signal?: AbortSignal) {
+async function requestAmapProxy<T extends AmapServiceResponse>(
+  url: string,
+  signal?: AbortSignal,
+) {
   const response = await fetch(url, { cache: "no-store", signal });
   const payload = (await response.json()) as T;
   if (
@@ -501,9 +507,12 @@ class AmapCanvasImpl implements WebMapCanvas {
         handler();
       });
       const marker = new this.amap.Marker({
-        position: toPosition(station), content, anchor: "top-left",
+        position: toPosition(station),
+        content,
+        anchor: "top-left",
         offset: new this.amap.Pixel(-visual.anchor.x, -visual.anchor.y),
-        zIndex: station.selected ? 160 : 150, bubble: false,
+        zIndex: station.selected ? 160 : 150,
+        bubble: false,
       });
       marker.on("click", handler);
       this.map.add(marker);
@@ -513,12 +522,31 @@ class AmapCanvasImpl implements WebMapCanvas {
 
   setElevationHighlight(paths: MapCoordinate[][]) {
     this.clearOverlays(this.elevationHighlightOverlays);
-    this.elevationHighlightOverlays = paths.filter((path) => path.length > 1).flatMap((path) => {
-      const outline = new this.amap.Polyline({ path: path.map(toPosition), strokeColor: mapOverlayColors.surface, strokeWeight: 10, zIndex: 135, clickable: false, bubble: true, strokeOpacity: 0.95 });
-      const line = new this.amap.Polyline({ path: path.map(toPosition), strokeColor: mapOverlayColors.routeBoundary, strokeWeight: 5, zIndex: 136, clickable: false, bubble: true, strokeOpacity: 0.95 });
-      this.map.add(outline); this.map.add(line);
-      return [outline, line];
-    });
+    this.elevationHighlightOverlays = paths
+      .filter((path) => path.length > 1)
+      .flatMap((path) => {
+        const outline = new this.amap.Polyline({
+          path: path.map(toPosition),
+          strokeColor: mapOverlayColors.surface,
+          strokeWeight: 10,
+          zIndex: 135,
+          clickable: false,
+          bubble: true,
+          strokeOpacity: 0.95,
+        });
+        const line = new this.amap.Polyline({
+          path: path.map(toPosition),
+          strokeColor: mapOverlayColors.routeBoundary,
+          strokeWeight: 5,
+          zIndex: 136,
+          clickable: false,
+          bubble: true,
+          strokeOpacity: 0.95,
+        });
+        this.map.add(outline);
+        this.map.add(line);
+        return [outline, line];
+      });
   }
 
   setElevationPosition(coordinate: MapCoordinate | null) {
@@ -529,8 +557,16 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.elevationPositionOverlay?.setMap(null);
     this.elevationPositionOverlay = null;
     if (!coordinate) return;
-    const marker = new this.amap.Marker({ position: toPosition(coordinate), content: markerContent(locationMarkerSvg(), 32), anchor: "center", zIndex: 170, clickable: false, bubble: true });
-    this.map.add(marker); this.elevationPositionOverlay = marker;
+    const marker = new this.amap.Marker({
+      position: toPosition(coordinate),
+      content: markerContent(locationMarkerSvg(), 32),
+      anchor: "center",
+      zIndex: 170,
+      clickable: false,
+      bubble: true,
+    });
+    this.map.add(marker);
+    this.elevationPositionOverlay = marker;
   }
 
   setRouteLegs(routeLegs: WebMapRouteLeg[]) {
@@ -570,7 +606,9 @@ class AmapCanvasImpl implements WebMapCanvas {
           ? mapOverlayColors.failedRoute
           : leg.stale
             ? mapOverlayColors.staleRoute
-            : leg.isReturn ? mapOverlayColors.returnRouteCore : mapOverlayColors.routeBoundary,
+            : leg.isReturn
+              ? mapOverlayColors.returnRouteCore
+              : mapOverlayColors.routeBoundary,
         strokeWeight: leg.failed
           ? strokeWidths.failed.route
           : leg.stale
@@ -595,9 +633,11 @@ class AmapCanvasImpl implements WebMapCanvas {
       if (leg.failed || leg.stale) return [];
       const route = new this.amap.Polyline({
         path: leg.path.map(toPosition),
-        strokeColor: leg.isReturn ? mapOverlayColors.returnRouteCore : mapOverlayColors.routeCore,
-        // 箭头放在最上层内芯，避免被路线主线遮挡；路径顺序即行驶方向。
-        showDir: true,
+        strokeColor: leg.isReturn
+          ? mapOverlayColors.returnRouteCore
+          : mapOverlayColors.routeCore,
+        // 隐藏原生白色方向箭头，保持路线内芯连续。
+        showDir: false,
         strokeWeight: leg.selected
           ? strokeWidths.selected.core
           : strokeWidths.normal.core,
@@ -621,42 +661,72 @@ class AmapCanvasImpl implements WebMapCanvas {
     this.routeStrokeSignature = signature;
     const legs = this.roadLabelLegs.filter((leg) => leg.path.length > 1);
     legs.forEach((leg, index) => {
-      const style = leg.failed ? widths.failed : leg.stale ? widths.stale : leg.selected ? widths.selected : widths.normal;
-      this.routeOutlineOverlays[index]?.setOptions?.({ strokeWeight: style.outline });
-      this.routeOverlays[index]?.overlay.setOptions?.({ strokeWeight: "boundary" in style ? style.boundary : style.route });
+      const style = leg.failed
+        ? widths.failed
+        : leg.stale
+          ? widths.stale
+          : leg.selected
+            ? widths.selected
+            : widths.normal;
+      this.routeOutlineOverlays[index]?.setOptions?.({
+        strokeWeight: style.outline,
+      });
+      this.routeOverlays[index]?.overlay.setOptions?.({
+        strokeWeight: "boundary" in style ? style.boundary : style.route,
+      });
     });
-    legs.filter((leg) => !leg.failed && !leg.stale).forEach((leg, index) => {
-      this.routeCoreOverlays[index]?.overlay.setOptions?.({ strokeWeight: leg.selected ? widths.selected.core : widths.normal.core });
-    });
+    legs
+      .filter((leg) => !leg.failed && !leg.stale)
+      .forEach((leg, index) => {
+        this.routeCoreOverlays[index]?.overlay.setOptions?.({
+          strokeWeight: leg.selected
+            ? widths.selected.core
+            : widths.normal.core,
+        });
+      });
   }
 
   private updateRoadLabels() {
     const labels = selectRoadLabels(this.roadLabelLegs, this.roadLabelPoints, {
-      center: toCoordinate(this.map.getCenter()), zoom: this.map.getZoom(),
-      width: this.container.clientWidth, height: this.container.clientHeight,
-      project: this.map.lngLatToContainer ? (coordinate) => {
-        const pixel = this.map.lngLatToContainer!(toPosition(coordinate));
-        return { x: pixel.getX(), y: pixel.getY() };
-      } : undefined,
+      center: toCoordinate(this.map.getCenter()),
+      zoom: this.map.getZoom(),
+      width: this.container.clientWidth,
+      height: this.container.clientHeight,
+      project: this.map.lngLatToContainer
+        ? (coordinate) => {
+            const pixel = this.map.lngLatToContainer!(toPosition(coordinate));
+            return { x: pixel.getX(), y: pixel.getY() };
+          }
+        : undefined,
     });
-    const signature = JSON.stringify(labels.map(({ name, coordinate, angle, isReturn }) => ({ name, coordinate, angle, isReturn })));
+    const signature = JSON.stringify(
+      labels.map(({ name, coordinate, angle, isReturn, visual }) => ({
+        name,
+        coordinate,
+        angle,
+        isReturn,
+        source: visual.source,
+      })),
+    );
     if (signature === this.roadLabelSignature) return;
     this.roadLabelSignature = signature;
     this.clearOverlays(this.roadLabelOverlays);
-    this.roadLabelOverlays = labels.map(({ name, coordinate, visual, angle }) => {
-      const marker = new this.amap.Marker({
-        position: toPosition(coordinate),
-        content: markerContent(visual.source, visual.width, visual.height),
-        title: name,
-        anchor: "center",
-        angle,
-        zIndex: 79,
-        bubble: true,
-        clickable: false,
-      });
-      this.map.add(marker);
-      return marker;
-    });
+    this.roadLabelOverlays = labels.map(
+      ({ name, coordinate, visual, angle }) => {
+        const marker = new this.amap.Marker({
+          position: toPosition(coordinate),
+          content: markerContent(visual.source, visual.width, visual.height),
+          title: name,
+          anchor: "center",
+          angle,
+          zIndex: 79,
+          bubble: true,
+          clickable: false,
+        });
+        this.map.add(marker);
+        return marker;
+      },
+    );
   }
 
   setRouteLegInsertion(insertion: WebMapRouteLegInsertion | null) {
@@ -931,12 +1001,15 @@ export class AmapWebAdapter implements WebMapAdapter {
     const sdk = loadAmapSdk({ ...options, key: options.key.trim() });
     // IP 定位不依赖 SDK；立即处理失败，避免 SDK 尚未就绪时产生未处理拒绝。
     // Promise 仅属于本次适配器，切换供应商后不会复用旧位置。
-    const initialLocation = typeof window === "undefined"
-      ? Promise.resolve(null)
-      : getIpLocation().catch((error: unknown) => {
-        locationDebug("warn", "initial:ip-failed", { error: debugError(error) });
-        return null;
-      });
+    const initialLocation =
+      typeof window === "undefined"
+        ? Promise.resolve(null)
+        : getIpLocation().catch((error: unknown) => {
+            locationDebug("warn", "initial:ip-failed", {
+              error: debugError(error),
+            });
+            return null;
+          });
     return new AmapWebAdapter(await sdk, initialLocation);
   }
 
@@ -950,7 +1023,7 @@ export class AmapWebAdapter implements WebMapAdapter {
       rotation: 0,
       doubleClickZoom: false,
       showLabel: true,
-      mapStyle: "amap://styles/macaron",
+      mapStyle: "amap://styles/whitesmoke",
     });
     return new AmapCanvasImpl(
       this.amap,
@@ -1060,7 +1133,12 @@ export class AmapWebAdapter implements WebMapAdapter {
     strategy: DrivingStrategy,
     signal?: AbortSignal,
   ): Promise<ClosedDrivingRoute> {
-    return this.calculateDrivingRoute(controlPoints, strategy, "round-trip", signal);
+    return this.calculateDrivingRoute(
+      controlPoints,
+      strategy,
+      "round-trip",
+      signal,
+    );
   }
 
   async calculateDrivingRoute(
@@ -1106,18 +1184,27 @@ export class AmapWebAdapter implements WebMapAdapter {
         }
         const cacheKey = this.routeLegCache.key(from, to, strategy, travelMode);
         const cachedLeg = this.routeLegCache.get(cacheKey);
-        if (cachedLeg) { legs.push(cachedLeg); continue; }
+        if (cachedLeg) {
+          legs.push(cachedLeg);
+          continue;
+        }
         const params = new URLSearchParams({
           from: `${from.latitude},${from.longitude}`,
           to: `${to.latitude},${to.longitude}`,
-          ...(travelMode === "driving" ? { strategy: strategyCode[strategy] } : { mode: travelMode }),
+          ...(travelMode === "driving"
+            ? { strategy: strategyCode[strategy] }
+            : { mode: travelMode }),
         });
-        const response = await this.scheduleDrivingRequest(() =>
-          requestAmapProxy<
-            AmapServiceResponse & {
-              route?: { paths?: AmapDrivingPath[] };
-            }
-          >(`/api/amap/${travelMode === "driving" ? "driving" : "route"}?${params.toString()}`, signal),
+        const response = await this.scheduleDrivingRequest(
+          () =>
+            requestAmapProxy<
+              AmapServiceResponse & {
+                route?: { paths?: AmapDrivingPath[] };
+              }
+            >(
+              `/api/amap/${travelMode === "driving" ? "driving" : "route"}?${params.toString()}`,
+              signal,
+            ),
           signal,
         );
         if (signal?.aborted) throw new Error("路线计算已取消");
@@ -1138,13 +1225,17 @@ export class AmapWebAdapter implements WebMapAdapter {
             ? Math.max(1, Math.round(durationSeconds / 60))
             : 0,
           travelMode,
-          trafficLightCount: travelMode === "driving" && Number.isFinite(trafficLightCount)
-            ? trafficLightCount
-            : null,
+          trafficLightCount:
+            travelMode === "driving" && Number.isFinite(trafficLightCount)
+              ? trafficLightCount
+              : null,
           path,
-          roadSections: mergeRoadSections((route.steps ?? []).map((step) => ({
-            name: step.road, path: decodePolyline(step.polyline),
-          }))),
+          roadSections: mergeRoadSections(
+            (route.steps ?? []).map((step) => ({
+              name: step.road,
+              path: decodePolyline(step.polyline),
+            })),
+          ),
         });
         this.routeLegCache.put(cacheKey, legs[legs.length - 1]);
       }
@@ -1304,7 +1395,10 @@ export class AmapWebAdapter implements WebMapAdapter {
     return request;
   }
 
-  private scheduleDrivingRequest<T>(operation: () => Promise<T>, signal?: AbortSignal) {
+  private scheduleDrivingRequest<T>(
+    operation: () => Promise<T>,
+    signal?: AbortSignal,
+  ) {
     const scheduled = this.drivingRequestQueue.then(async () => {
       if (signal?.aborted) throw new Error("路线计算已取消");
       const remaining = this.nextDrivingRequestAt - Date.now();

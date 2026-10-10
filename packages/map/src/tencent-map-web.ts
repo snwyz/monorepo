@@ -793,28 +793,28 @@ class TencentMapCanvasImpl implements WebMapCanvas {
           color: dim(mapOverlayColors.routeCore),
           width: strokeWidths.normal.core,
           lineCap: "round",
-          showArrow: true,
+          showArrow: false,
           arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
         }),
         selected: new tmap.PolylineStyle({
           color: mapOverlayColors.routeCore,
           width: strokeWidths.selected.core,
           lineCap: "round",
-          showArrow: true,
+          showArrow: false,
           arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
         }),
         return: new tmap.PolylineStyle({
           color: dim(mapOverlayColors.returnRouteCore),
           width: strokeWidths.normal.core,
           lineCap: "round",
-          showArrow: true,
+          showArrow: false,
           arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
         }),
         returnSelected: new tmap.PolylineStyle({
           color: mapOverlayColors.returnRouteCore,
           width: strokeWidths.selected.core,
           lineCap: "round",
-          showArrow: true,
+          showArrow: false,
           arrowOptions: { width: 6, height: 8, space: 80, animSpeed: 0 },
         }),
       },
@@ -834,7 +834,7 @@ class TencentMapCanvasImpl implements WebMapCanvas {
       width: this.container.clientWidth, height: this.container.clientHeight,
       project: this.map.projectToContainer ? (coordinate) => this.map.projectToContainer!(new this.tmap.LatLng(coordinate.latitude, coordinate.longitude)) : undefined,
     });
-    const signature = JSON.stringify(labels.map(({ name, coordinate, angle, isReturn }) => ({ name, coordinate, angle, isReturn })));
+    const signature = JSON.stringify(labels.map(({ name, coordinate, angle, isReturn, visual }) => ({ name, coordinate, angle, isReturn, source: visual.source })));
     if (signature === this.roadLabelSignature) return;
     this.roadLabelSignature = signature;
     const styles: Record<string, unknown> = {};

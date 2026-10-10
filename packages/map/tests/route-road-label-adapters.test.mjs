@@ -126,15 +126,32 @@ for (const provider of ["amap", "tencent"]) {
     assert.equal(fixture.map.events.size, 0);
   });
 
-  test(`${provider}: 缩小隐藏路名并恢复轻量线宽，放大复原且不累积图层`, async () => {
+  test(`${provider}: 11级显示透明底路名，放大更新背景，低于门槛隐藏且不累积图层`, async () => {
     const fixture = await setup(provider);
     fixture.canvas.setRouteLegs([leg]);
     const initialCount = fixture.labels().length;
     assert.ok(initialCount > 0);
-    fixture.map.setZoom(12);
+    fixture.map.setZoom(10.99);
     assert.equal(fixture.labels().length, 0);
+    fixture.map.setZoom(11);
+    assert.ok(fixture.labels().length > 0);
+    const labelSource = () => {
+      const label = fixture.labels()[0];
+      return decodeURIComponent(provider === "amap" ? label.content.children[0].src : label.src);
+    };
+    assert.equal(labelSource().includes('<rect'), false);
     const farOutline = fixture.outline()[0];
     assert.equal(provider === "amap" ? farOutline.options.strokeWeight : farOutline.styles.outline.width, 14);
+    fixture.map.setZoom(14);
+    assert.ok(labelSource().includes('<rect'));
+    fixture.map.setZoom(11);
+    assert.equal(labelSource().includes('<rect'), false);
+    fixture.canvas.setRouteLegs([{ ...leg, selected: true }]);
+    assert.equal(labelSource().includes('<rect'), false);
+    fixture.map.setZoom(13);
+    assert.ok(labelSource().includes('<rect'));
+    fixture.canvas.setRouteLegs([leg]);
+    assert.equal(labelSource().includes('<rect'), false);
     fixture.map.setZoom(15);
     assert.equal(fixture.labels().length, initialCount);
     const nearOutline = fixture.outline()[0];
